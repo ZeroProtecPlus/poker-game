@@ -41,6 +41,89 @@ Implementar una solución de persistencia (SQLite embebido u otras opciones) par
 
 ---
 
+### 3.1 Persistencia de Estado de Partida (Game State) — Preparación para LAN
+**Prioridad:** 🟠 Alto  
+**Origen:** Extensión de arquitectura
+
+Además de la persistencia básica de usuario, se requiere almacenar el estado completo de la partida para permitir reanudación y soporte futuro de multijugador en red local (LAN).
+
+**Decisión arquitectónica:**
+Se adopta un modelo cliente-servidor donde un nodo (host) centraliza:
+- La lógica del juego
+- El estado de la partida
+- La base de datos (SQLite)
+
+Los clientes no almacenan estado persistente; únicamente envían acciones y reciben actualizaciones.
+
+---
+
+### Modelo de datos requerido
+
+**Tabla: `game_state`**
+- `id`
+- `fase` (preflop, flop, turn, river)
+- `bote`
+- `jugador_actual`
+- `cartas_comunitarias` (serializadas como JSON)
+- `timestamp`
+
+**Tabla: `players`**
+- `id`
+- `nombre`
+- `chips`
+- `turno` (boolean o índice)
+- `estado` (activo, fold, all-in)
+- `cartas` (JSON)
+- `posicion` (dealer, SB, BB)
+
+**Tabla opcional: `actions_log`**
+- `id`
+- `player_id`
+- `accion` (bet, call, fold, etc)
+- `cantidad`
+- `timestamp`
+
+---
+
+### Requisitos técnicos
+
+- Serializar cartas y manos como JSON (ej: `["AH","KD"]`)
+- Implementar clase `GameState` que represente snapshot completo
+- Implementar `GameRepository.save(GameState)` y `load()`
+- Reconstrucción completa del juego desde DB (rehidratación de objetos)
+
+---
+
+### Flujo de reanudación
+
+1. El host carga `GameState` desde SQLite
+2. Se reconstruyen:
+   - Jugadores
+   - Cartas
+   - Turno actual
+   - Bote
+3. El `GameController` restaura el flujo
+4. Los clientes reciben el estado sincronizado
+
+---
+
+### Consideraciones importantes
+
+- Solo el host escribe en la base de datos
+- Evitar múltiples fuentes de verdad (single source of truth)
+- Diseñar repositorios desacoplados para futura migración (ej: PostgreSQL o Supabase)
+- Validar integridad del estado antes de cargar
+
+---
+
+### Futuro (no implementar aún)
+
+- Sincronización por sockets (LAN)
+- Broadcasting de estado a clientes
+- Persistencia remota opcional (backend)
+
+---
+
 ## 4. Testing — Pruebas Funcionales y No Funcionales
 **Prioridad:** 🟠 Alto  
 **Origen:** Main.java To-do #4
