@@ -227,6 +227,131 @@ El setter `User.setNumbChips(int)` no valida que el valor sea positivo. Aunque `
 
 ---
 
+## 13. Limpieza de Mesa Entre Rondas (Bug de Estado Visual)
+
+**Prioridad:** 🟠 Alto  
+**Origen:** Bug detectado en flujo de juego  
+
+Después de finalizar una mano (ya sea por *fold* o por *showdown*), se muestra correctamente el modal de “¿Continuar?”, pero la mesa **no se resetea visualmente de forma inmediata** al iniciar la siguiente ronda.
+
+### Comportamiento actual
+- Se reparten nuevas cartas correctamente  
+- Las cartas comunitarias anteriores permanecen visibles en la mesa  
+- La UI solo se actualiza correctamente cuando ocurre una acción posterior (ej: `check`, `bet`, etc.)
+
+### Problema
+Existe una desincronización entre el estado del modelo y la vista, donde:
+- El modelo sí reinicia el estado de la partida  
+- Pero la UI no refleja ese reset hasta que se dispara un evento adicional  
+
+Esto genera confusión visual y puede llevar al usuario a interpretar incorrectamente el estado del juego.
+
+### Causa probable
+- Falta de un método explícito de limpieza de mesa (`clearTable()` o similar)  
+- La actualización de la UI depende de eventos de acción en lugar de eventos de cambio de estado  
+- No se está forzando un `repaint()` / `revalidate()` tras reiniciar la partida  
+
+### Requisitos de solución
+
+Implementar una limpieza completa y explícita de la mesa al iniciar una nueva mano:
+
+#### A nivel de vista (`GameView`)
+- Limpiar cartas comunitarias (flop, turn, river)  
+- Limpiar cartas de jugadores (visuales)  
+- Resetear labels de estado (bote, turno, acciones previas)  
+- Forzar actualización:
+  - `revalidate()`
+  - `repaint()`
+
+#### A nivel de controlador (`GameController`)
+- Invocar método de limpieza antes de repartir nuevas cartas  
+- Asegurar que el flujo sea:
+  1. Limpiar UI  
+  2. Resetear estado del modelo  
+  3. Repartir cartas  
+  4. Renderizar nuevo estado  
+
+### Criterios de aceptación
+- Al iniciar una nueva mano, la mesa debe aparecer completamente limpia **antes** de mostrar nuevas cartas  
+- No debe depender de acciones del jugador para actualizarse  
+- No deben persistir elementos visuales de la ronda anterior  
+
+---
+
+## 14. Mejora de Feedback Visual e Información de Juego (UX/UI)
+
+**Prioridad:** 🟡 Medio  
+**Origen:** Mejora de experiencia de usuario  
+
+La interfaz actual no comunica de forma clara el estado del juego, lo que dificulta la toma de decisiones del jugador y reduce la claridad del flujo.
+
+### Problemas actuales
+- No es evidente:
+  - Quién tiene el turno actual  
+  - Quién realizó la última acción (`bet`, `raise`, `fold`, etc.)  
+  - Cuál es la apuesta mínima o máxima  
+  - Quién es el dealer, small blind (SB) y big blind (BB)  
+- Información clave está ausente o poco visible  
+- Falta jerarquía visual en los elementos de la UI  
+
+### Objetivos de mejora
+Proveer **feedback visual inmediato y claro** sobre el estado del juego, sin depender del log de texto.
+
+### Requisitos funcionales
+
+#### 1. Indicador de turno
+- Resaltar visualmente al jugador activo  
+- Opciones:
+  - Borde iluminado  
+  - Cambio de color de fondo  
+  - Ícono o marcador (ej: flecha o círculo)  
+
+#### 2. Indicador de acción reciente
+- Mostrar la última acción realizada por cada jugador:
+  - `CHECK`, `BET`, `CALL`, `FOLD`, `RAISE`  
+- Puede mostrarse como:
+  - Texto sobre el avatar  
+  - Tooltip temporal  
+  - Badge visual  
+
+#### 3. Información de apuestas
+Mostrar claramente:
+- Apuesta mínima (`min bet`)  
+- Apuesta máxima (si aplica)  
+- Cantidad a pagar para hacer `call`  
+- Tamaño actual del bote (`pot`)  
+
+#### 4. Posiciones de la mesa
+Identificar visualmente:
+- Dealer (D)  
+- Small Blind (SB)  
+- Big Blind (BB)  
+
+Esto puede implementarse mediante:
+- Íconos sobre cada jugador  
+- Labels pequeños junto al nombre  
+
+#### 5. Mejora del layout informativo
+- Separar visualmente:
+  - Zona de jugadores  
+  - Cartas comunitarias  
+  - Información del juego (pot, turnos, apuestas)  
+- Evitar saturación de texto  
+- Priorizar información relevante en cada fase  
+
+### Requisitos técnicos
+- Evitar lógica de UI dentro del modelo (mantener separación MVC)  
+- Centralizar el renderizado del estado en la vista  
+- Usar eventos o bindings para actualizar UI al cambiar el estado  
+- Mantener consistencia visual (colores, tipografía, espaciado)  
+
+### Criterios de aceptación
+- El jugador puede identificar el estado del juego sin leer logs  
+- El turno actual es evidente en todo momento  
+- Las acciones recientes son visibles de forma inmediata  
+- La información de apuestas es clara y accesible  
+- La UI mejora la comprensión sin sobrecargar visualmente  
+
 ## Resumen por Prioridad
 
 | # | Tarea | Prioridad |
