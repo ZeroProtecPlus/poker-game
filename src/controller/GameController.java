@@ -88,23 +88,28 @@ public class GameController {
         while (maxIterations-- > 0) {
             int highBetBefore = round.getCurrentBet();
 
-            // ── Turno del humano ─────────────────────────────────────────────
+            BettingRound.Action action = null;
+            int humanAmount = 0;
+
             if (!pokerGame.isPlayerAllIn() && !humanFolded) {
-                BettingRound.Action action = newGame.waitForPlayerAction(round, pokerGame.getPlayerCurrentBet());
-                if (action == BettingRound.Action.FOLD) {
-                    humanFolded = true;
-                    newGame.showPlayerFolded();
-                } else {
-                    applyHumanAction(action, round);
+                action = newGame.waitForPlayerAction(round, pokerGame.getPlayerCurrentBet());
+                if (action == BettingRound.Action.BET) {
+                    humanAmount = newGame.getPlayerBetAmount(round.getBigBlind(), newPlayer.getNumbChips());
+                } else if (action == BettingRound.Action.CALL) {
+                    humanAmount = round.callAmount(pokerGame.getPlayerCurrentBet());
+                } else if (action == BettingRound.Action.RAISE) {
+                    int minRaise = round.minRaiseAmount();
+                    humanAmount = newGame.getPlayerBetAmount(minRaise, newPlayer.getNumbChips());
                 }
-                newGame.showPot(pokerGame.getPot());
             }
 
-            if (allFoldedExceptOne(humanFolded)) break;
-
-            // ── Turno de las IAs ──────────────────────────────────────────────
-            PokerGame.AIBettingResult result = pokerGame.runAIBettingRound(round.getCurrentBet());
+            PokerGame.AIBettingResult result = pokerGame.runUnifiedBettingRound(round.getCurrentBet(), action, humanAmount);
             newGame.showAIActions(result.log);
+
+            if (result.humanFolded && !humanFolded) {
+                humanFolded = true;
+                newGame.showPlayerFolded();
+            }
 
             // Sincronizar BettingRound con la apuesta más alta que hizo la IA
             if (result.highBet > round.getCurrentBet()) {
@@ -112,6 +117,7 @@ public class GameController {
             }
 
             newGame.showPot(pokerGame.getPot());
+            newGame.showUserChips(userNamePlayer, newPlayer.getNumbChips());
 
             if (allFoldedExceptOne(humanFolded)) break;
 
@@ -158,21 +164,22 @@ public class GameController {
     // =========================================================================
 
     private void endRound() {
-        AIPlayer winner = pokerGame.determineWinner();
+        Player winner = pokerGame.determineWinnerPlayer();
         PokerGame.HandRank bestHand = pokerGame.evaluateBestHand();
         int pot = pokerGame.getPot();
 
-        if (winner == null) {
-            // Humano gana
-            pokerGame.awardPotToPlayer();
-            newGame.showResult(pokerGame.getCommunityCards(), pokerGame.getPlayerHand(),
-                               bestHand, pot, true, null);
-        } else {
-            // IA gana
-            pokerGame.awardPotToAI(winner);
-            newGame.showResult(pokerGame.getCommunityCards(), pokerGame.getPlayerHand(),
-                               bestHand, pot, false, winner.getName());
-        }
+        boolean humanWon = winner instanceof User;
+        pokerGame.awardPotTo(winner);
+
+        newGame.showResult(
+            pokerGame.getCommunityCards(),
+            pokerGame.getPlayerHand(),
+            bestHand,
+            pot,
+            humanWon,
+            humanWon ? null : winner.getName()
+        );
+
         newGame.showUserChips(userNamePlayer, newPlayer.getNumbChips());
     }
 

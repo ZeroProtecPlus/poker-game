@@ -6,7 +6,7 @@ import java.util.Random;
 /**
  * Jugador IA con lógica basada en la fuerza de su mano.
  */
-public class AIPlayer {
+public class AIPlayer implements Player {
 
     public enum Role {
         DEALER,
@@ -22,6 +22,7 @@ public class AIPlayer {
     private boolean allIn;
     private ArrayList<Card> hand = new ArrayList<>();
     private Role role = Role.NONE;
+    private final HandEvaluator handEvaluator = new HandEvaluator();
 
     private static final Random RNG = new Random();
 
@@ -80,13 +81,18 @@ public class AIPlayer {
 
     private double evaluateHandStrength(ArrayList<Card> community) {
         if (hand.isEmpty()) return 0.0;
-        ArrayList<Card> all = new ArrayList<>(hand);
-        all.addAll(community);
-        PokerGame tempGame = new PokerGame(null);
-        PokerGame.HandRank rank = tempGame.evaluateCards(all);
-        return (
-            rank.ordinal() / (double) (PokerGame.HandRank.values().length - 1)
-        );
+
+        if (community == null) {
+            return 0.0;
+        }
+
+        int totalCards = hand.size() + community.size();
+        if (hand.size() < 2 || totalCards < 5) {
+            return 0.0;
+        }
+
+        HandEvaluator.HandRank rank = handEvaluator.evaluateBestRank(hand, community);
+        return rank.ordinal() / (double) (HandEvaluator.HandRank.values().length - 1);
     }
 
     public int decideAmount(
@@ -110,7 +116,9 @@ public class AIPlayer {
     // =========================================================================
 
     /** Pone fichas en el bote. Devuelve lo que realmente pudo poner. */
+    @Override
     public int placeBet(int amount) {
+        if (amount <= 0 || folded || allIn) return 0;
         int actual = Math.min(amount, chips);
         chips -= actual;
         currentBet += actual;
@@ -123,6 +131,7 @@ public class AIPlayer {
         chips += amount;
     }
 
+    @Override
     public void resetRoundBet() {
         currentBet = 0;
     }
@@ -131,54 +140,94 @@ public class AIPlayer {
     //  GETTERS / SETTERS
     // =========================================================================
 
+    @Override
     public String getName() {
         return name;
     }
 
+    @Override
     public int getChips() {
         return chips;
     }
 
+    @Override
     public int getCurrentBet() {
         return currentBet;
     }
 
+    @Override
     public boolean isFolded() {
         return folded;
     }
 
+    @Override
     public boolean isAllIn() {
         return allIn;
+    }
+
+    @Override
+    public PlayerRole getPlayerRole() {
+        return toPlayerRole(role);
     }
 
     public Role getRole() {
         return role;
     }
 
+    @Override
     public ArrayList<Card> getHand() {
         return new ArrayList<>(hand);
     }
 
+    @Override
     public void setFolded(boolean f) {
         this.folded = f;
     }
 
+    @Override
     public void setAllIn(boolean a) {
         this.allIn = a;
+    }
+
+    @Override
+    public void setRole(PlayerRole role) {
+        this.role = toAIRole(role);
     }
 
     public void setRole(Role r) {
         this.role = r;
     }
 
+    @Override
     public void addCard(Card c) {
         hand.add(c);
     }
 
+    @Override
     public void clearHand() {
         hand.clear();
         folded = false;
         allIn = false;
         currentBet = 0;
+    }
+
+    public static PlayerRole toPlayerRole(Role role) {
+        if (role == null) return PlayerRole.NONE;
+        return switch (role) {
+            case DEALER -> PlayerRole.DEALER;
+            case SMALL_BLIND -> PlayerRole.SMALL_BLIND;
+            case BIG_BLIND -> PlayerRole.BIG_BLIND;
+            case NONE -> PlayerRole.NONE;
+        };
+    }
+
+    public static Role toAIRole(PlayerRole role) {
+        if (role == null) return Role.NONE;
+        return switch (role) {
+            case DEALER -> Role.DEALER;
+            case SMALL_BLIND -> Role.SMALL_BLIND;
+            case BIG_BLIND -> Role.BIG_BLIND;
+            case NONE -> Role.NONE;
+        };
     }
 }
