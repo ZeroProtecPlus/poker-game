@@ -157,8 +157,9 @@ Investigar y mejorar las fuentes disponibles en `javax.swing`. Actualmente se us
 
 ---
 
-## 7. Acoplamiento Circular AIPlayer → PokerGame
-**Prioridad:** 🟠 Alto  
+## 7. ✅ Acoplamiento Circular AIPlayer → PokerGame (SOLUCIONADO)
+**Prioridad original:** 🟠 Alto  
+**Estado:** ✅ Solucionado  
 **Origen:** Análisis técnico
 
 `AIPlayer.evaluateHandStrength()` instancia un `PokerGame` solo para invocar `evaluateCards()`. Esto genera una dependencia circular dentro del paquete `model`:
@@ -169,12 +170,13 @@ PokerGame tempGame = new PokerGame(null);
 PokerGame.HandRank rank = tempGame.evaluateCards(all);
 ```
 
-**Solución:** Extraer el evaluador a una clase utilitaria estática `HandEvaluator` que pueda ser usada tanto por `PokerGame` como por `AIPlayer` sin crear dependencias circulares.
+**Solución aplicada:** Se extrajo `HandEvaluator`, `PokerGame` delega evaluación con mapeo compatible y `AIPlayer` dejó de instanciar `new PokerGame(null)` para evaluar fuerza de mano.
 
 ---
 
-## 8. Falta Interfaz Player Unificada
-**Prioridad:** 🟡 Medio  
+## 8. ✅ Interfaz Player Unificada (SOLUCIONADO)
+**Prioridad original:** 🟡 Medio  
+**Estado:** ✅ Solucionado  
 **Origen:** Análisis técnico
 
 Las fichas del jugador humano se almacenan en `User.numbChips` (gestionado por `PokerGame`) y las de las IAs en `AIPlayer.chips`. Son dos sistemas de tracking paralelos sin abstracción compartida.
@@ -352,6 +354,45 @@ Esto puede implementarse mediante:
 - La información de apuestas es clara y accesible  
 - La UI mejora la comprensión sin sobrecargar visualmente  
 
+---
+
+## 15. UX de Apuesta Personalizada (BET) — Modal/Control poco usable
+**Prioridad:** 🟡 Medio  
+**Origen:** Feedback de uso
+
+La interfaz para ingresar una apuesta personalizada (acción **BET/RAISE**) tiene fricción de uso: slider demasiado sensible, acceso poco claro al valor exacto y baja intuición visual.
+
+**Problemas observados:**
+- Slider con sensibilidad alta (difícil elegir montos finos)
+- Falta de input numérico directo/teclado
+- Jerarquía visual pobre (no se distingue bien min, actual y all-in)
+
+**Refinamiento de solución:**
+- Reemplazar o complementar slider con campo numérico editable (`JTextField/JSpinner`) + validación
+- Añadir controles de incremento/decremento (±1, ±5, ±10, ±50 según ciegas)
+- Mostrar claramente: **mínimo permitido**, **monto actual**, **stack restante** y **all-in**
+- Mejorar layout visual del modal de apuesta para que la acción principal sea evidente
+
+---
+
+## 16. Flujo automático tras Fold del humano en modo 1 vs CPU
+**Prioridad:** 🟠 Alto  
+**Origen:** Feedback de juego
+
+En modo 1 vs CPU, cuando el jugador humano hace **fold**, el sistema no siempre continúa automáticamente. En algunos casos queda esperando interacción del usuario o incluso permite acciones inválidas (apostar estando foldeado).
+
+**Comportamiento esperado (regla):**
+- Si el humano está `folded`, su turno debe saltarse automáticamente
+- El motor debe continuar la mano/resolver fase sin solicitar acciones al humano foldeado
+- La UI debe deshabilitar acciones de apuesta/call/raise para jugador foldeado
+
+**Refinamiento de solución:**
+- Corregir guardas de estado en `GameController`/flujo de ronda para no bloquear en espera de input humano foldeado
+- Enforzar validación de acciones por estado del jugador (`folded` => sin acciones de apuesta)
+- Añadir tests de regresión para escenario: humano foldea temprano y la mano continúa hasta resolución automática
+
+---
+
 ## Resumen por Prioridad
 
 | # | Tarea | Prioridad |
@@ -360,11 +401,15 @@ Esto puede implementarse mediante:
 | 4 | Testing funcional y no funcional | 🟠 Alto |
 | 2 | Distribución paso a paso (Flop/Turn/River) | 🟠 Alto |
 | 3 | Base de datos / Persistencia | 🟠 Alto |
-| 7 | Refactor — Extraer HandEvaluator | 🟠 Alto |
+| 7 | ✅ Refactor — Extraer HandEvaluator (solucionado) | ✅ Completado |
 | 9 | Split Pot en empates | 🟠 Alto |
 | 5 | Modal "¿Continuar?" custom | 🟡 Medio |
-| 8 | Interfaz Player unificada | 🟡 Medio |
+| 8 | ✅ Interfaz Player unificada (solucionado) | ✅ Completado |
 | 10 | BettingRound.canCheck() corregido | 🟡 Medio |
 | 11 | Loop de apuestas sin límite hardcodeado | 🟡 Medio |
 | 6 | Tipografía y diseño UI | 🔵 Bajo |
 | 12 | Validación fichas negativas en User | 🔵 Bajo |
+| 13 | Limpieza de mesa entre rondas (estado visual) | 🟠 Alto |
+| 14 | Mejora de feedback visual e información de juego | 🟡 Medio |
+| 15 | UX de apuesta personalizada (BET) | 🟡 Medio |
+| 16 | Auto-continuación tras fold humano (1 vs CPU) | 🟠 Alto |
