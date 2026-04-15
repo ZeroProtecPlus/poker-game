@@ -393,6 +393,87 @@ En modo 1 vs CPU, cuando el jugador humano hace **fold**, el sistema no siempre 
 
 ---
 
+## 17. Validación de Nombres de Jugadores desde el Host (LAN)
+
+**Prioridad:** 🟠 Alto  
+**Origen:** Requisito para multijugador en red (LAN)
+
+En partidas multijugador bajo arquitectura cliente-servidor, el **host debe actuar como autoridad central** para validar los nombres de los jugadores antes de permitir su ingreso a la partida.
+
+Actualmente existen reglas locales para restringir caracteres inválidos, pero **no se controla la unicidad ni coherencia global de los nombres**, lo que puede generar conflictos en la identificación de jugadores durante la partida.
+
+---
+
+### Problemas actuales
+- Posibilidad de nombres duplicados entre jugadores  
+- Falta de validación centralizada (cada cliente valida de forma aislada)  
+- Riesgo de ambigüedad en:
+  - Logs de acciones  
+  - Identificación de turnos  
+  - Persistencia de datos  
+- No hay feedback claro al cliente cuando un nombre es rechazado  
+
+---
+
+### Objetivos
+- Garantizar que cada jugador tenga un **nombre único dentro de la sesión**  
+- Centralizar la validación en el host (single source of truth)  
+- Asegurar consistencia en UI, logs y persistencia  
+
+---
+
+### Requisitos funcionales
+
+#### 1. Validación de unicidad
+- El host debe rechazar nombres ya registrados en la partida activa  
+- Comparación *case-insensitive* (ej: `Juan` == `juan`)  
+
+#### 2. Validación de formato
+- Reutilizar reglas existentes:
+  - Sin caracteres especiales no permitidos  
+  - Longitud mínima y máxima definida  
+- Validación final siempre ocurre en el host (no confiar en el cliente)  
+
+#### 3. Protocolo de conexión
+- Flujo esperado:
+  1. Cliente propone nombre  
+  2. Host valida (unicidad + formato)  
+  3. Host responde:
+     - ✅ Aceptado → jugador se une  
+     - ❌ Rechazado → se envía motivo  
+
+#### 4. Feedback al usuario
+- Mostrar mensajes claros en cliente:
+  - “Nombre ya en uso”  
+  - “Formato inválido”  
+- Permitir reintento sin reiniciar conexión  
+
+---
+
+### Requisitos técnicos
+- Mantener un registro en memoria en el host:
+  - `Set<String>` normalizado (ej: lowercase)  
+- Implementar método:
+  - `boolean isNameAvailable(String name)`  
+- Separar lógica de validación en un componente reutilizable (`NameValidator`)  
+- Preparar integración futura con persistencia (evitar colisiones con usuarios guardados)
+
+---
+
+### Consideraciones
+- El nombre no debe ser el identificador único interno (usar `playerId`)  
+- Evitar condiciones de carrera en conexiones simultáneas  
+- Validar nuevamente al reconectar clientes  
+
+---
+
+### Criterios de aceptación
+- No pueden existir nombres duplicados en una partida  
+- Todos los nombres visibles son consistentes en UI y logs  
+- El sistema maneja correctamente rechazos sin romper el flujo de conexión  
+
+---
+
 ## Resumen por Prioridad
 
 | # | Tarea | Prioridad |
@@ -413,3 +494,4 @@ En modo 1 vs CPU, cuando el jugador humano hace **fold**, el sistema no siempre 
 | 14 | Mejora de feedback visual e información de juego | 🟡 Medio |
 | 15 | UX de apuesta personalizada (BET) | 🟡 Medio |
 | 16 | Auto-continuación tras fold humano (1 vs CPU) | 🟠 Alto |
+| 17 | Validación de Nombres de Jugadores desde el Host (LAN) | 🟠 Alto |
