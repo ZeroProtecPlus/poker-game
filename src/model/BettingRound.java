@@ -28,11 +28,16 @@ public class BettingRound {
 
     /**
      * ¿Puede hacer check?
-     * Solo si no hay ninguna apuesta activa en la ronda (currentBet == 0),
-     * o si el jugador ya igualó exactamente el big blind en preflop (opción BB).
+     * Sí cuando el jugador ya igualó la apuesta activa de la ronda.
+     * En preflop, esto conserva la opción del BB cuando nadie subió
+     * (playerCurrentBet == currentBet == bigBlind).
      */
     public boolean canCheck(int playerCurrentBet) {
-        return currentBet == 0;
+        if (currentBet == 0) {
+            return true;
+        }
+
+        return playerCurrentBet >= currentBet;
     }
 
     /**

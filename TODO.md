@@ -200,11 +200,12 @@ if (bestAI == null || humanRank.ordinal() >= bestAIRank.ordinal()) {
 
 ---
 
-## 10. BettingRound.canCheck() — Parámetro Ignorado
-**Prioridad:** 🟡 Medio  
+## 10. ✅ BettingRound.canCheck() — Parámetro Corregido (SOLUCIONADO)
+**Prioridad original:** 🟡 Medio  
+**Estado:** ✅ Solucionado  
 **Origen:** Análisis técnico
 
-El método `canCheck(int playerCurrentBet)` recibe el bet actual del jugador pero no lo usa. El caso del Big Blind en preflop (puede hacer check si nadie subió, aunque su `currentBet > 0`) no está correctamente contemplado.
+El método `canCheck(int playerCurrentBet)` ahora considera correctamente el bet actual del jugador. Se corrige el caso del Big Blind en preflop (puede hacer check si nadie subió, aunque `currentBet > 0`) y se agregan regresiones de modelo/UI para evitar reintroducción del bug.
 
 ---
 
@@ -509,7 +510,7 @@ y la partida no continúa correctamente.
 | 9 | Split Pot en empates | 🟠 Alto |
 | 5 | Modal "¿Continuar?" custom | 🟡 Medio |
 | 8 | ✅ Interfaz Player unificada (solucionado) | ✅ Completado |
-| 10 | BettingRound.canCheck() corregido | 🟡 Medio |
+| 10 | ✅ BettingRound.canCheck() corregido | ✅ Completado |
 | 11 | Loop de apuestas sin límite hardcodeado | 🟡 Medio |
 | 6 | Tipografía y diseño UI | 🔵 Bajo |
 | 12 | Validación fichas negativas en User | 🔵 Bajo |

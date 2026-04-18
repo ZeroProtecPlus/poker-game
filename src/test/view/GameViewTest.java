@@ -4,7 +4,9 @@ import model.BettingRound;
 import model.Card;
 import model.PokerGame;
 
+import javax.swing.JButton;
 import javax.swing.JPanel;
+import java.awt.Component;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -13,9 +15,30 @@ import java.util.List;
 public class GameViewTest {
 
     public static void main(String[] args) {
+        shouldShowCheckButtonForBigBlindEquivalentUnopenedPreflop();
         shouldClearRoundArtifactsInSingleResetCall();
         shouldBeIdempotentWhenResetCalledRepeatedly();
         System.out.println("GameViewTest: all tests passed");
+    }
+
+    private static void shouldShowCheckButtonForBigBlindEquivalentUnopenedPreflop() {
+        GameView view = new GameView(false);
+        GameView.TablePanel panel = attachTablePanel(view);
+
+        BettingRound unopenedPreflop = new BettingRound(
+            BettingRound.Phase.PREFLOP,
+            30,
+            PokerGame.BIG_BLIND,
+            PokerGame.BIG_BLIND
+        );
+
+        panel.showBettingButtons(unopenedPreflop, PokerGame.BIG_BLIND, false, action -> {
+        });
+
+        JPanel bettingPanel = (JPanel) readField(panel, "bettingPanel");
+        require(bettingPanel != null, "betting panel should be visible");
+        require(hasButtonLabel(bettingPanel, "CHECK"), "CHECK should be visible for unopened preflop BB-equivalent state");
+        require(!hasButtonLabel(bettingPanel, "CALL 0"), "CALL 0 should not be rendered when call amount is zero");
     }
 
     private static void shouldClearRoundArtifactsInSingleResetCall() {
@@ -124,6 +147,15 @@ public class GameViewTest {
         } catch (ReflectiveOperationException ex) {
             throw new AssertionError("failed to read field: " + fieldName, ex);
         }
+    }
+
+    private static boolean hasButtonLabel(JPanel panel, String label) {
+        for (Component component : panel.getComponents()) {
+            if (component instanceof JButton button && label.equals(button.getText())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static void require(boolean condition, String message) {
