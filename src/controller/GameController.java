@@ -45,6 +45,7 @@ public class GameController {
     }
 
     private void playOneHand() {
+        newGame.clearTableForNewHand();
         this.pokerGame = new PokerGame(newPlayer);
         pokerGame.startNewRound();
 

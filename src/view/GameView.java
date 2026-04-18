@@ -248,6 +248,18 @@ public class GameView {
         SwingUtilities.invokeLater(() -> tablePanel.showGameOver(chips));
     }
 
+    /** Limpia estado visual transitorio antes de una nueva mano */
+    public void clearTableForNewHand() {
+        if (tablePanel == null) {
+            return;
+        }
+        try {
+            SwingUtilities.invokeAndWait(() -> tablePanel.clearRoundVisualState());
+        } catch (Exception ignored) {
+            SwingUtilities.invokeLater(() -> tablePanel.clearRoundVisualState());
+        }
+    }
+
     // =========================================================================
     //  NAME DIALOG
     // =========================================================================
@@ -326,6 +338,18 @@ public class GameView {
         void setPot(int pot)               { this.pot = pot; }
         void setPlayerFolded()             { this.playerFolded = true; }
         void setActionLog(List<String> log){ this.actionLog = new ArrayList<>(log); }
+
+        void clearRoundVisualState() {
+            playerSprites.clear();
+            communitySprites.clear();
+            actionLog.clear();
+            playerFolded = false;
+            resultMessage = null;
+            pot = 0;
+            hideBettingButtons();
+            revalidate();
+            repaint();
+        }
 
         void dealPlayerHand(List<Card> hand) {
             playerSprites.clear();
