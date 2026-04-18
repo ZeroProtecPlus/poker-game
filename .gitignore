@@ -27,3 +27,7 @@ bin/
 
 ### Mac OS ###
 .DS_Store
+
+### Local docs (not versioned) ###
+DOCUMENTACION_PROYECTO.txt
+LEVANTAMIENTO_REQUERIMIENTOS.md
