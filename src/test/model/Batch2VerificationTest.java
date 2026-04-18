@@ -1,5 +1,7 @@
 package model;
 
+import controller.AutoFoldContinueRegressionTest;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -13,6 +15,8 @@ public class Batch2VerificationTest {
         shouldPreservePokerGameRankParityAcrossCategories();
         shouldPreserveAIDecisionThresholdBehaviorForNoCallFlow();
         shouldPreserveAIDecisionThresholdBehaviorForCallFlow();
+        shouldPreserveFoldedStateWhenHumanAlreadyFoldedAtPhaseEntry();
+        shouldPreserveAutoFoldContinueWithoutPostFoldPrompts();
         shouldRejectInvalidHandEvaluatorInputShapes();
         System.out.println("Batch2VerificationTest: all tests passed");
     }
@@ -213,6 +217,21 @@ public class Batch2VerificationTest {
             AIPlayer.Role.SMALL_BLIND
         );
         require(blindDefenseCall == BettingRound.Action.CALL, "blind defense threshold should call even when pot-odds gate is not met");
+    }
+
+    private static void shouldPreserveFoldedStateWhenHumanAlreadyFoldedAtPhaseEntry() {
+        PokerGame game = new PokerGame(new User("FoldedAtEntry"));
+        game.startNewRound();
+        game.getPlayers().get(0).setFolded(true);
+
+        BettingRound round = game.createBettingRound(BettingRound.Phase.FLOP);
+        PokerGame.AIBettingResult result = game.runUnifiedBettingRound(round.getCurrentBet(), null, 0);
+
+        require(result.humanFolded, "unified betting round should report persisted human folded state at phase entry");
+    }
+
+    private static void shouldPreserveAutoFoldContinueWithoutPostFoldPrompts() {
+        AutoFoldContinueRegressionTest.main(new String[0]);
     }
 
     private static void shouldRejectInvalidHandEvaluatorInputShapes() {

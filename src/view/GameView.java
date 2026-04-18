@@ -57,6 +57,13 @@ public class GameView {
     //  CONSTRUCTOR
     // =========================================================================
     public GameView() {
+        this(true);
+    }
+
+    protected GameView(boolean initializeUi) {
+        if (!initializeUi) {
+            return;
+        }
         SwingUtilities.invokeLater(this::buildFrame);
         // Give Swing a moment to build the frame before any dialog calls
         try { Thread.sleep(300); } catch (InterruptedException ignored) {}

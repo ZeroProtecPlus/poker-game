@@ -13,7 +13,11 @@ public class GameController {
     private final GameView newGame;
 
     public GameController() {
-        this.newGame = new GameView();
+        this(new GameView());
+    }
+
+    protected GameController(GameView gameView) {
+        this.newGame = gameView;
     }
 
     public void createNewPlayer() {
@@ -82,16 +86,18 @@ public class GameController {
         pokerGame.resetRoundBets();
         BettingRound round = pokerGame.createBettingRound(phase);
 
-        boolean humanFolded = false;
+        boolean humanFolded = newPlayer.isFolded();
         int maxIterations   = 6;
 
         while (maxIterations-- > 0) {
+            humanFolded = newPlayer.isFolded();
             int highBetBefore = round.getCurrentBet();
 
             BettingRound.Action action = null;
             int humanAmount = 0;
 
-            if (!pokerGame.isPlayerAllIn() && !humanFolded) {
+            boolean shouldWaitForHumanAction = !pokerGame.isPlayerAllIn() && !humanFolded;
+            if (shouldWaitForHumanAction) {
                 action = newGame.waitForPlayerAction(round, pokerGame.getPlayerCurrentBet());
                 if (action == BettingRound.Action.BET) {
                     humanAmount = newGame.getPlayerBetAmount(round.getBigBlind(), newPlayer.getNumbChips());
@@ -106,8 +112,9 @@ public class GameController {
             PokerGame.AIBettingResult result = pokerGame.runUnifiedBettingRound(round.getCurrentBet(), action, humanAmount);
             newGame.showAIActions(result.log);
 
-            if (result.humanFolded && !humanFolded) {
-                humanFolded = true;
+            boolean wasHumanFolded = humanFolded;
+            humanFolded = result.humanFolded;
+            if (humanFolded && !wasHumanFolded) {
                 newGame.showPlayerFolded();
             }
 
