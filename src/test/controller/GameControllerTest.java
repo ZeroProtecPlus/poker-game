@@ -3,7 +3,10 @@ package controller;
 import model.AIPlayer;
 import model.BettingRound;
 import model.Card;
+import model.Player;
 import model.PokerGame;
+import model.ShowdownResult;
+import model.User;
 import view.GameView;
 
 import java.lang.reflect.Field;
@@ -15,6 +18,7 @@ public class GameControllerTest {
 
     public static void main(String[] args) {
         shouldSequenceTableClearBeforeRoundStartAndInitialRender();
+        shouldSendShowdownResultToViewForTieOutcome();
         System.out.println("GameControllerTest: all tests passed");
     }
 
@@ -40,6 +44,54 @@ public class GameControllerTest {
             playOneHand.invoke(controller);
         } catch (ReflectiveOperationException ex) {
             throw new AssertionError("failed to invoke playOneHand reflectively", ex);
+        }
+    }
+
+    private static void invokeEndRound(GameController controller) {
+        try {
+            Method endRound = GameController.class.getDeclaredMethod("endRound");
+            endRound.setAccessible(true);
+            endRound.invoke(controller);
+        } catch (ReflectiveOperationException ex) {
+            throw new AssertionError("failed to invoke endRound reflectively", ex);
+        }
+    }
+
+    private static void shouldSendShowdownResultToViewForTieOutcome() {
+        TieCaptureGameView view = new TieCaptureGameView();
+        GameController controller = new GameController(view);
+
+        User human = new User("Tester");
+        human.setNumbChips(500);
+        AIPlayer aiA = new AIPlayer("Carlos", 1000);
+        AIPlayer aiB = new AIPlayer("Sofia", 1000);
+        ShowdownResult tieResult = new ShowdownResult(List.of(human, aiA, aiB), PokerGame.HandRank.ONE_PAIR, true);
+
+        StubPokerGame stubGame = new StubPokerGame(human, tieResult, 101,
+            new ArrayList<>(List.of(new Card("2", "H"), new Card("9", "C"), new Card("K", "D"))),
+            new ArrayList<>(List.of(new Card("A", "S"), new Card("A", "D"))));
+
+        setPrivateField(controller, "newPlayer", human);
+        setPrivateField(controller, "userNamePlayer", "Tester");
+        setPrivateField(controller, "pokerGame", stubGame);
+
+        invokeEndRound(controller);
+
+        require(stubGame.awardCalled, "controller should call awardPot(showdownResult)");
+        require(stubGame.awardArgument == tieResult, "controller should pass exact showdown result to payout");
+        require(view.showResultNewSignatureCalls == 1, "controller should call showdown-aware view signature");
+        require(view.showResultLegacyCalls == 0, "controller should not use legacy result signature in active flow");
+        require(view.capturedResult == tieResult, "view should receive exact showdown result payload");
+        require(view.capturedPot == 101, "view should receive pre-award pot amount");
+    }
+
+    private static void setPrivateField(Object target, String fieldName, Object value) {
+        try {
+            Field field = target.getClass().getDeclaredField(fieldName);
+            field.setAccessible(true);
+            field.set(target, value);
+        } catch (ReflectiveOperationException ex) {
+            throw new AssertionError("failed to set field reflectively: " + fieldName, ex);
         }
     }
 
@@ -134,6 +186,11 @@ public class GameControllerTest {
 
         @Override
         public void showResult(ArrayList<Card> community, ArrayList<Card> playerHand,
+                               ShowdownResult showdownResult, int pot) {
+        }
+
+        @Override
+        public void showResult(ArrayList<Card> community, ArrayList<Card> playerHand,
                                PokerGame.HandRank bestHand, int pot,
                                boolean humanWon, String aiWinnerName) {
         }
@@ -153,6 +210,81 @@ public class GameControllerTest {
 
         @Override
         public void showCommunityCards(ArrayList<Card> community, ArrayList<Card> playerHand) {
+        }
+    }
+
+    private static final class TieCaptureGameView extends GameView {
+        private int showResultNewSignatureCalls = 0;
+        private int showResultLegacyCalls = 0;
+        private ShowdownResult capturedResult;
+        private int capturedPot;
+
+        private TieCaptureGameView() {
+            super(false);
+        }
+
+        @Override
+        public void showResult(ArrayList<Card> community, ArrayList<Card> playerHand,
+                               ShowdownResult showdownResult, int pot) {
+            showResultNewSignatureCalls++;
+            capturedResult = showdownResult;
+            capturedPot = pot;
+        }
+
+        @Override
+        public void showResult(ArrayList<Card> community, ArrayList<Card> playerHand,
+                               PokerGame.HandRank bestHand, int pot,
+                               boolean humanWon, String aiWinnerName) {
+            showResultLegacyCalls++;
+        }
+
+        @Override
+        public void showUserChips(String userName, int chips) {
+        }
+    }
+
+    private static final class StubPokerGame extends PokerGame {
+        private final ShowdownResult showdownResult;
+        private final int potAmount;
+        private final ArrayList<Card> communityCards;
+        private final ArrayList<Card> playerHand;
+
+        private boolean awardCalled;
+        private ShowdownResult awardArgument;
+
+        private StubPokerGame(User player, ShowdownResult showdownResult, int potAmount,
+                              ArrayList<Card> communityCards, ArrayList<Card> playerHand) {
+            super(player);
+            this.showdownResult = showdownResult;
+            this.potAmount = potAmount;
+            this.communityCards = communityCards;
+            this.playerHand = playerHand;
+        }
+
+        @Override
+        public ShowdownResult determineShowdownResult() {
+            return showdownResult;
+        }
+
+        @Override
+        public void awardPot(ShowdownResult showdownResult) {
+            awardCalled = true;
+            awardArgument = showdownResult;
+        }
+
+        @Override
+        public int getPot() {
+            return potAmount;
+        }
+
+        @Override
+        public ArrayList<Card> getCommunityCards() {
+            return new ArrayList<>(communityCards);
+        }
+
+        @Override
+        public ArrayList<Card> getPlayerHand() {
+            return new ArrayList<>(playerHand);
         }
     }
 }

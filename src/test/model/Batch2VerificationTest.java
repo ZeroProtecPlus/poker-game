@@ -2,6 +2,7 @@ package model;
 
 import controller.AutoFoldContinueRegressionTest;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -18,6 +19,9 @@ public class Batch2VerificationTest {
         shouldPreserveFoldedStateWhenHumanAlreadyFoldedAtPhaseEntry();
         shouldPreserveAutoFoldContinueWithoutPostFoldPrompts();
         shouldRejectInvalidHandEvaluatorInputShapes();
+        shouldResolveNonTieWinnerUsingFullHandStrength();
+        shouldSplitPotEvenlyAcrossExactTieWinners();
+        shouldAssignRemainderDeterministicallyForThreeWayTie();
         System.out.println("Batch2VerificationTest: all tests passed");
     }
 
@@ -264,6 +268,156 @@ public class Batch2VerificationTest {
             "total of 5 to 7 cards",
             () -> evaluator.evaluateBestRank(cards(c("A", "H"), c("K", "D")), cards(c("2", "D"), c("3", "S")))
         );
+    }
+
+    private static void shouldResolveNonTieWinnerUsingFullHandStrength() {
+        PokerGame game = new PokerGame(new User("NonTieStrength"));
+        game.startNewRound();
+
+        List<Player> players = game.getPlayers();
+        Player human = players.get(0);
+        Player ai0 = players.get(1);
+        Player ai1 = players.get(2);
+        Player ai2 = players.get(3);
+
+        setPlayerHand(human, c("K", "S"), c("Q", "D"));
+        setPlayerHand(ai0, c("J", "C"), c("10", "H"));
+        ai1.setFolded(true);
+        ai2.setFolded(true);
+
+        setCommunityCards(game, cards(c("A", "H"), c("A", "D"), c("9", "S"), c("5", "C"), c("2", "H")));
+
+        ShowdownResult result = game.determineShowdownResult();
+        require(!result.isTie(), "non-tie showdown should not be marked as tie");
+        require(result.getWinners().size() == 1, "non-tie showdown should have exactly one winner");
+        require(result.getWinners().get(0) == human, "higher kicker should win within same rank category");
+        require(result.getBestRank() == PokerGame.HandRank.ONE_PAIR, "best rank should match evaluated category");
+        require(game.determineWinnerPlayer() == human, "winner compatibility API should resolve to same player");
+    }
+
+    private static void shouldSplitPotEvenlyAcrossExactTieWinners() {
+        PokerGame game = new PokerGame(new User("EvenSplit"));
+        game.startNewRound();
+
+        List<Player> players = game.getPlayers();
+        Player human = players.get(0);
+        Player ai0 = players.get(1);
+        Player ai1 = players.get(2);
+        Player ai2 = players.get(3);
+
+        setPlayerHand(human, c("2", "C"), c("3", "D"));
+        setPlayerHand(ai1, c("4", "C"), c("5", "D"));
+        ai0.setFolded(true);
+        ai2.setFolded(true);
+
+        setCommunityCards(game, cards(c("10", "H"), c("J", "H"), c("Q", "H"), c("K", "H"), c("A", "H")));
+        setPot(game, 100);
+
+        int humanBefore = human.getChips();
+        int ai1Before = ai1.getChips();
+
+        ShowdownResult result = game.determineShowdownResult();
+        require(result.isTie(), "equal best-five showdown should be marked as tie");
+        require(result.getWinners().size() == 2, "two active tied players should be included as winners");
+
+        game.awardPot(result);
+
+        require(human.getChips() == humanBefore + 50, "human should receive even split share");
+        require(ai1.getChips() == ai1Before + 50, "ai should receive even split share");
+        require(game.getPot() == 0, "pot should be cleared after tie payout");
+    }
+
+    private static void shouldAssignRemainderDeterministicallyForThreeWayTie() {
+        int expectedRemainderWinnerSeat = 0;
+
+        for (int i = 0; i < 5; i++) {
+            PokerGame game = new PokerGame(new User("Remainder" + i));
+            game.startNewRound();
+
+            List<Player> players = game.getPlayers();
+            Player seat0 = players.get(0);
+            Player seat1 = players.get(1);
+            Player seat2 = players.get(2);
+            Player seat3 = players.get(3);
+
+            setPlayerHand(seat0, c("2", "C"), c("3", "D"));
+            setPlayerHand(seat1, c("4", "C"), c("5", "D"));
+            setPlayerHand(seat3, c("6", "C"), c("7", "D"));
+            seat2.setFolded(true);
+
+            setCommunityCards(game, cards(c("10", "H"), c("J", "H"), c("Q", "H"), c("K", "H"), c("A", "H")));
+            setPot(game, 10);
+
+            int[] before = snapshotChips(players);
+            ShowdownResult result = game.determineShowdownResult();
+            require(result.isTie(), "three-way equal showdown should be tie");
+            require(result.getWinners().size() == 3, "three active players should be in winner set");
+
+            game.awardPot(result);
+
+            int remainderSeat = findRemainderWinnerSeat(players, before);
+            require(remainderSeat == expectedRemainderWinnerSeat,
+                "remainder chip must be assigned by deterministic dealer-relative order");
+        }
+    }
+
+    private static int[] snapshotChips(List<Player> players) {
+        int[] chips = new int[players.size()];
+        for (int i = 0; i < players.size(); i++) {
+            chips[i] = players.get(i).getChips();
+        }
+        return chips;
+    }
+
+    private static int findRemainderWinnerSeat(List<Player> players, int[] chipsBefore) {
+        int seat = -1;
+        for (int i = 0; i < players.size(); i++) {
+            int delta = players.get(i).getChips() - chipsBefore[i];
+            if (delta == 4) {
+                if (seat != -1) {
+                    throw new AssertionError("only one seat should receive remainder chip");
+                }
+                seat = i;
+            } else if (delta == 3 || delta == 0) {
+            } else {
+                throw new AssertionError("unexpected payout delta for seat " + i + ": " + delta);
+            }
+        }
+
+        if (seat == -1) {
+            throw new AssertionError("expected one remainder winner seat");
+        }
+        return seat;
+    }
+
+    private static void setPlayerHand(Player player, Card first, Card second) {
+        player.clearHand();
+        player.setFolded(false);
+        player.addCard(first);
+        player.addCard(second);
+    }
+
+    private static void setCommunityCards(PokerGame game, ArrayList<Card> cards) {
+        try {
+            Field field = PokerGame.class.getDeclaredField("communityCards");
+            field.setAccessible(true);
+            @SuppressWarnings("unchecked")
+            ArrayList<Card> community = (ArrayList<Card>) field.get(game);
+            community.clear();
+            community.addAll(cards);
+        } catch (ReflectiveOperationException ex) {
+            throw new AssertionError("failed to configure community cards", ex);
+        }
+    }
+
+    private static void setPot(PokerGame game, int value) {
+        try {
+            Field field = PokerGame.class.getDeclaredField("pot");
+            field.setAccessible(true);
+            field.setInt(game, value);
+        } catch (ReflectiveOperationException ex) {
+            throw new AssertionError("failed to configure pot", ex);
+        }
     }
 
     private static void setHoleCards(AIPlayer ai, Card first, Card second) {

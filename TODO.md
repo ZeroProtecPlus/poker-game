@@ -185,11 +185,12 @@ Las fichas del jugador humano se almacenan en `User.numbChips` (gestionado por `
 
 ---
 
-## 9. Lógica de Empates — Split Pot
-**Prioridad:** 🟠 Alto  
+## 9. ✅ Lógica de Empates — Split Pot (SOLUCIONADO)
+**Prioridad original:** 🟠 Alto  
+**Estado:** ✅ Solucionado  
 **Origen:** Análisis técnico
 
-`determineWinner()` no implementa correctamente los empates. En caso de misma categoría de mano, el humano siempre gana sin comparar kickers. No existe lógica de split pot (división del bote entre dos manos idénticas).
+Se implementó resolución de showdown con comparación completa de fuerza de mano (categoría + desempate), detección de multi-ganador en empate exacto y distribución determinística del bote (split pot), incluyendo manejo de residuo.
 
 ```java
 // Actual — incorrecto en empate exacto
@@ -507,7 +508,7 @@ y la partida no continúa correctamente.
 | 2 | Distribución paso a paso (Flop/Turn/River) | 🟠 Alto |
 | 3 | Base de datos / Persistencia | 🟠 Alto |
 | 7 | ✅ Refactor — Extraer HandEvaluator (solucionado) | ✅ Completado |
-| 9 | Split Pot en empates | 🟠 Alto |
+| 9 | ✅ Split Pot en empates | ✅ Completado |
 | 5 | Modal "¿Continuar?" custom | 🟡 Medio |
 | 8 | ✅ Interfaz Player unificada (solucionado) | ✅ Completado |
 | 10 | ✅ BettingRound.canCheck() corregido | ✅ Completado |

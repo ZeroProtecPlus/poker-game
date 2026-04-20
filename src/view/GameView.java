@@ -4,6 +4,8 @@ import model.AIPlayer;
 import model.BettingRound;
 import model.Card;
 import model.PokerGame;
+import model.Player;
+import model.ShowdownResult;
 
 import javax.sound.sampled.*;
 import javax.swing.*;
@@ -221,6 +223,33 @@ public class GameView {
 
     /** Muestra el resultado final con el bote y el ganador */
     public void showResult(ArrayList<Card> community, ArrayList<Card> playerHand,
+                           ShowdownResult showdownResult, int pot) {
+        if (showdownResult == null || showdownResult.getWinners().isEmpty()) {
+            if (tablePanel != null) {
+                SwingUtilities.invokeLater(() -> tablePanel.showResult(showdownResult, pot));
+            }
+            pause(2500);
+            return;
+        }
+
+        if (!showdownResult.isTie()) {
+            Player winner = showdownResult.getWinners().get(0);
+            boolean humanWon = winner instanceof model.User;
+            String aiWinnerName = humanWon ? null : winner.getName();
+            showResult(community, playerHand, showdownResult.getBestRank(), pot, humanWon, aiWinnerName);
+            return;
+        }
+
+        if (tablePanel != null) {
+            SwingUtilities.invokeLater(() -> tablePanel.showResult(showdownResult, pot));
+        }
+        pause(2500);
+    }
+
+    /**
+     * Compatibilidad con firmas previas.
+     */
+    public void showResult(ArrayList<Card> community, ArrayList<Card> playerHand,
                            PokerGame.HandRank bestHand, int pot,
                            boolean humanWon, String aiWinnerName) {
         SwingUtilities.invokeLater(() -> tablePanel.showResult(bestHand, pot, humanWon, aiWinnerName));
@@ -371,22 +400,62 @@ public class GameView {
             }
         }
 
-        void showResult(PokerGame.HandRank bestHand, int finalPot, boolean humanWon, String aiWinnerName) {
-            if (humanWon) {
+        void showResult(ShowdownResult showdownResult, int finalPot) {
+            if (showdownResult == null || showdownResult.getWinners().isEmpty()) {
+                resultMessage = "Sin ganador definido";
+                resultColor = new Color(0xCC4444);
+                return;
+            }
+
+            PokerGame.HandRank bestHand = showdownResult.getBestRank();
+            if (showdownResult.isTie()) {
+                String winnerList = joinWinnerNames(showdownResult.getWinners());
+                resultMessage = "Empate: " + winnerList + " dividen " + String.format("%,d", finalPot)
+                    + "  |  " + bestHand.spanishName;
+                resultColor = GOLD_LIGHT;
+                return;
+            }
+
+            Player winner = showdownResult.getWinners().get(0);
+            if (winner instanceof model.User) {
                 resultMessage = "¡Ganaste! +" + String.format("%,d", finalPot)
                               + "  |  " + bestHand.spanishName;
                 resultColor   = GOLD_LIGHT;
                 if (bestHand.ordinal() >= PokerGame.HandRank.THREE_OF_A_KIND.ordinal()) SoundFX.playWin();
             } else {
-                resultMessage = aiWinnerName + " gana el bote de " + String.format("%,d", finalPot)
+                resultMessage = winner.getName() + " gana el bote de " + String.format("%,d", finalPot)
                               + "  |  Tu mano: " + bestHand.spanishName;
                 resultColor   = new Color(0xCC4444);
             }
         }
 
         // Sobrecarga para compatibilidad interna
+        void showResult(PokerGame.HandRank bestHand, int finalPot, boolean humanWon, String aiWinnerName) {
+            if (humanWon) {
+                resultMessage = "¡Ganaste! +" + String.format("%,d", finalPot)
+                    + "  |  " + bestHand.spanishName;
+                resultColor = GOLD_LIGHT;
+                if (bestHand.ordinal() >= PokerGame.HandRank.THREE_OF_A_KIND.ordinal()) SoundFX.playWin();
+            } else {
+                resultMessage = aiWinnerName + " gana el bote de " + String.format("%,d", finalPot)
+                    + "  |  Tu mano: " + bestHand.spanishName;
+                resultColor = new Color(0xCC4444);
+            }
+        }
+
         void showResult(PokerGame.HandRank bestHand, int finalPot) { showResult(bestHand, finalPot, false, ""); }
         void showResult(PokerGame.HandRank bestHand) { showResult(bestHand, pot, false, ""); }
+
+        private String joinWinnerNames(List<Player> winners) {
+            StringBuilder builder = new StringBuilder();
+            for (int i = 0; i < winners.size(); i++) {
+                if (i > 0) {
+                    builder.append(", ");
+                }
+                builder.append(winners.get(i).getName());
+            }
+            return builder.toString();
+        }
 
         void showGameOver(int finalChips) {
             resultMessage = finalChips > 0
@@ -1052,4 +1121,5 @@ public class GameView {
             } catch (Exception ignored) {}
         }
     }
+
 }

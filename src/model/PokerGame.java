@@ -372,31 +372,136 @@ public class PokerGame {
         pot = 0;
     }
 
-    public Player determineWinnerPlayer() {
-        Player bestPlayer = null;
-        HandRank bestRank = HandRank.HIGH_CARD;
+    public void awardPot(ShowdownResult showdownResult) {
+        if (showdownResult == null || showdownResult.getWinners().isEmpty()) {
+            return;
+        }
+
+        List<Player> winners = showdownResult.getWinners();
+        int baseShare = pot / winners.size();
+        int remainder = pot % winners.size();
+
+        for (Player winner : winners) {
+            payPlayer(winner, baseShare);
+        }
+
+        if (remainder > 0) {
+            List<Player> remainderOrder = remainderAssignmentOrder(winners);
+            for (int i = 0; i < remainder; i++) {
+                payPlayer(remainderOrder.get(i), 1);
+            }
+        }
+
+        pot = 0;
+    }
+
+    private void payPlayer(Player winner, int amount) {
+        if (amount <= 0) {
+            return;
+        }
+
+        if (winner instanceof User userWinner) {
+            userWinner.setNumbChips(userWinner.getNumbChips() + amount);
+        } else if (winner instanceof AIPlayer aiWinner) {
+            aiWinner.receivePot(amount);
+        }
+    }
+
+    private List<Player> remainderAssignmentOrder(List<Player> winners) {
+        int dealerSeat = -1;
+        for (int i = 0; i < players.size(); i++) {
+            if (players.get(i).getPlayerRole() == PlayerRole.DEALER) {
+                dealerSeat = i;
+                break;
+            }
+        }
+
+        List<Player> ordered = new ArrayList<>(winners);
+        int finalDealerSeat = dealerSeat;
+        ordered.sort((left, right) -> {
+            int leftSeat = players.indexOf(left);
+            int rightSeat = players.indexOf(right);
+
+            if (finalDealerSeat >= 0) {
+                int leftDistance = clockwiseDistance(finalDealerSeat, leftSeat);
+                int rightDistance = clockwiseDistance(finalDealerSeat, rightSeat);
+                if (leftDistance != rightDistance) {
+                    return Integer.compare(leftDistance, rightDistance);
+                }
+            }
+
+            return Integer.compare(leftSeat, rightSeat);
+        });
+        return ordered;
+    }
+
+    private int clockwiseDistance(int originSeat, int targetSeat) {
+        if (originSeat < 0 || targetSeat < 0 || players.isEmpty()) {
+            return Integer.MAX_VALUE;
+        }
+        int totalSeats = players.size();
+        return (targetSeat - originSeat + totalSeats) % totalSeats;
+    }
+
+    public ShowdownResult determineShowdownResult() {
+        HandEvaluator.HandStrength bestStrength = null;
+        List<Player> winners = new ArrayList<>();
 
         for (Player current : players) {
             if (current.isFolded()) {
                 continue;
             }
 
-            ArrayList<Card> cards = new ArrayList<>(current.getHand());
-            cards.addAll(communityCards);
-            HandRank rank = evaluateCards(cards);
-
-            if (bestPlayer == null || rank.ordinal() > bestRank.ordinal()) {
-                bestPlayer = current;
-                bestRank = rank;
+            HandEvaluator.HandStrength currentStrength = evaluateStrengthForPlayer(current);
+            if (bestStrength == null) {
+                bestStrength = currentStrength;
+                winners.clear();
+                winners.add(current);
                 continue;
             }
 
-            if (rank.ordinal() == bestRank.ordinal() && current == player && bestPlayer != player) {
-                bestPlayer = current;
+            int comparison = currentStrength.compareTo(bestStrength);
+            if (comparison > 0) {
+                bestStrength = currentStrength;
+                winners.clear();
+                winners.add(current);
+            } else if (comparison == 0) {
+                winners.add(current);
             }
         }
 
-        return bestPlayer;
+        if (bestStrength == null) {
+            return new ShowdownResult(List.of(), HandRank.HIGH_CARD, false);
+        }
+
+        return new ShowdownResult(winners, toPokerGameRank(bestStrength.getRank()), winners.size() > 1);
+    }
+
+    private HandEvaluator.HandStrength evaluateStrengthForPlayer(Player current) {
+        ArrayList<Card> cards = new ArrayList<>(current.getHand());
+        cards.addAll(communityCards);
+
+        if (cards.size() >= 5) {
+            return handEvaluator.evaluateBestHandStrength(cards);
+        }
+
+        List<Integer> tieBreak = new ArrayList<>();
+        for (Card card : cards) {
+            Integer value = RANK_VALUE.get(card.getRank());
+            if (value != null) {
+                tieBreak.add(value);
+            }
+        }
+        tieBreak.sort(Collections.reverseOrder());
+        return new HandEvaluator.HandStrength(HandEvaluator.HandRank.HIGH_CARD, tieBreak);
+    }
+
+    public Player determineWinnerPlayer() {
+        ShowdownResult showdownResult = determineShowdownResult();
+        if (showdownResult.getWinners().isEmpty()) {
+            return null;
+        }
+        return showdownResult.getWinners().get(0);
     }
 
     public ArrayList<Card> getPlayerHand() {

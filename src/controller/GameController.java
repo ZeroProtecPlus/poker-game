@@ -172,20 +172,16 @@ public class GameController {
     // =========================================================================
 
     private void endRound() {
-        Player winner = pokerGame.determineWinnerPlayer();
-        PokerGame.HandRank bestHand = pokerGame.evaluateBestHand();
+        ShowdownResult showdownResult = pokerGame.determineShowdownResult();
         int pot = pokerGame.getPot();
 
-        boolean humanWon = winner instanceof User;
-        pokerGame.awardPotTo(winner);
+        pokerGame.awardPot(showdownResult);
 
         newGame.showResult(
             pokerGame.getCommunityCards(),
             pokerGame.getPlayerHand(),
-            bestHand,
-            pot,
-            humanWon,
-            humanWon ? null : winner.getName()
+            showdownResult,
+            pot
         );
 
         newGame.showUserChips(userNamePlayer, newPlayer.getNumbChips());
