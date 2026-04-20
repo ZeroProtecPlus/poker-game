@@ -478,26 +478,18 @@ Actualmente existen reglas locales para restringir caracteres inválidos, pero *
 
 ---
 
-## 18. Error al resolver mano preflop por fold de IAs tras bet del humano
-**Prioridad:** 🟠 Alto  
+## 18. ✅ Error preflop fold de IAs tras bet (SOLUCIONADO)
+**Prioridad original:** 🟠 Alto  
+**Estado:** ✅ Solucionado  
 **Origen:** Bug detectado en QA manual
 
-Cuando el humano hace `BET` preflop (sin cartas comunitarias) y las IAs foldean, el juego arroja:
+El bug fue corregido mediante separación explícita de rutas de cierre:
+- Ruta fold-terminal: adjudica pote directamente sin showdown
+- Guardas de modelo: previenen evaluación inválida (<5 cartas)
 
-`Ocurrió un error inesperado: Hand evaluation requires a total of 5 to 7 cards`
-
-y la partida no continúa correctamente.
-
-### Diagnóstico refinado
-- El flujo de cierre entra por `endRound()` aunque el final fue por fold (sin showdown)
-- Se intenta evaluar mano con `HandEvaluator` aun cuando no hay 5+ cartas disponibles
-- La evaluación de showdown no debe ejecutarse en cierre por retiro/fold
-
-### Criterios de solución
-- Separar cierre por fold (sin showdown) de cierre por showdown
-- No invocar evaluación de mano cuando total de cartas < 5
-- Adjudicar bote al único jugador activo y continuar flujo normal de partida
-- Añadir regresión: escenario preflop `BET` humano + fold de IAs no debe romper el juego
+### Cambios implementados
+- `GameController`: `endHandByFold()` y `hasSingleActivePlayer()`
+- `PokerGame`: `canEnterShowdown()` y evaluación defensiva hardening
 
 ## Resumen por Prioridad
 
@@ -520,4 +512,4 @@ y la partida no continúa correctamente.
 | 15 | UX de apuesta personalizada (BET) | 🟡 Medio |
 | 16 | ✅ Auto-continuación tras fold humano (1 vs CPU) | ✅ Completado |
 | 17 | Validación de Nombres de Jugadores desde el Host (LAN) | 🟠 Alto |
-| 18 | Error preflop al resolver por fold de IAs tras bet | 🟠 Alto |
+| 18 | ✅ Error preflop fold de IAs tras bet (solucionado) | ✅ Completado |
