@@ -485,6 +485,31 @@ Actualmente existen reglas locales para restringir caracteres inválidos, pero *
 
 El bug fue corregido: cuando todos los jugadores IA foldean, el flujo ya no llama a endRound(). El mtodo allFolded() ya adjudicaba el pot directamente - slo se removi la llamada innecesaria a endRound().
 
+---
+
+## 19. ✅ La IA no puede evaluar en preflop cuando no hay cartas comunitarias (SOLUCIONADO)
+**Prioridad original:** 🟠 Alto  
+**Estado:** ✅ Solucionado  
+**Origen:** Bug detectado en testing
+
+El bug fue corregido: la IA ahora evalúa su mano directamente con hole cards cuando comunidad está vacía/nula, sin depender del board para tomar decisiones.
+
+### Nota de calibración futura (thresholds)
+Los umbrales actuales de decisión IA en preflop podrían requerir ajustefino para mejorar el comportamiento estratégico:
+- Gates de call/raise/fold basados en `potOdds` + margen
+- RNG de bluff ocasional (puede causar folds no determinísticos en casos bordes)
+- Esto es tuning de IA, no es un bug funcional
+
+### Problema original (ya resuelto)
+- La lógica de decisión de la IA solicitaba `communityCards` para calcular odds.
+- En preflop no había cartas comunitarias (arreglo vacío).
+- Cuando detectaba comunidad vacía o nula, la IA no podía decidir y se retirba (`fold`).
+
+### Comportamiento esperado (ya implementado)
+- En preflop, las IAs evaluan su mano solo con sus 2 cartas privadas.
+- Comparan esa fuerza directamente frente a la apuesta del humano.
+- Toman una decisión basada solo en su mano (sin probabilidades del board).
+
 ## Resumen por Prioridad
 
 | # | Tarea | Prioridad |
@@ -507,3 +532,4 @@ El bug fue corregido: cuando todos los jugadores IA foldean, el flujo ya no llam
 | 16 | ✅ Auto-continuación tras fold humano (1 vs CPU) | ✅ Completado |
 | 17 | Validación de Nombres de Jugadores desde el Host (LAN) | 🟠 Alto |
 | 18 | ✅ Error preflop fold de IAs tras bet (solucionado) | ✅ Completado |
+| 19 | ✅ La IA no puede evaluar en preflop sin comunidad (solucionado) | ✅ Completado |
