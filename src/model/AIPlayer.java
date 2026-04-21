@@ -79,11 +79,12 @@ public class AIPlayer implements Player {
         return BettingRound.Action.FOLD;
     }
 
-    private double evaluateHandStrength(ArrayList<Card> community) {
+private double evaluateHandStrength(ArrayList<Card> community) {
         if (hand.isEmpty()) return 0.0;
 
-        if (community == null) {
-            return 0.0;
+        // Preflop: evaluate using only hole cards
+        if (community == null || community.isEmpty()) {
+            return evaluatePreflopStrength();
         }
 
         int totalCards = hand.size() + community.size();
@@ -93,6 +94,61 @@ public class AIPlayer implements Player {
 
         HandEvaluator.HandRank rank = handEvaluator.evaluateBestRank(hand, community);
         return rank.ordinal() / (double) (HandEvaluator.HandRank.values().length - 1);
+    }
+
+    /**
+     * Evalúa la fuerza de la mano en preflop usando solo las 2 hole cards.
+     * Score basado en: pares, cartas altas, suited, conectividad.
+     */
+    private double evaluatePreflopStrength() {
+        if (hand.size() < 2) return 0.0;
+
+        Card first = hand.get(0);
+        Card second = hand.get(1);
+
+        int v1 = rankValue(first);
+        int v2 = rankValue(second);
+        int high = Math.max(v1, v2);
+        int low = Math.min(v1, v2);
+        boolean pair = (v1 == v2);
+        boolean suited = first.getSuit().equals(second.getSuit());
+
+        int gap = Math.abs(v1 - v2) - 1;
+        if (gap < 0) gap = 0;
+        if (gap > 3) gap = 4;
+
+        double score;
+        if (pair) {
+            // Par: base alta + valor de la carta
+            score = 0.56 + ((high - 2) / 12.0) * 0.40;
+        } else {
+            // No par: carta alta + suited + conectividad
+            score = 0.05;
+            score += ((high - 2) / 12.0) * 0.35;
+            score += ((low - 2) / 12.0) * 0.20;
+            if (suited) score += 0.08;
+            if (gap == 1) score += 0.06;
+            else if (gap == 2) score += 0.03;
+            else if (gap >= 4) score -= 0.06;
+            if (high >= 11 && low >= 10) score += 0.04;
+            if (high == 14 && low >= 10) score += 0.03;
+        }
+
+        return Math.max(0.0, Math.min(1.0, score));
+    }
+
+    private int rankValue(Card card) {
+        String r = card.getRank().toUpperCase();
+        return switch (r) {
+            case "A" -> 14;
+            case "K" -> 13;
+            case "Q" -> 12;
+            case "J" -> 11;
+            default -> {
+                int v = Integer.parseInt(r);
+                yield (v >= 2 && v <= 10) ? v : 0;
+            }
+        };
     }
 
     public int decideAmount(
