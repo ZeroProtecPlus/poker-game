@@ -54,21 +54,21 @@ public class GameController {
         newGame.showRoles(pokerGame.getHumanRole(), pokerGame.getAIPlayers());
         newGame.showPot(pokerGame.getPot());
 
-        // ── PREFLOP ──────────────────────────────────────────────────────────
+// ── PREFLOP ──────────────────────────────────────────────────────────
         runBettingPhase(BettingRound.Phase.PREFLOP);
-        if (allFolded()) { endRound(); return; }
+        if (allFolded()) return; // allFolded already awards pot - no showdown needed
 
         // ── FLOP ─────────────────────────────────────────────────────────────
         pokerGame.dealFlop();
         newGame.showCommunityCards(pokerGame.getCommunityCards(), manoJugador);
         runBettingPhase(BettingRound.Phase.FLOP);
-        if (allFolded()) { endRound(); return; }
+        if (allFolded()) return; // allFolded already awards pot - no showdown needed
 
         // ── TURN ─────────────────────────────────────────────────────────────
         pokerGame.dealTurnOrRiver();
         newGame.showCommunityCards(pokerGame.getCommunityCards(), manoJugador);
         runBettingPhase(BettingRound.Phase.TURN);
-        if (allFolded()) { endRound(); return; }
+        if (allFolded()) return; // allFolded already awards pot - no showdown needed
 
         // ── RIVER ────────────────────────────────────────────────────────────
         pokerGame.dealTurnOrRiver();
