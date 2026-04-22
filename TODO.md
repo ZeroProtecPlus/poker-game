@@ -510,6 +510,30 @@ Los umbrales actuales de decisión IA en preflop podrían requerir ajustefino pa
 - Comparan esa fuerza directamente frente a la apuesta del humano.
 - Toman una decisión basada solo en su mano (sin probabilidades del board).
 
+---
+
+## 20. Indicadores de turno (BB, SB, Dealer) no visibles
+**Prioridad:** 🟡 Medio  
+**Origen:** Feedback de usuario
+
+El jugador no puede identificar visualmente quién es el Dealer, Small Blind (SB) y Big Blind (BB) en la mesa.
+
+**Problema:** No hay etiquetas visuales que muestren D, SB, BB en cada jugador.
+
+**Solución:** Agregar indicadores visuales (D, SB, BB) junto a cada jugador y mantener rotación correcta de roles.
+
+---
+
+## 21. Modal "Continuar?" no cierra el juego al responder "No"
+**Prioridad:** 🟡 Medio  
+**Origen:** Feedback de usuario
+
+Cuando aparece el modal preguntando "¿Continuar?" después de una mano, al seleccionar "No" el juego debería cerrarse completamente.
+
+**Problema:** El usuario elige "No" pero el juego queda abierto.
+
+**Solución:** Al recibir respuesta "No", llamar a System.exit(0) o cerrar el frame principal.
+
 ## Resumen por Prioridad
 
 | # | Tarea | Prioridad |
@@ -533,3 +557,5 @@ Los umbrales actuales de decisión IA en preflop podrían requerir ajustefino pa
 | 17 | Validación de Nombres de Jugadores desde el Host (LAN) | 🟠 Alto |
 | 18 | ✅ Error preflop fold de IAs tras bet (solucionado) | ✅ Completado |
 | 19 | ✅ La IA no puede evaluar en preflop sin comunidad (solucionado) | ✅ Completado |
+| 20 | Indicadores de turno (BB, SB, Dealer) no visibles | 🟡 Medio |
+| 21 | Modal "Continuar?" no cierra el juego al responder "No" | 🟡 Medio |
