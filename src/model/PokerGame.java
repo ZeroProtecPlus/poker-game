@@ -520,6 +520,26 @@ public class PokerGame {
         return Collections.unmodifiableList(players);
     }
 
+    public int getRemainingActivePlayersCount() {
+        int count = 0;
+        for (Player current : players) {
+            if (!current.isFolded()) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    public int getActionablePlayersCount() {
+        int count = 0;
+        for (Player current : players) {
+            if (!current.isFolded() && !current.isAllIn()) {
+                count++;
+            }
+        }
+        return count;
+    }
+
     public int getPot() {
         return pot;
     }

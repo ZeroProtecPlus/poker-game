@@ -140,11 +140,11 @@ public class GameController {
         BettingRound round = pokerGame.createBettingRound(phase);
 
         boolean humanFolded = newPlayer.isFolded();
-        int maxIterations   = 6;
+        String lastPhaseFingerprint = "";
+        int repeatedFingerprintCount = 0;
 
-        while (maxIterations-- > 0) {
+        while (true) {
             humanFolded = newPlayer.isFolded();
-            int highBetBefore = round.getCurrentBet();
 
             BettingRound.Action action = null;
             int humanAmount = 0;
@@ -179,10 +179,26 @@ public class GameController {
             newGame.showPot(pokerGame.getPot());
             newGame.showUserChips(userNamePlayer, newPlayer.getNumbChips());
 
-            if (allFoldedExceptOne(humanFolded)) break;
+            if (hasSingleActivePlayer()) {
+                break;
+            }
 
-            // Si nadie subió en esta iteración, la ronda terminó
-            if (round.getCurrentBet() == highBetBefore) break;
+            if (isBettingSettled(round.getCurrentBet())) {
+                break;
+            }
+
+            String currentPhaseFingerprint = buildPhaseFingerprint(phase, round.getCurrentBet());
+            if (currentPhaseFingerprint.equals(lastPhaseFingerprint)) {
+                repeatedFingerprintCount++;
+            } else {
+                lastPhaseFingerprint = currentPhaseFingerprint;
+                repeatedFingerprintCount = 1;
+            }
+
+            int nonProgressThreshold = Math.max(2, pokerGame.getActionablePlayersCount() * 2);
+            if (repeatedFingerprintCount >= nonProgressThreshold) {
+                break;
+            }
         }
 
         newGame.showUserChips(userNamePlayer, newPlayer.getNumbChips());
@@ -212,11 +228,49 @@ public class GameController {
         newGame.showUserChips(userNamePlayer, newPlayer.getNumbChips());
     }
 
-    /** True si solo queda un jugador activo en total (incluyendo al humano). */
-    private boolean allFoldedExceptOne(boolean humanFolded) {
-        long activeAI = pokerGame.getAIPlayers().stream().filter(ai -> !ai.isFolded()).count();
-        if (humanFolded) return activeAI <= 1;
-        return activeAI == 0;
+    /** True when only one non-folded player remains. */
+    private boolean hasSingleActivePlayer() {
+        return pokerGame.getRemainingActivePlayersCount() <= 1;
+    }
+
+    /** True when all non-folded players are settled for current high bet. */
+    private boolean isBettingSettled(int highBet) {
+        for (Player current : pokerGame.getPlayers()) {
+            if (current.isFolded()) {
+                continue;
+            }
+            if (current.isAllIn()) {
+                continue;
+            }
+            if (current.getCurrentBet() < highBet) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private String buildPhaseFingerprint(BettingRound.Phase phase, int highBet) {
+        StringBuilder fingerprint = new StringBuilder();
+        fingerprint.append(phase)
+            .append("|")
+            .append(highBet)
+            .append("|")
+            .append(pokerGame.getPot());
+
+        for (Player current : pokerGame.getPlayers()) {
+            fingerprint.append("|")
+                .append(current.getPlayerId())
+                .append(":")
+                .append(current.isFolded())
+                .append(":")
+                .append(current.isAllIn())
+                .append(":")
+                .append(current.getCurrentBet())
+                .append(":")
+                .append(current.getChips());
+        }
+
+        return fingerprint.toString();
     }
 
     // =========================================================================
