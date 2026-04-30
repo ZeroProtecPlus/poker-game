@@ -210,16 +210,18 @@ El método `canCheck(int playerCurrentBet)` ahora considera correctamente el bet
 
 ---
 
-## 11. Loop de Apuestas Hardcodeado
-**Prioridad:** 🟡 Medio  
+## 11. ✅ Loop de Apuestas Hardcodeado (SOLUCIONADO)
+**Prioridad original:** 🟡 Medio  
+**Estado:** ✅ Solucionado  
 **Origen:** Análisis técnico
 
-El loop de rondas de apuestas tiene un límite hardcodeado de 6 iteraciones. En situaciones con muchas subidas consecutivas, la ronda podría cortarse prematuramente.
+Se eliminó el límite hardcodeado de iteraciones en la ronda de apuestas y se reemplazó por cierre basado en reglas de estado del juego (settlement):
 
-```java
-int maxIterations = 6; // ← hardcoded
-while (maxIterations-- > 0) { ... }
-```
+- La ronda termina cuando todos los jugadores activos están resueltos (`igualaron apuesta`, `all-in`, `fold` o `no pueden actuar`).
+- Se mantiene cierre temprano si queda un único jugador activo.
+- Se agregó guard de no-progreso por fingerprint de estado para evitar loops infinitos sin usar un cap mágico fijo.
+
+Con esto, secuencias largas de `raise/re-raise` ya no se cortan prematuramente.
 
 ---
 
@@ -548,7 +550,7 @@ Cuando aparece el modal preguntando "¿Continuar?" después de una mano, al sele
 | 5 | Modal "¿Continuar?" custom | 🟡 Medio |
 | 8 | ✅ Interfaz Player unificada (solucionado) | ✅ Completado |
 | 10 | ✅ BettingRound.canCheck() corregido | ✅ Completado |
-| 11 | Loop de apuestas sin límite hardcodeado | 🟡 Medio |
+| 11 | ✅ Loop de apuestas sin límite hardcodeado (solucionado) | ✅ Completado |
 | 6 | Tipografía y diseño UI | 🔵 Bajo |
 | 12 | Validación fichas negativas en User | 🔵 Bajo |
 | 13 | ✅ Limpieza de mesa entre rondas (solucionado) | ✅ Completado |
