@@ -527,15 +527,17 @@ El jugador no puede identificar visualmente quién es el Dealer, Small Blind (SB
 
 ---
 
-## 21. Modal "Continuar?" no cierra el juego al responder "No"
-**Prioridad:** 🟡 Medio  
+## 21. ✅ Modal "Continuar?" no cierra el juego al responder "No" (SOLUCIONADO)
+**Prioridad original:** 🟡 Medio  
+**Estado:** ✅ Solucionado  
 **Origen:** Feedback de usuario
 
-Cuando aparece el modal preguntando "¿Continuar?" después de una mano, al seleccionar "No" el juego debería cerrarse completamente.
+Cuando aparece el modal preguntando "¿Continuar?" después de una mano, al seleccionar "No" el juego ahora se cierra completamente mediante un apagado controlado (graceful shutdown).
 
-**Problema:** El usuario elige "No" pero el juego queda abierto.
-
-**Solución:** Al recibir respuesta "No", llamar a System.exit(0) o cerrar el frame principal.
+**Solución implementada:**
+- Se implementó `requestGracefulShutdown()` en `GameView` con protección idempotente y seguridad de hilo EDT.
+- El flujo del modal "Continuar?" ahora enruta la respuesta "No" a este método de apagado.
+- La respuesta "Sí" preserva el comportamiento original sin cambios.
 
 ## Resumen por Prioridad
 
@@ -561,4 +563,4 @@ Cuando aparece el modal preguntando "¿Continuar?" después de una mano, al sele
 | 18 | ✅ Error preflop fold de IAs tras bet (solucionado) | ✅ Completado |
 | 19 | ✅ La IA no puede evaluar en preflop sin comunidad (solucionado) | ✅ Completado |
 | 20 | Indicadores de turno (BB, SB, Dealer) no visibles | 🟡 Medio |
-| 21 | Modal "Continuar?" no cierra el juego al responder "No" | 🟡 Medio |
+| 21 | ✅ Modal "Continuar?" no cierra el juego al responder "No" (solucionado) | ✅ Completado |
