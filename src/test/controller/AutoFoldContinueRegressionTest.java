@@ -21,6 +21,11 @@ public class AutoFoldContinueRegressionTest {
         GameController controller = new GameController(testView);
 
         controller.createNewPlayer();
+        require(testView.joinRejectionCalls == 0,
+            "join should be accepted directly with deterministic valid username");
+        require(testView.retryJoinCalls == 0,
+            "retry join prompt should never be requested in this regression test");
+
         invokePlayOneHand(controller);
 
         require(testView.waitForPlayerActionCalls == 1,
@@ -68,6 +73,8 @@ public class AutoFoldContinueRegressionTest {
         private boolean firstActionWasFold = false;
         private boolean resultShown = false;
         private boolean potWasZeroShown = false;
+        private int joinRejectionCalls = 0;
+        private int retryJoinCalls = 0;
 
         private DeterministicGameView() {
             super(false);
@@ -75,7 +82,18 @@ public class AutoFoldContinueRegressionTest {
 
         @Override
         public String getUserName() {
-            return "AutoFoldRegression";
+            return "AutoFoldUser";
+        }
+
+        @Override
+        public void showJoinRejectionMessage(String message) {
+            joinRejectionCalls++;
+        }
+
+        @Override
+        public boolean askRetryJoin() {
+            retryJoinCalls++;
+            return false;
         }
 
         @Override

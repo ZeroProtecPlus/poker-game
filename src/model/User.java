@@ -1,8 +1,10 @@
 package model;
 
 import java.util.ArrayList;
+import java.util.UUID;
 
 public class User implements Player {
+    private final String playerId;
     private final String userName;
     private int numbChips;
     private int currentBet;
@@ -12,6 +14,11 @@ public class User implements Player {
     private PlayerRole role = PlayerRole.NONE;
 
     public User(String userName) {
+        this(UUID.randomUUID().toString(), userName);
+    }
+
+    public User(String playerId, String userName) {
+        this.playerId = playerId;
         this.userName = userName;
         this.numbChips = 10000;
     }
@@ -28,6 +35,11 @@ public class User implements Player {
     @Override
     public String getName() {
         return userName;
+    }
+
+    @Override
+    public String getPlayerId() {
+        return playerId;
     }
 
     @Override

@@ -5,6 +5,8 @@ import java.util.ArrayList;
 public interface Player {
     String getName();
 
+    String getPlayerId();
+
     int getChips();
 
     int getCurrentBet();

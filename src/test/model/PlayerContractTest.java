@@ -4,6 +4,7 @@ public class PlayerContractTest {
     public static void main(String[] args) {
         shouldExposeEquivalentContractBehaviorForUserAndAI();
         shouldGuardInvalidBetsForUserAndAI();
+        shouldKeepPlayerIdStableAndIndependentFromDisplayName();
         System.out.println("PlayerContractTest: all tests passed");
     }
 
@@ -15,6 +16,14 @@ public class PlayerContractTest {
     private static void shouldGuardInvalidBetsForUserAndAI() {
         assertBetGuards(new User("Bob"), 10000);
         assertBetGuards(new AIPlayer("Bot-2", 1500), 1500);
+    }
+
+    private static void shouldKeepPlayerIdStableAndIndependentFromDisplayName() {
+        User user = new User("user-123", "DisplayAlice");
+        AIPlayer ai = new AIPlayer("ai-456", "BotDisplay", 1200);
+
+        assertStableIdentity(user, "user-123", "DisplayAlice");
+        assertStableIdentity(ai, "ai-456", "BotDisplay");
     }
 
     private static void assertPlayerContractBasics(Player player, int startingChips) {
@@ -64,6 +73,20 @@ public class PlayerContractTest {
         int allInBet = player.placeBet(100);
         require(allInBet == 0, "all-in player should not place bet");
         require(player.getCurrentBet() == 0, "current bet should not change when all-in");
+    }
+
+    private static void assertStableIdentity(Player player, String expectedPlayerId, String expectedDisplayName) {
+        require(expectedDisplayName.equals(player.getName()), "display name mismatch");
+        require(expectedPlayerId.equals(player.getPlayerId()), "player id mismatch");
+        require(!player.getPlayerId().equals(player.getName()), "player id must be independent from display name");
+
+        player.setRole(PlayerRole.BIG_BLIND);
+        player.placeBet(50);
+        player.resetRoundBet();
+        player.clearHand();
+
+        require(expectedPlayerId.equals(player.getPlayerId()), "player id should remain stable across state transitions");
+        require(expectedDisplayName.equals(player.getName()), "display name should remain stable across state transitions");
     }
 
     private static void require(boolean condition, String message) {

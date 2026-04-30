@@ -2,6 +2,7 @@ package model;
 
 import java.util.ArrayList;
 import java.util.Random;
+import java.util.UUID;
 
 /**
  * Jugador IA con lógica basada en la fuerza de su mano.
@@ -16,6 +17,7 @@ public class AIPlayer implements Player {
     }
 
     private final String name;
+    private final String playerId;
     private int chips;
     private int currentBet; // lo que ha apostado en la ronda actual
     private boolean folded;
@@ -27,6 +29,11 @@ public class AIPlayer implements Player {
     private static final Random RNG = new Random();
 
     public AIPlayer(String name, int startingChips) {
+        this(UUID.randomUUID().toString(), name, startingChips);
+    }
+
+    public AIPlayer(String playerId, String name, int startingChips) {
+        this.playerId = playerId;
         this.name = name;
         this.chips = startingChips;
     }
@@ -199,6 +206,11 @@ private double evaluateHandStrength(ArrayList<Card> community) {
     @Override
     public String getName() {
         return name;
+    }
+
+    @Override
+    public String getPlayerId() {
+        return playerId;
     }
 
     @Override

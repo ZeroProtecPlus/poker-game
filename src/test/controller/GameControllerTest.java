@@ -130,7 +130,17 @@ public class GameControllerTest {
 
         @Override
         public String getUserName() {
-            return "ControllerSequence";
+            return "ControllerSeq";
+        }
+
+        @Override
+        public void showJoinRejectionMessage(String message) {
+            throw new AssertionError("join rejection should not be shown in sequencing test");
+        }
+
+        @Override
+        public boolean askRetryJoin() {
+            throw new AssertionError("join retry should not be requested in sequencing test");
         }
 
         @Override

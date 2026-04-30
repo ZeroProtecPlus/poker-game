@@ -108,6 +108,50 @@ public class GameView {
         return result[0] == null ? "Jugador" : result[0];
     }
 
+    public void showJoinRejectionMessage(String message) {
+        Runnable showDialog = () -> JOptionPane.showMessageDialog(
+            frame,
+            message,
+            "No se pudo unir",
+            JOptionPane.WARNING_MESSAGE
+        );
+
+        if (SwingUtilities.isEventDispatchThread()) {
+            showDialog.run();
+            return;
+        }
+
+        try {
+            SwingUtilities.invokeAndWait(showDialog);
+        } catch (Exception ignored) {
+        }
+    }
+
+    public boolean askRetryJoin() {
+        final boolean[] shouldRetry = {false};
+        Runnable askDialog = () -> {
+            int option = JOptionPane.showConfirmDialog(
+                frame,
+                "¿Quieres intentar con otro nombre?",
+                "Reintentar ingreso",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE
+            );
+            shouldRetry[0] = option == JOptionPane.YES_OPTION;
+        };
+
+        if (SwingUtilities.isEventDispatchThread()) {
+            askDialog.run();
+            return shouldRetry[0];
+        }
+
+        try {
+            SwingUtilities.invokeAndWait(askDialog);
+        } catch (Exception ignored) {
+        }
+        return shouldRetry[0];
+    }
+
     /** Replaces showUserChips */
     public void showUserChips(String userName, int chips) {
         SwingUtilities.invokeLater(() -> tablePanel.setPlayerInfo(userName, chips));
