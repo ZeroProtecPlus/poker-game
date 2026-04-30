@@ -397,9 +397,10 @@ En modo 1 vs CPU, cuando el jugador humano hace **fold**, el sistema no siempre 
 
 ---
 
-## 17. Validación de Nombres de Jugadores desde el Host (LAN)
+## 17. ✅ Validación de Nombres de Jugadores desde el Host (LAN) (SOLUCIONADO)
 
-**Prioridad:** 🟠 Alto  
+**Prioridad original:** 🟠 Alto  
+**Estado:** ✅ Solucionado  
 **Origen:** Requisito para multijugador en red (LAN)
 
 En partidas multijugador bajo arquitectura cliente-servidor, el **host debe actuar como autoridad central** para validar los nombres de los jugadores antes de permitir su ingreso a la partida.
@@ -554,7 +555,7 @@ Cuando aparece el modal preguntando "¿Continuar?" después de una mano, al sele
 | 14 | Mejora de feedback visual e información de juego | 🟡 Medio |
 | 15 | UX de apuesta personalizada (BET) | 🟡 Medio |
 | 16 | ✅ Auto-continuación tras fold humano (1 vs CPU) | ✅ Completado |
-| 17 | Validación de Nombres de Jugadores desde el Host (LAN) | 🟠 Alto |
+| 17 | ✅ Validación de Nombres de Jugadores desde el Host (LAN) (solucionado) | ✅ Completado |
 | 18 | ✅ Error preflop fold de IAs tras bet (solucionado) | ✅ Completado |
 | 19 | ✅ La IA no puede evaluar en preflop sin comunidad (solucionado) | ✅ Completado |
 | 20 | Indicadores de turno (BB, SB, Dealer) no visibles | 🟡 Medio |
