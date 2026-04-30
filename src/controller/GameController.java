@@ -91,7 +91,10 @@ public class GameController {
 
             // Preguntar si quiere seguir jugando
             boolean continuar = newGame.askPlayAgain(newPlayer.getNumbChips());
-            if (!continuar) break;
+            if (!continuar) {
+                newGame.requestGracefulShutdown();
+                return;
+            }
         }
         newGame.showGameOver(newPlayer.getNumbChips());
     }

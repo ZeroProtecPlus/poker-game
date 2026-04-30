@@ -16,6 +16,7 @@ import java.awt.geom.*;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * GameView — Casino-style Swing UI
@@ -54,6 +55,7 @@ public class GameView {
 
     // ── Animation timer ───────────────────────────────────────────────────────
     private javax.swing.Timer repaintTimer;
+    private final AtomicBoolean shutdownRequested = new AtomicBoolean(false);
 
     // =========================================================================
     //  CONSTRUCTOR
@@ -319,6 +321,44 @@ public class GameView {
     /** Pantalla de fin de juego */
     public void showGameOver(int chips) {
         SwingUtilities.invokeLater(() -> tablePanel.showGameOver(chips));
+    }
+
+    public void requestGracefulShutdown() {
+        if (!shutdownRequested.compareAndSet(false, true)) {
+            return;
+        }
+
+        Runnable shutdownTask = () -> {
+            if (repaintTimer != null && repaintTimer.isRunning()) {
+                repaintTimer.stop();
+            }
+
+            if (frame != null) {
+                frame.setVisible(false);
+                frame.dispose();
+            }
+
+            onGracefulShutdownComplete();
+        };
+
+        if (SwingUtilities.isEventDispatchThread()) {
+            shutdownTask.run();
+            return;
+        }
+
+        try {
+            SwingUtilities.invokeAndWait(shutdownTask);
+        } catch (Exception ignored) {
+            onGracefulShutdownComplete();
+        }
+    }
+
+    protected void onGracefulShutdownComplete() {
+        terminateProcess(0);
+    }
+
+    protected void terminateProcess(int statusCode) {
+        System.exit(statusCode);
     }
 
     /** Limpia estado visual transitorio antes de una nueva mano */
