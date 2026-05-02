@@ -539,6 +539,34 @@ Cuando aparece el modal preguntando "¿Continuar?" después de una mano, al sele
 - El flujo del modal "Continuar?" ahora enruta la respuesta "No" a este método de apagado.
 - La respuesta "Sí" preserva el comportamiento original sin cambios.
 
+---
+
+## 22. Mejora de Gráficos y Sprites de la Mesa
+**Prioridad:** 🟡 Medio  
+**Origen:** Feedback de usuario
+
+El fondo de la mesa de poker y los iconos/sprites actuales son de baja calidad o genéricos. Se requiere mejorar la presentación visual para una experiencia más inmersiva.
+
+**Problemas identificados:**
+- Fondo de la mesa poco atractivo o genérico
+- Iconos de cartas, fichas, botones de acciones de baja resolución
+- Falta de consistencia visual con el estilo de casino
+
+**Objetivos:**
+- Reemplazar el fondo de la mesa por una imagen de mayor calidad (ej: felt verde con textura, madera, etc.)
+- Actualizar iconos/sprites de:
+  - Cartas (baraja completa con mejor diseño)
+  - Fichas de apuestas (distintas denominaciones)
+  - Botones de acciones (Check, Bet, Fold, Call, Raise)
+  - Indicadores de posición (Dealer, SB, BB)
+- Mantener coherencia visual y rendimiento en Swing
+
+**Consideraciones técnicas:**
+- Usar imágenes en formatos eficientes (PNG con transparencia)
+- Considerar resolución 2x para pantallas retina si es necesario
+- Evitar imágenes demasiado pesadas que afecten el rendimiento
+- Mantener el diseño responsivo dentro del canvas de Swing
+
 ## Resumen por Prioridad
 
 | # | Tarea | Prioridad |
@@ -564,3 +592,4 @@ Cuando aparece el modal preguntando "¿Continuar?" después de una mano, al sele
 | 19 | ✅ La IA no puede evaluar en preflop sin comunidad (solucionado) | ✅ Completado |
 | 20 | Indicadores de turno (BB, SB, Dealer) no visibles | 🟡 Medio |
 | 21 | ✅ Modal "Continuar?" no cierra el juego al responder "No" (solucionado) | ✅ Completado |
+| 22 | Mejora de gráficos y sprites de la mesa | 🟡 Medio |
