@@ -16,6 +16,8 @@ import java.awt.geom.*;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -74,7 +76,7 @@ public class GameView {
     private volatile CompletableFuture<BettingRound.Action> pendingActionFuture;
     private volatile CompletableFuture<Boolean> animationFuture;
 
-    private static final long UI_SYNC_TIMEOUT_MS = 3000L;
+    private static final long UI_SYNC_TIMEOUT_MS = 45000L; // 45 seconds - standard poker tournament time
 
     // =========================================================================
     //  CONSTRUCTOR
