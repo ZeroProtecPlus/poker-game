@@ -4,6 +4,8 @@ import model.*;
 import model.dto.GameStateDto;
 import model.dto.PlayerStateDto;
 import model.persistence.DatabaseBootstrapper;
+import model.persistence.FileMachineIdProvider;
+import model.persistence.MachineIdProvider;
 import model.persistence.RepositoryException;
 import model.repository.GameRepository;
 import model.repository.PlayerRepository;
@@ -32,6 +34,7 @@ public class GameController {
     private final HostJoinHandler hostJoinHandler;
     private final PlayerRepository playerRepository;
     private final GameRepository gameRepository;
+    private final MachineIdProvider machineIdProvider;
 
     public GameController() {
         this(new GameView(), createDefaultHostJoinHandler(), createDefaultRepositories());
@@ -46,10 +49,15 @@ public class GameController {
     }
 
     protected GameController(GameView gameView, HostJoinHandler hostJoinHandler, Repositories repositories) {
+        this(gameView, hostJoinHandler, repositories, FileMachineIdProvider.INSTANCE);
+    }
+
+    protected GameController(GameView gameView, HostJoinHandler hostJoinHandler, Repositories repositories, MachineIdProvider machineIdProvider) {
         this.newGame = gameView;
         this.hostJoinHandler = hostJoinHandler;
         this.playerRepository = repositories.playerRepository();
         this.gameRepository = repositories.gameRepository();
+        this.machineIdProvider = machineIdProvider;
         this.newGame.awaitUiReady(this.newGame.getUiSyncTimeoutMs());
     }
 
