@@ -8,15 +8,26 @@
 
 ---
 
-## 1. Sincronización Lógica ↔ UI
+## 1. ✅ Sincronización Lógica ↔ UI (SOLUCIONADO)
 **Prioridad:** 🔴 Crítico  
 **Origen:** Main.java To-do #1
+**Estado:** ✅ Solucionado
 
-La lógica base de reparto ya está implementada, pero la sincronización entre el hilo del juego (background thread) y el EDT de Swing es frágil. Los estados del modelo no siempre se reflejan correctamente en la vista en el momento correcto.
+La sincronización entre el hilo del juego y el EDT de Swing ahora es determinista. Se implementaron:
 
-**Problemas relacionados:**
-- `Thread.sleep(300)` hardcodeado en el constructor de `GameView` como hack para esperar que Swing inicialice el frame. Propenso a race conditions en máquinas lentas.
-- Uso de `Object.wait()` / `notifyAll()` mezclado con `SwingUtilities.invokeAndWait()` de forma manual y frágil.
+- **Barrera UI ready**: `CountDownLatch` completado al final de `buildFrame()` en EDT.
+- **Helper seguro EDT**: `runOnEdtAndWait` y `callOnEdtAndWait` con guard `isEventDispatchThread()`.
+- **Señales explícitas**: `CompletableFuture` completados desde EDT para input del jugador y fin de animaciones.
+- **Timeout controlado**: 3000ms estándar con fallback CHECK/FOLD.
+
+```java
+// Uso en GameController
+newGame.awaitUiReady(newGame.getUiSyncTimeoutMs());  // Espera UI antes de iniciar
+action = newGame.waitForPlayerAction(round, bet, timeoutMs);  // Input con timeout
+newGame.awaitLastAnimation(timeoutMs);  // Espera fin de animación
+```
+
+Se eliminó `Thread.sleep(300)` y todo `wait/notify` frágil.
 
 ---
 
@@ -124,15 +135,26 @@ Los clientes no almacenan estado persistente; únicamente envían acciones y rec
 
 ---
 
-## 4. Testing — Pruebas Funcionales y No Funcionales
-**Prioridad:** 🟠 Alto  
+## 4. ✅ Testing — Pruebas Funcionales (SOLUCIONADO)
+**Prioridad original:** 🟠 Alto  
+**Estado:** ✅ Solucionado  
 **Origen:** Main.java To-do #4
 
-No existe ningún test en el proyecto. Considerando la complejidad del evaluador de manos (combinaciones de 7 cartas en todas las categorías hasta Royal Flush) y la lógica de apuestas, la ausencia de tests es un riesgo alto.
+Se implementó infraestructura de testing JUnit 5 con 44 test cases cubriendo:
 
-**Áreas prioritarias para testear:**
-- Evaluador de manos (`PokerGame.evaluateCards()` y `evaluateFive()`) — todas las categorías de mano
-- Lógica de `BettingRound` (canCheck, canBet, callAmount, minRaiseAmount)
+- **HandEvaluator**: 19 tests (todas las categorías de mano, desempates, validaciones)
+- **BettingRound**: 13 tests (canCheck, canBet, playerBets, addToPot)
+- **PokerGame rol rotation**: 4 tests (dealer, SB, BB, wrap-around)
+- **Pot distribution**: 8 tests (single winner, split pot, showdown, null handling)
+
+Archivos creados en `src/test/model/`:
+- `TestUtils.java` — helpers de testing
+- `HandEvaluatorTest.java` (16 tests)
+- `HandEvaluatorTieBreakTest.java` (3 tests)
+- `BettingRoundTest.java` (7 tests)
+- `BettingRoundCanCheckTest.java` (6 tests)
+- `PokerGameRoleRotationTest.java` (4 tests)
+- `PokerGamePotDistributionTest.java` (8 tests)
 - Rotación de roles (dealer, SB, BB) entre manos
 - Distribución del bote y showdown
 

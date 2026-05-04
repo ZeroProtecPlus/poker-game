@@ -16,6 +16,7 @@ import java.awt.geom.*;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -49,13 +50,31 @@ public class GameView {
     private JFrame frame;
     private TablePanel tablePanel;
 
-    // ── State exposed to controller ───────────────────────────────────────────
-    private volatile String pendingInput = null;
-    private final Object inputLock = new Object();
-
     // ── Animation timer ───────────────────────────────────────────────────────
     private javax.swing.Timer repaintTimer;
     private final AtomicBoolean shutdownRequested = new AtomicBoolean(false);
+
+// ═══════════════════════════════════════════════════════════════════════
+    //  UI THREAD SYNCHRONIZATION CONTRACTS
+    // ═══════════════════════════════════════════════════════════════════════
+    // Pattern: Game thread waits on signals from EDT, never blocks EDT.
+    //
+    // 1. UI Ready Barrier: countDown() called at end of buildFrame() in EDT.
+    //    Game thread calls awaitUiReady() before any UI interaction.
+    //
+    // 2. EDT Bridge: runOnEdtAndWait/callOnEdtAndWait use invokeAndWait with
+    //    isEventDispatchThread() guard to prevent self-deadlock.
+    //
+    // 3. Input/Animation Futures: CompletableFuture completed from EDT callbacks.
+    //    Game thread awaits with timeout, receives null on timeout → fallback.
+    //
+    // Timeout fallback: CHECK if valid, otherwise FOLD.
+    // ═══════════════════════════════════════════════════════════════════════
+    private final CountDownLatch uiReadyLatch = new CountDownLatch(1);
+    private volatile CompletableFuture<BettingRound.Action> pendingActionFuture;
+    private volatile CompletableFuture<Boolean> animationFuture;
+
+    private static final long UI_SYNC_TIMEOUT_MS = 3000L;
 
     // =========================================================================
     //  CONSTRUCTOR
@@ -69,8 +88,6 @@ public class GameView {
             return;
         }
         SwingUtilities.invokeLater(this::buildFrame);
-        // Give Swing a moment to build the frame before any dialog calls
-        try { Thread.sleep(300); } catch (InterruptedException ignored) {}
     }
 
     private void buildFrame() {
@@ -92,6 +109,47 @@ public class GameView {
         // Global repaint loop for animations
         repaintTimer = new javax.swing.Timer(16, e -> tablePanel.repaint());
         repaintTimer.start();
+
+        signalUiReady();
+    }
+
+    void signalUiReady() {
+        uiReadyLatch.countDown();
+    }
+
+    public boolean awaitUiReady(long timeoutMs) {
+        return awaitLatch(uiReadyLatch, timeoutMs, "ui-ready");
+    }
+
+    public void runOnEdtAndWait(Runnable task) {
+        if (SwingUtilities.isEventDispatchThread()) {
+            task.run();
+            return;
+        }
+
+        try {
+            SwingUtilities.invokeAndWait(task);
+        } catch (Exception ex) {
+            throw new RuntimeException("Failed to run task on EDT", ex);
+        }
+    }
+
+    public <T> T callOnEdtAndWait(Callable<T> task) {
+        if (SwingUtilities.isEventDispatchThread()) {
+            try {
+                return task.call();
+            } catch (Exception ex) {
+                throw new RuntimeException("Failed to run task on EDT", ex);
+            }
+        }
+
+        FutureTask<T> futureTask = new FutureTask<>(task);
+        try {
+            SwingUtilities.invokeAndWait(futureTask);
+            return futureTask.get();
+        } catch (Exception ex) {
+            throw new RuntimeException("Failed to run task on EDT", ex);
+        }
     }
 
     // =========================================================================
@@ -101,13 +159,12 @@ public class GameView {
     /** Replaces JOptionPane.showInputDialog for player name */
     public String getUserName() {
         // Show name-entry dialog on EDT, block until done
-        final String[] result = {null};
         try {
-            SwingUtilities.invokeAndWait(() -> result[0] = showNameDialog());
-        } catch (Exception e) {
-            result[0] = "Jugador";
+            String result = callOnEdtAndWait(this::showNameDialog);
+            return result == null ? "Jugador" : result;
+        } catch (RuntimeException ex) {
+            return "Jugador";
         }
-        return result[0] == null ? "Jugador" : result[0];
     }
 
     public void showJoinRejectionMessage(String message) {
@@ -117,7 +174,6 @@ public class GameView {
             "No se pudo unir",
             JOptionPane.WARNING_MESSAGE
         );
-
         if (SwingUtilities.isEventDispatchThread()) {
             showDialog.run();
             return;
@@ -130,8 +186,7 @@ public class GameView {
     }
 
     public boolean askRetryJoin() {
-        final boolean[] shouldRetry = {false};
-        Runnable askDialog = () -> {
+        return callOnEdtAndWait(() -> {
             int option = JOptionPane.showConfirmDialog(
                 frame,
                 "¿Quieres intentar con otro nombre?",
@@ -139,19 +194,8 @@ public class GameView {
                 JOptionPane.YES_NO_OPTION,
                 JOptionPane.QUESTION_MESSAGE
             );
-            shouldRetry[0] = option == JOptionPane.YES_OPTION;
-        };
-
-        if (SwingUtilities.isEventDispatchThread()) {
-            askDialog.run();
-            return shouldRetry[0];
-        }
-
-        try {
-            SwingUtilities.invokeAndWait(askDialog);
-        } catch (Exception ignored) {
-        }
-        return shouldRetry[0];
+            return option == JOptionPane.YES_OPTION;
+        });
     }
 
     /** Replaces showUserChips */
@@ -161,23 +205,29 @@ public class GameView {
 
     /** Replaces showPlayerHand — animates cards from deck pile */
     public void showPlayerHand(ArrayList<Card> hand) {
+        CompletableFuture<Boolean> completion = new CompletableFuture<>();
+        animationFuture = completion;
+
         SwingUtilities.invokeLater(() -> {
             tablePanel.dealPlayerHand(hand);
             SoundFX.playDeal();
         });
         // last card starts at (size-1)*180ms, takes 400ms to fly + 200ms margin
         long wait = (hand.size() - 1) * 180L + 600L;
-        pause(wait);
+        scheduleAnimationCompletion(completion, wait);
     }
 
     /** Muestra cartas comunitarias sin resultado (para fases intermedias) */
     public void showCommunityCards(ArrayList<Card> community, ArrayList<Card> playerHand) {
+        CompletableFuture<Boolean> completion = new CompletableFuture<>();
+        animationFuture = completion;
+
         SwingUtilities.invokeLater(() -> {
             tablePanel.dealCommunity(community);
             SoundFX.playDeal();
         });
         long wait = (community.size() - 1) * 150L + 600L;
-        pause(wait);
+        scheduleAnimationCompletion(completion, wait);
     }
 
     /** Muestra roles de cada jugador en la mesa */
@@ -193,7 +243,7 @@ public class GameView {
     /** Muestra el log de acciones de la IA */
     public void showAIActions(List<String> log) {
         SwingUtilities.invokeLater(() -> tablePanel.setActionLog(log));
-        pause(600); // pausa para que el jugador pueda leerlo
+        scheduleAnimationCompletion(new CompletableFuture<>(), 600); // pausa para que el jugador pueda leerlo
     }
 
     /** Indica que el jugador se retiró */
@@ -206,25 +256,38 @@ public class GameView {
      * Muestra los botones correspondientes según el estado de la ronda.
      */
     public BettingRound.Action waitForPlayerAction(BettingRound round, int playerCurrentBet) {
-        final BettingRound.Action[] result = {null};
-        final Object lock = new Object();
+        return waitForPlayerAction(round, playerCurrentBet, UI_SYNC_TIMEOUT_MS);
+    }
+
+    public BettingRound.Action waitForPlayerAction(BettingRound round, int playerCurrentBet, long timeoutMs) {
+        CompletableFuture<BettingRound.Action> future = new CompletableFuture<>();
+        pendingActionFuture = future;
 
         SwingUtilities.invokeLater(() ->
             tablePanel.showBettingButtons(round, playerCurrentBet, false, action -> {
-                synchronized (lock) {
-                    result[0] = action;
-                    lock.notifyAll();
+                if (future.complete(action)) {
+                    pendingActionFuture = null;
                 }
             })
         );
 
-        synchronized (lock) {
-            while (result[0] == null) {
-                try { lock.wait(); } catch (InterruptedException ignored) {}
-            }
-        }
+        BettingRound.Action action = awaitFuture(future, timeoutMs, "player-action");
         SwingUtilities.invokeLater(() -> tablePanel.hideBettingButtons());
-        return result[0];
+        return action;
+    }
+
+    public void resolvePendingPlayerAction(BettingRound.Action action) {
+        CompletableFuture<BettingRound.Action> future = pendingActionFuture;
+        if (future == null) {
+            return;
+        }
+        if (future.complete(action)) {
+            pendingActionFuture = null;
+        }
+    }
+
+    public long getUiSyncTimeoutMs() {
+        return UI_SYNC_TIMEOUT_MS;
     }
 
     /**
@@ -232,9 +295,8 @@ public class GameView {
      * Usa invokeAndWait para mostrar el diálogo en el EDT sin deadlock.
      */
     public int getPlayerBetAmount(int minBet, int maxBet) {
-        final int[] result = {minBet};
         try {
-            SwingUtilities.invokeAndWait(() -> {
+            return callOnEdtAndWait(() -> {
                 JPanel panel = new JPanel(new BorderLayout(8, 8));
                 panel.setBackground(new Color(0x0D2B1A));
 
@@ -261,10 +323,11 @@ public class GameView {
                 int opt = JOptionPane.showConfirmDialog(frame, panel, "¿Cuánto apostás?",
                     JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
 
-                result[0] = (opt == JOptionPane.OK_OPTION) ? slider.getValue() : minBet;
+                return (opt == JOptionPane.OK_OPTION) ? slider.getValue() : minBet;
             });
-        } catch (Exception ignored) {}
-        return result[0];
+        } catch (RuntimeException ex) {
+            return minBet;
+        }
     }
 
     /** Muestra el resultado final con el bote y el ganador */
@@ -274,7 +337,7 @@ public class GameView {
             if (tablePanel != null) {
                 SwingUtilities.invokeLater(() -> tablePanel.showResult(showdownResult, pot));
             }
-            pause(2500);
+            scheduleAnimationCompletion(new CompletableFuture<>(), 2500);
             return;
         }
 
@@ -289,7 +352,7 @@ public class GameView {
         if (tablePanel != null) {
             SwingUtilities.invokeLater(() -> tablePanel.showResult(showdownResult, pot));
         }
-        pause(2500);
+        scheduleAnimationCompletion(new CompletableFuture<>(), 2500);
     }
 
     /**
@@ -299,23 +362,19 @@ public class GameView {
                            PokerGame.HandRank bestHand, int pot,
                            boolean humanWon, String aiWinnerName) {
         SwingUtilities.invokeLater(() -> tablePanel.showResult(bestHand, pot, humanWon, aiWinnerName));
-        pause(2500);
+        scheduleAnimationCompletion(new CompletableFuture<>(), 2500);
     }
 
     /** Pregunta si el jugador quiere jugar otra mano. Bloquea hasta respuesta. */
     public boolean askPlayAgain(int chips) {
-        final boolean[] result = {false};
-        try {
-            SwingUtilities.invokeAndWait(() -> {
-                int opt = JOptionPane.showConfirmDialog(frame,
-                    "Fichas: " + String.format("%,d", chips) + "\n¿Jugar otra mano?",
-                    "¿Seguir jugando?",
-                    JOptionPane.YES_NO_OPTION,
-                    JOptionPane.QUESTION_MESSAGE);
-                result[0] = (opt == JOptionPane.YES_OPTION);
-            });
-        } catch (Exception ignored) {}
-        return result[0];
+        return callOnEdtAndWait(() -> {
+            int opt = JOptionPane.showConfirmDialog(frame,
+                "Fichas: " + String.format("%,d", chips) + "\n¿Jugar otra mano?",
+                "¿Seguir jugando?",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE);
+            return opt == JOptionPane.YES_OPTION;
+        });
     }
 
     /** Pantalla de fin de juego */
@@ -385,8 +444,55 @@ public class GameView {
     // =========================================================================
     //  HELPERS
     // =========================================================================
-    private static void pause(long ms) {
-        try { Thread.sleep(ms); } catch (InterruptedException ignored) {}
+    private void scheduleAnimationCompletion(CompletableFuture<Boolean> completion, long waitMs) {
+        animationFuture = completion;
+        Timer timer = new Timer("ui-animation", true);
+        timer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                completion.complete(true);
+                animationFuture = null;
+                timer.cancel();
+            }
+        }, waitMs);
+    }
+
+    public boolean awaitLastAnimation(long timeoutMs) {
+        CompletableFuture<Boolean> current = animationFuture;
+        if (current == null) {
+            return true;
+        }
+        return awaitFuture(current, timeoutMs, "animation");
+    }
+
+    private static <T> T awaitFuture(CompletableFuture<T> future, long timeoutMs, String label) {
+        try {
+            return future.get(timeoutMs, TimeUnit.MILLISECONDS);
+        } catch (TimeoutException ex) {
+            System.out.println("Timeout esperando " + label + " (" + timeoutMs + "ms)");
+            return null;
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            System.out.println("Interrumpido esperando " + label);
+            return null;
+        } catch (ExecutionException ex) {
+            System.out.println("Error esperando " + label + ": " + ex.getCause());
+            return null;
+        }
+    }
+
+    private static boolean awaitLatch(CountDownLatch latch, long timeoutMs, String label) {
+        try {
+            boolean completed = latch.await(timeoutMs, TimeUnit.MILLISECONDS);
+            if (!completed) {
+                System.out.println("Timeout esperando " + label + " (" + timeoutMs + "ms)");
+            }
+            return completed;
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            System.out.println("Interrumpido esperando " + label);
+            return false;
+        }
     }
 
     // =========================================================================

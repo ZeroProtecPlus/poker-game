@@ -31,6 +31,7 @@ public class GameController {
     protected GameController(GameView gameView, HostJoinHandler hostJoinHandler) {
         this.newGame = gameView;
         this.hostJoinHandler = hostJoinHandler;
+        this.newGame.awaitUiReady(this.newGame.getUiSyncTimeoutMs());
     }
 
     public void createNewPlayer() {
@@ -106,6 +107,7 @@ public class GameController {
 
         ArrayList<Card> manoJugador = pokerGame.getPlayerHand();
         newGame.showPlayerHand(manoJugador);
+        newGame.awaitLastAnimation(newGame.getUiSyncTimeoutMs());
         newGame.showRoles(pokerGame.getHumanRole(), pokerGame.getAIPlayers());
         newGame.showPot(pokerGame.getPot());
 
@@ -116,18 +118,21 @@ public class GameController {
         // ── FLOP ─────────────────────────────────────────────────────────────
         pokerGame.dealFlop();
         newGame.showCommunityCards(pokerGame.getCommunityCards(), manoJugador);
+        newGame.awaitLastAnimation(newGame.getUiSyncTimeoutMs());
         runBettingPhase(BettingRound.Phase.FLOP);
         if (allFolded()) return; // allFolded already awards pot - no showdown needed
 
         // ── TURN ─────────────────────────────────────────────────────────────
         pokerGame.dealTurnOrRiver();
         newGame.showCommunityCards(pokerGame.getCommunityCards(), manoJugador);
+        newGame.awaitLastAnimation(newGame.getUiSyncTimeoutMs());
         runBettingPhase(BettingRound.Phase.TURN);
         if (allFolded()) return; // allFolded already awards pot - no showdown needed
 
         // ── RIVER ────────────────────────────────────────────────────────────
         pokerGame.dealTurnOrRiver();
         newGame.showCommunityCards(pokerGame.getCommunityCards(), manoJugador);
+        newGame.awaitLastAnimation(newGame.getUiSyncTimeoutMs());
         runBettingPhase(BettingRound.Phase.RIVER);
 
         // ── SHOWDOWN ─────────────────────────────────────────────────────────
@@ -154,7 +159,11 @@ public class GameController {
 
             boolean shouldWaitForHumanAction = !pokerGame.isPlayerAllIn() && !humanFolded;
             if (shouldWaitForHumanAction) {
-                action = newGame.waitForPlayerAction(round, pokerGame.getPlayerCurrentBet());
+                action = newGame.waitForPlayerAction(round, pokerGame.getPlayerCurrentBet(), newGame.getUiSyncTimeoutMs());
+                if (action == null) {
+                    action = resolveTimeoutAction(round, pokerGame.getPlayerCurrentBet());
+                    newGame.resolvePendingPlayerAction(action);
+                }
                 if (action == BettingRound.Action.BET) {
                     humanAmount = newGame.getPlayerBetAmount(round.getBigBlind(), newPlayer.getNumbChips());
                 } else if (action == BettingRound.Action.CALL) {
@@ -167,6 +176,7 @@ public class GameController {
 
             PokerGame.AIBettingResult result = pokerGame.runUnifiedBettingRound(round.getCurrentBet(), action, humanAmount);
             newGame.showAIActions(result.log);
+            newGame.awaitLastAnimation(newGame.getUiSyncTimeoutMs());
 
             boolean wasHumanFolded = humanFolded;
             humanFolded = result.humanFolded;
@@ -205,6 +215,15 @@ public class GameController {
         }
 
         newGame.showUserChips(userNamePlayer, newPlayer.getNumbChips());
+    }
+
+    private BettingRound.Action resolveTimeoutAction(BettingRound round, int playerCurrentBet) {
+        if (round.canCheck(playerCurrentBet)) {
+            System.out.println("Timeout esperando acción del jugador: aplicando CHECK por defecto.");
+            return BettingRound.Action.CHECK;
+        }
+        System.out.println("Timeout esperando acción del jugador: aplicando FOLD por defecto.");
+        return BettingRound.Action.FOLD;
     }
 
     private void applyHumanAction(BettingRound.Action action, BettingRound round) {

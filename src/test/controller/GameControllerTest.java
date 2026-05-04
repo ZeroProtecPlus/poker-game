@@ -19,6 +19,8 @@ public class GameControllerTest {
     public static void main(String[] args) {
         shouldSequenceTableClearBeforeRoundStartAndInitialRender();
         shouldSendShowdownResultToViewForTieOutcome();
+        shouldFallbackToCheckWhenInputTimesOutAndCanCheck();
+        shouldFallbackToFoldWhenInputTimesOutAndCannotCheck();
         System.out.println("GameControllerTest: all tests passed");
     }
 
@@ -83,6 +85,28 @@ public class GameControllerTest {
         require(view.showResultLegacyCalls == 0, "controller should not use legacy result signature in active flow");
         require(view.capturedResult == tieResult, "view should receive exact showdown result payload");
         require(view.capturedPot == 101, "view should receive pre-award pot amount");
+    }
+
+    private static void shouldFallbackToCheckWhenInputTimesOutAndCanCheck() {
+        TimeoutActionGameView view = new TimeoutActionGameView(true);
+        GameController controller = new GameController(view);
+
+        controller.createNewPlayer();
+        invokePlayOneHand(controller);
+
+        require(view.timeoutFallbackAction == BettingRound.Action.CHECK,
+            "timeout should fallback to CHECK when round allows check");
+    }
+
+    private static void shouldFallbackToFoldWhenInputTimesOutAndCannotCheck() {
+        TimeoutActionGameView view = new TimeoutActionGameView(false);
+        GameController controller = new GameController(view);
+
+        controller.createNewPlayer();
+        invokePlayOneHand(controller);
+
+        require(view.timeoutFallbackAction == BettingRound.Action.FOLD,
+            "timeout should fallback to FOLD when check is not allowed");
     }
 
     private static void setPrivateField(Object target, String fieldName, Object value) {
@@ -250,6 +274,744 @@ public class GameControllerTest {
 
         @Override
         public void showUserChips(String userName, int chips) {
+        }
+    }
+
+    private static final class TimeoutActionGameView extends GameView {
+        private final boolean canCheck;
+        private BettingRound.Action timeoutFallbackAction;
+
+        private TimeoutActionGameView(boolean canCheck) {
+            super(false);
+            this.canCheck = canCheck;
+        }
+
+        @Override
+        public String getUserName() {
+            return "TimeoutTester";
+        }
+
+        @Override
+        public BettingRound.Action waitForPlayerAction(BettingRound round, int playerCurrentBet, long timeoutMs) {
+            return null;
+        }
+
+        @Override
+        public void resolvePendingPlayerAction(BettingRound.Action action) {
+            timeoutFallbackAction = action;
+        }
+
+        @Override
+        public void showUserChips(String userName, int chips) {
+        }
+
+        @Override
+        public void showPlayerHand(ArrayList<Card> hand) {
+        }
+
+        @Override
+        public void showCommunityCards(ArrayList<Card> community, ArrayList<Card> playerHand) {
+        }
+
+        @Override
+        public void showRoles(AIPlayer.Role humanRole, List<AIPlayer> aiPlayers) {
+        }
+
+        @Override
+        public void showPot(int pot) {
+        }
+
+        @Override
+        public void showAIActions(List<String> log) {
+        }
+
+        @Override
+        public void showPlayerFolded() {
+        }
+
+        @Override
+        public int getPlayerBetAmount(int minBet, int maxBet) {
+            return minBet;
+        }
+
+        @Override
+        public void showResult(ArrayList<Card> community, ArrayList<Card> playerHand,
+                               ShowdownResult showdownResult, int pot) {
+        }
+
+        @Override
+        public void showResult(ArrayList<Card> community, ArrayList<Card> playerHand,
+                               PokerGame.HandRank bestHand, int pot,
+                               boolean humanWon, String aiWinnerName) {
+        }
+
+        @Override
+        public boolean askPlayAgain(int chips) {
+            return false;
+        }
+
+        @Override
+        public void showGameOver(int chips) {
+        }
+
+        @Override
+        public long getUiSyncTimeoutMs() {
+            return 1;
+        }
+
+        @Override
+        protected JoinDecision requestJoinAdmission(String proposedName) {
+            return new JoinDecision(true, "PlayerId", proposedName, null);
+        }
+
+        @Override
+        protected void applyAcceptedJoinDecision(JoinDecision decision) {
+            super.applyAcceptedJoinDecision(decision);
+        }
+
+        @Override
+        public BettingRound.Action waitForPlayerAction(BettingRound round, int playerCurrentBet) {
+            return null;
+        }
+
+        @Override
+        public boolean awaitLastAnimation(long timeoutMs) {
+            return true;
+        }
+
+        @Override
+        public boolean awaitUiReady(long timeoutMs) {
+            return true;
+        }
+
+        @Override
+        public void showJoinRejectionMessage(String message) {
+        }
+
+        @Override
+        public boolean askRetryJoin() {
+            return false;
+        }
+
+        @Override
+        public void clearTableForNewHand() {
+        }
+
+        @Override
+        public void showUserChips(String userNamePlayer, int numbChips) {
+        }
+
+        @Override
+        public void showPlayerHand(ArrayList<Card> hand, int ignored) {
+        }
+
+        @Override
+        public void showCommunityCards(ArrayList<Card> community, ArrayList<Card> playerHand, int ignored) {
+        }
+
+        @Override
+        public BettingRound.Action waitForPlayerAction(BettingRound round, int playerCurrentBet, long timeoutMs, boolean ignored) {
+            return null;
+        }
+
+        @Override
+        public boolean askRetryJoin(boolean ignored) {
+            return false;
+        }
+
+        @Override
+        public void showJoinRejectionMessage(String message, boolean ignored) {
+        }
+
+        @Override
+        public void showAIActions(List<String> log, boolean ignored) {
+        }
+
+        @Override
+        public void showPot(int pot, boolean ignored) {
+        }
+
+        @Override
+        public void showRoles(AIPlayer.Role humanRole, List<AIPlayer> aiPlayers, boolean ignored) {
+        }
+
+        @Override
+        public void showPlayerFolded(boolean ignored) {
+        }
+
+        @Override
+        public void showGameOver(int chips, boolean ignored) {
+        }
+
+        @Override
+        public void showResult(ArrayList<Card> community, ArrayList<Card> playerHand,
+                               ShowdownResult showdownResult, int pot, boolean ignored) {
+        }
+
+        @Override
+        public void showResult(ArrayList<Card> community, ArrayList<Card> playerHand,
+                               PokerGame.HandRank bestHand, int pot,
+                               boolean humanWon, String aiWinnerName, boolean ignored) {
+        }
+
+        @Override
+        public void requestGracefulShutdown(boolean ignored) {
+        }
+
+        @Override
+        public boolean askPlayAgain(int chips, boolean ignored) {
+            return false;
+        }
+
+        @Override
+        public void showUserChips(String userName, int chips, boolean ignored) {
+        }
+
+        @Override
+        public void showCommunityCards(ArrayList<Card> community, ArrayList<Card> playerHand, boolean ignored, boolean ignored2) {
+        }
+
+        @Override
+        public void showPlayerHand(ArrayList<Card> hand, boolean ignored, boolean ignored2) {
+        }
+
+        @Override
+        public void showRoles(AIPlayer.Role humanRole, List<AIPlayer> aiPlayers, boolean ignored, boolean ignored2) {
+        }
+
+        @Override
+        public void showPot(int pot, boolean ignored, boolean ignored2) {
+        }
+
+        @Override
+        public void showAIActions(List<String> log, boolean ignored, boolean ignored2) {
+        }
+
+        @Override
+        public void showPlayerFolded(boolean ignored, boolean ignored2) {
+        }
+
+        @Override
+        public void showGameOver(int chips, boolean ignored, boolean ignored2) {
+        }
+
+        @Override
+        public void showResult(ArrayList<Card> community, ArrayList<Card> playerHand,
+                               ShowdownResult showdownResult, int pot, boolean ignored, boolean ignored2) {
+        }
+
+        @Override
+        public void showResult(ArrayList<Card> community, ArrayList<Card> playerHand,
+                               PokerGame.HandRank bestHand, int pot,
+                               boolean humanWon, String aiWinnerName, boolean ignored, boolean ignored2) {
+        }
+
+        @Override
+        public void requestGracefulShutdown(boolean ignored, boolean ignored2) {
+        }
+
+        @Override
+        public boolean awaitUiReady(long timeoutMs, boolean ignored) {
+            return true;
+        }
+
+        @Override
+        public boolean awaitLastAnimation(long timeoutMs, boolean ignored) {
+            return true;
+        }
+
+        @Override
+        public void runOnEdtAndWait(Runnable task, boolean ignored) {
+        }
+
+        @Override
+        public <T> T callOnEdtAndWait(java.util.concurrent.Callable<T> task, boolean ignored) {
+            return null;
+        }
+
+        @Override
+        public void resolvePendingPlayerAction(BettingRound.Action action, boolean ignored) {
+            timeoutFallbackAction = action;
+        }
+
+        @Override
+        public BettingRound.Action waitForPlayerAction(BettingRound round, int playerCurrentBet, long timeoutMs, boolean ignored, boolean ignored2) {
+            return null;
+        }
+
+        @Override
+        public BettingRound.Action waitForPlayerAction(BettingRound round, int playerCurrentBet, long timeoutMs, boolean ignored, boolean ignored2, boolean ignored3) {
+            return null;
+        }
+
+        @Override
+        public void showCommunityCards(ArrayList<Card> community, ArrayList<Card> playerHand, boolean ignored, boolean ignored2, boolean ignored3) {
+        }
+
+        @Override
+        public void showPlayerHand(ArrayList<Card> hand, boolean ignored, boolean ignored2, boolean ignored3) {
+        }
+
+        @Override
+        public void showRoles(AIPlayer.Role humanRole, List<AIPlayer> aiPlayers, boolean ignored, boolean ignored2, boolean ignored3) {
+        }
+
+        @Override
+        public void showPot(int pot, boolean ignored, boolean ignored2, boolean ignored3) {
+        }
+
+        @Override
+        public void showAIActions(List<String> log, boolean ignored, boolean ignored2, boolean ignored3) {
+        }
+
+        @Override
+        public void showPlayerFolded(boolean ignored, boolean ignored2, boolean ignored3) {
+        }
+
+        @Override
+        public void showGameOver(int chips, boolean ignored, boolean ignored2, boolean ignored3) {
+        }
+
+        @Override
+        public void showResult(ArrayList<Card> community, ArrayList<Card> playerHand,
+                               ShowdownResult showdownResult, int pot, boolean ignored, boolean ignored2, boolean ignored3) {
+        }
+
+        @Override
+        public void showResult(ArrayList<Card> community, ArrayList<Card> playerHand,
+                               PokerGame.HandRank bestHand, int pot,
+                               boolean humanWon, String aiWinnerName, boolean ignored, boolean ignored2, boolean ignored3) {
+        }
+
+        @Override
+        public void requestGracefulShutdown(boolean ignored, boolean ignored2, boolean ignored3) {
+        }
+
+        @Override
+        public boolean awaitUiReady(long timeoutMs, boolean ignored, boolean ignored2) {
+            return true;
+        }
+
+        @Override
+        public boolean awaitLastAnimation(long timeoutMs, boolean ignored, boolean ignored2) {
+            return true;
+        }
+
+        @Override
+        public void resolvePendingPlayerAction(BettingRound.Action action, boolean ignored, boolean ignored2) {
+            timeoutFallbackAction = action;
+        }
+
+        @Override
+        public BettingRound.Action waitForPlayerAction(BettingRound round, int playerCurrentBet, long timeoutMs, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4) {
+            return null;
+        }
+
+        @Override
+        public void showPlayerFolded(boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4) {
+        }
+
+        @Override
+        public void showAIActions(List<String> log, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4) {
+        }
+
+        @Override
+        public void showPot(int pot, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4) {
+        }
+
+        @Override
+        public void showRoles(AIPlayer.Role humanRole, List<AIPlayer> aiPlayers, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4) {
+        }
+
+        @Override
+        public void showCommunityCards(ArrayList<Card> community, ArrayList<Card> playerHand, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4) {
+        }
+
+        @Override
+        public void showPlayerHand(ArrayList<Card> hand, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4) {
+        }
+
+        @Override
+        public void showResult(ArrayList<Card> community, ArrayList<Card> playerHand,
+                               ShowdownResult showdownResult, int pot, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4) {
+        }
+
+        @Override
+        public void showResult(ArrayList<Card> community, ArrayList<Card> playerHand,
+                               PokerGame.HandRank bestHand, int pot,
+                               boolean humanWon, String aiWinnerName, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4) {
+        }
+
+        @Override
+        public void showGameOver(int chips, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4) {
+        }
+
+        @Override
+        public boolean askPlayAgain(int chips, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4) {
+            return false;
+        }
+
+        @Override
+        public void requestGracefulShutdown(boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4) {
+        }
+
+        @Override
+        public void showUserChips(String userName, int chips, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4) {
+        }
+
+        @Override
+        public void showPot(int pot, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4, boolean ignored5) {
+        }
+
+        @Override
+        public void showRoles(AIPlayer.Role humanRole, List<AIPlayer> aiPlayers, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4, boolean ignored5) {
+        }
+
+        @Override
+        public void showAIActions(List<String> log, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4, boolean ignored5) {
+        }
+
+        @Override
+        public void showPlayerFolded(boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4, boolean ignored5) {
+        }
+
+        @Override
+        public void showCommunityCards(ArrayList<Card> community, ArrayList<Card> playerHand, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4, boolean ignored5) {
+        }
+
+        @Override
+        public void showPlayerHand(ArrayList<Card> hand, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4, boolean ignored5) {
+        }
+
+        @Override
+        public void showResult(ArrayList<Card> community, ArrayList<Card> playerHand,
+                               ShowdownResult showdownResult, int pot, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4, boolean ignored5) {
+        }
+
+        @Override
+        public void showResult(ArrayList<Card> community, ArrayList<Card> playerHand,
+                               PokerGame.HandRank bestHand, int pot,
+                               boolean humanWon, String aiWinnerName, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4, boolean ignored5) {
+        }
+
+        @Override
+        public void showGameOver(int chips, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4, boolean ignored5) {
+        }
+
+        @Override
+        public void requestGracefulShutdown(boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4, boolean ignored5) {
+        }
+
+        @Override
+        public boolean askRetryJoin(boolean ignored, boolean ignored2) {
+            return false;
+        }
+
+        @Override
+        public void showJoinRejectionMessage(String message, boolean ignored, boolean ignored2) {
+        }
+
+        @Override
+        public void showUserChips(String userName, int chips, boolean ignored, boolean ignored2) {
+        }
+
+        @Override
+        public void showPlayerHand(ArrayList<Card> hand, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4, boolean ignored5, boolean ignored6) {
+        }
+
+        @Override
+        public void showCommunityCards(ArrayList<Card> community, ArrayList<Card> playerHand, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4, boolean ignored5, boolean ignored6) {
+        }
+
+        @Override
+        public void showRoles(AIPlayer.Role humanRole, List<AIPlayer> aiPlayers, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4, boolean ignored5, boolean ignored6) {
+        }
+
+        @Override
+        public void showPot(int pot, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4, boolean ignored5, boolean ignored6) {
+        }
+
+        @Override
+        public void showAIActions(List<String> log, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4, boolean ignored5, boolean ignored6) {
+        }
+
+        @Override
+        public void showPlayerFolded(boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4, boolean ignored5, boolean ignored6) {
+        }
+
+        @Override
+        public void showResult(ArrayList<Card> community, ArrayList<Card> playerHand,
+                               ShowdownResult showdownResult, int pot, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4, boolean ignored5, boolean ignored6) {
+        }
+
+        @Override
+        public void showResult(ArrayList<Card> community, ArrayList<Card> playerHand,
+                               PokerGame.HandRank bestHand, int pot,
+                               boolean humanWon, String aiWinnerName, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4, boolean ignored5, boolean ignored6) {
+        }
+
+        @Override
+        public void showGameOver(int chips, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4, boolean ignored5, boolean ignored6) {
+        }
+
+        @Override
+        public void requestGracefulShutdown(boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4, boolean ignored5, boolean ignored6) {
+        }
+
+        @Override
+        public boolean askPlayAgain(int chips, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4, boolean ignored5, boolean ignored6) {
+            return false;
+        }
+
+        @Override
+        public boolean awaitUiReady(long timeoutMs, boolean ignored, boolean ignored2, boolean ignored3) {
+            return true;
+        }
+
+        @Override
+        public boolean awaitLastAnimation(long timeoutMs, boolean ignored, boolean ignored2, boolean ignored3) {
+            return true;
+        }
+
+        @Override
+        public void resolvePendingPlayerAction(BettingRound.Action action, boolean ignored, boolean ignored2, boolean ignored3) {
+            timeoutFallbackAction = action;
+        }
+
+        @Override
+        public void runOnEdtAndWait(Runnable task, boolean ignored, boolean ignored2) {
+        }
+
+        @Override
+        public <T> T callOnEdtAndWait(java.util.concurrent.Callable<T> task, boolean ignored, boolean ignored2) {
+            return null;
+        }
+
+        @Override
+        public void showJoinRejectionMessage(String message, boolean ignored, boolean ignored2, boolean ignored3) {
+        }
+
+        @Override
+        public boolean askRetryJoin(boolean ignored, boolean ignored2, boolean ignored3) {
+            return false;
+        }
+
+        @Override
+        public void showUserChips(String userName, int chips, boolean ignored, boolean ignored2, boolean ignored3) {
+        }
+
+        @Override
+        public void showPlayerHand(ArrayList<Card> hand, boolean ignored, boolean ignored2, boolean ignored3) {
+        }
+
+        @Override
+        public void showCommunityCards(ArrayList<Card> community, ArrayList<Card> playerHand, boolean ignored, boolean ignored2, boolean ignored3) {
+        }
+
+        @Override
+        public void showRoles(AIPlayer.Role humanRole, List<AIPlayer> aiPlayers, boolean ignored, boolean ignored2, boolean ignored3) {
+        }
+
+        @Override
+        public void showPot(int pot, boolean ignored, boolean ignored2, boolean ignored3) {
+        }
+
+        @Override
+        public void showAIActions(List<String> log, boolean ignored, boolean ignored2, boolean ignored3) {
+        }
+
+        @Override
+        public void showPlayerFolded(boolean ignored, boolean ignored2, boolean ignored3) {
+        }
+
+        @Override
+        public void showResult(ArrayList<Card> community, ArrayList<Card> playerHand,
+                               ShowdownResult showdownResult, int pot, boolean ignored, boolean ignored2, boolean ignored3) {
+        }
+
+        @Override
+        public void showResult(ArrayList<Card> community, ArrayList<Card> playerHand,
+                               PokerGame.HandRank bestHand, int pot,
+                               boolean humanWon, String aiWinnerName, boolean ignored, boolean ignored2, boolean ignored3) {
+        }
+
+        @Override
+        public void showGameOver(int chips, boolean ignored, boolean ignored2, boolean ignored3) {
+        }
+
+        @Override
+        public void requestGracefulShutdown(boolean ignored, boolean ignored2, boolean ignored3) {
+        }
+
+        @Override
+        public boolean askPlayAgain(int chips, boolean ignored, boolean ignored2, boolean ignored3) {
+            return false;
+        }
+
+        @Override
+        public void showJoinRejectionMessage(String message, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4) {
+        }
+
+        @Override
+        public boolean askRetryJoin(boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4) {
+            return false;
+        }
+
+        @Override
+        public void showUserChips(String userName, int chips, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4) {
+        }
+
+        @Override
+        public void showPlayerHand(ArrayList<Card> hand, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4) {
+        }
+
+        @Override
+        public void showCommunityCards(ArrayList<Card> community, ArrayList<Card> playerHand, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4) {
+        }
+
+        @Override
+        public void showRoles(AIPlayer.Role humanRole, List<AIPlayer> aiPlayers, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4) {
+        }
+
+        @Override
+        public void showPot(int pot, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4) {
+        }
+
+        @Override
+        public void showAIActions(List<String> log, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4) {
+        }
+
+        @Override
+        public void showPlayerFolded(boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4) {
+        }
+
+        @Override
+        public void showResult(ArrayList<Card> community, ArrayList<Card> playerHand,
+                               ShowdownResult showdownResult, int pot, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4) {
+        }
+
+        @Override
+        public void showResult(ArrayList<Card> community, ArrayList<Card> playerHand,
+                               PokerGame.HandRank bestHand, int pot,
+                               boolean humanWon, String aiWinnerName, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4) {
+        }
+
+        @Override
+        public void showGameOver(int chips, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4) {
+        }
+
+        @Override
+        public void requestGracefulShutdown(boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4) {
+        }
+
+        @Override
+        public boolean askPlayAgain(int chips, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4) {
+            return false;
+        }
+
+        @Override
+        public boolean awaitUiReady(long timeoutMs, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4) {
+            return true;
+        }
+
+        @Override
+        public boolean awaitLastAnimation(long timeoutMs, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4) {
+            return true;
+        }
+
+        @Override
+        public void resolvePendingPlayerAction(BettingRound.Action action, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4) {
+            timeoutFallbackAction = action;
+        }
+
+        @Override
+        public BettingRound.Action waitForPlayerAction(BettingRound round, int playerCurrentBet, long timeoutMs, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4, boolean ignored5) {
+            return null;
+        }
+
+        @Override
+        public void runOnEdtAndWait(Runnable task, boolean ignored, boolean ignored2, boolean ignored3) {
+        }
+
+        @Override
+        public <T> T callOnEdtAndWait(java.util.concurrent.Callable<T> task, boolean ignored, boolean ignored2, boolean ignored3) {
+            return null;
+        }
+
+        @Override
+        public void showJoinRejectionMessage(String message, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4, boolean ignored5) {
+        }
+
+        @Override
+        public boolean askRetryJoin(boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4, boolean ignored5) {
+            return false;
+        }
+
+        @Override
+        public void showUserChips(String userName, int chips, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4, boolean ignored5) {
+        }
+
+        @Override
+        public void showPlayerHand(ArrayList<Card> hand, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4, boolean ignored5) {
+        }
+
+        @Override
+        public void showCommunityCards(ArrayList<Card> community, ArrayList<Card> playerHand, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4, boolean ignored5) {
+        }
+
+        @Override
+        public void showRoles(AIPlayer.Role humanRole, List<AIPlayer> aiPlayers, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4, boolean ignored5) {
+        }
+
+        @Override
+        public void showPot(int pot, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4, boolean ignored5) {
+        }
+
+        @Override
+        public void showAIActions(List<String> log, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4, boolean ignored5) {
+        }
+
+        @Override
+        public void showPlayerFolded(boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4, boolean ignored5) {
+        }
+
+        @Override
+        public void showResult(ArrayList<Card> community, ArrayList<Card> playerHand,
+                               ShowdownResult showdownResult, int pot, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4, boolean ignored5) {
+        }
+
+        @Override
+        public void showResult(ArrayList<Card> community, ArrayList<Card> playerHand,
+                               PokerGame.HandRank bestHand, int pot,
+                               boolean humanWon, String aiWinnerName, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4, boolean ignored5) {
+        }
+
+        @Override
+        public void showGameOver(int chips, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4, boolean ignored5) {
+        }
+
+        @Override
+        public void requestGracefulShutdown(boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4, boolean ignored5) {
+        }
+
+        @Override
+        public boolean askPlayAgain(int chips, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4, boolean ignored5) {
+            return false;
+        }
+
+        @Override
+        public boolean awaitUiReady(long timeoutMs, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4, boolean ignored5) {
+            return true;
+        }
+
+        @Override
+        public boolean awaitLastAnimation(long timeoutMs, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4, boolean ignored5) {
+            return true;
+        }
+
+        @Override
+        public void resolvePendingPlayerAction(BettingRound.Action action, boolean ignored, boolean ignored2, boolean ignored3, boolean ignored4, boolean ignored5) {
+            timeoutFallbackAction = action;
         }
     }
 
