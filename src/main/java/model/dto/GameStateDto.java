@@ -13,6 +13,8 @@ import java.util.List;
 public class GameStateDto {
 
     private String gameId;
+    private String machineId;
+    private int humanChips;
     private int pot;
     private List<Card> communityCards = new ArrayList<>();
     private List<Card> remainingDeck = new ArrayList<>();
@@ -31,6 +33,22 @@ public class GameStateDto {
 
     public void setGameId(String gameId) {
         this.gameId = gameId;
+    }
+
+    public String getMachineId() {
+        return machineId;
+    }
+
+    public void setMachineId(String machineId) {
+        this.machineId = machineId;
+    }
+
+    public int getHumanChips() {
+        return humanChips;
+    }
+
+    public void setHumanChips(int humanChips) {
+        this.humanChips = humanChips;
     }
 
     public int getPot() {

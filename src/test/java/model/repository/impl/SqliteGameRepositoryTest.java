@@ -27,6 +27,8 @@ class SqliteGameRepositoryTest {
 
     @BeforeEach
     void setUp(@TempDir Path tempDir) throws Exception {
+        // Explicitly load SQLite driver for Java 9+ module system
+        Class.forName("org.sqlite.JDBC");
         Path dbFile = tempDir.resolve("game.db");
         ConnectionFactory factory = new ConnectionFactory(dbFile.toString());
         DatabaseBootstrapper bootstrapper = new DatabaseBootstrapper(factory);
@@ -147,6 +149,9 @@ class SqliteGameRepositoryTest {
         assertTrue(loadedAi.isFolded());
         assertTrue(loadedAi.isAllIn());
         assertEquals(PlayerRole.BIG_BLIND, loadedAi.getRole());
+        assertTrue(loadedAi.isAi(), "ai flag should persist for AI player");
+
+        assertFalse(loadedHuman.isAi(), "ai flag should be false for human player");
     }
 
     @Test
@@ -210,6 +215,140 @@ class SqliteGameRepositoryTest {
         assertTrue(found.get().getCommunityCards().isEmpty());
         assertTrue(found.get().getRemainingDeck().isEmpty());
         assertTrue(found.get().getPlayers().isEmpty());
+    }
+
+    // ------------------------------------------------------------------
+    //  Machine ID repository operations
+    // ------------------------------------------------------------------
+
+    @Test
+    void shouldSaveAndLoadByMachineId() throws Exception {
+        GameStateDto state = createSampleState("game-m1");
+        state.setMachineId("machine-001");
+        state.setHumanChips(5000);
+        repository.saveByMachineId("machine-001", state);
+
+        Optional<GameStateDto> found = repository.loadByMachineId("machine-001");
+
+        assertTrue(found.isPresent(), "game state should be found by machine_id");
+        assertEquals("machine-001", found.get().getMachineId());
+        assertEquals(5000, found.get().getHumanChips(), "human_chips should persist");
+        assertEquals(150, found.get().getPot());
+        assertEquals(BettingRound.Phase.FLOP, found.get().getCurrentPhase());
+    }
+
+    @Test
+    void shouldReturnEmptyForUnknownMachineId() throws Exception {
+        Optional<GameStateDto> found = repository.loadByMachineId("non-existent-machine");
+        assertTrue(found.isEmpty(), "should return empty for unknown machine_id");
+    }
+
+    @Test
+    void shouldDeleteByMachineId() throws Exception {
+        GameStateDto state = createSampleState("game-m2");
+        state.setMachineId("machine-002");
+        state.setHumanChips(3000);
+        repository.saveByMachineId("machine-002", state);
+
+        boolean deleted = repository.deleteByMachineId("machine-002");
+
+        assertTrue(deleted, "delete should return true");
+        assertTrue(repository.loadByMachineId("machine-002").isEmpty(),
+                "game should no longer exist by machine_id");
+    }
+
+    @Test
+    void shouldReturnFalseWhenDeletingNonExistentMachineId() throws Exception {
+        boolean deleted = repository.deleteByMachineId("no-machine");
+        assertFalse(deleted, "delete should return false for unknown machine_id");
+    }
+
+    @Test
+    void shouldUpsertByMachineId() throws Exception {
+        GameStateDto state = createSampleState("game-m3");
+        state.setMachineId("machine-003");
+        state.setHumanChips(4000);
+        repository.saveByMachineId("machine-003", state);
+
+        // Second save with same machine_id should update, not duplicate
+        state.setPot(500);
+        state.setHumanChips(4500);
+        state.setCurrentPhase(BettingRound.Phase.TURN);
+        repository.saveByMachineId("machine-003", state);
+
+        Optional<GameStateDto> found = repository.loadByMachineId("machine-003");
+        assertTrue(found.isPresent());
+        assertEquals(500, found.get().getPot(), "pot should be updated");
+        assertEquals(4500, found.get().getHumanChips(), "human_chips should be updated");
+        assertEquals(BettingRound.Phase.TURN, found.get().getCurrentPhase());
+    }
+
+    @Test
+    void shouldPersistHumanChipsThroughRoundTrip() throws Exception {
+        GameStateDto state = createSampleState("game-m4");
+        state.setMachineId("machine-004");
+        state.setHumanChips(7500);
+        repository.saveByMachineId("machine-004", state);
+
+        Optional<GameStateDto> found = repository.loadByMachineId("machine-004");
+        assertTrue(found.isPresent());
+        assertEquals(7500, found.get().getHumanChips(),
+                "human_chips should survive save→load round-trip");
+    }
+
+    @Test
+    void shouldPersistAiFlagThroughMachineIdRoundTrip() throws Exception {
+        GameStateDto state = createSampleState("game-m5");
+        state.setMachineId("machine-005");
+
+        PlayerStateDto human = new PlayerStateDto();
+        human.setPlayerId("p1");
+        human.setName("Alice");
+        human.setChips(5000);
+        human.setRole(PlayerRole.DEALER);
+        human.setHand(List.of());
+        human.setAi(false);
+
+        PlayerStateDto ai = new PlayerStateDto();
+        ai.setPlayerId("p2");
+        ai.setName("Bot");
+        ai.setChips(3000);
+        ai.setRole(PlayerRole.BIG_BLIND);
+        ai.setHand(List.of());
+        ai.setAi(true);
+
+        state.setPlayers(List.of(human, ai));
+        repository.saveByMachineId("machine-005", state);
+
+        Optional<GameStateDto> found = repository.loadByMachineId("machine-005");
+        assertTrue(found.isPresent());
+        List<PlayerStateDto> players = found.get().getPlayers();
+        assertEquals(2, players.size());
+
+        assertFalse(players.get(0).isAi(), "human player ai flag should be false");
+        assertTrue(players.get(1).isAi(), "AI player ai flag should be true");
+    }
+
+    @Test
+    void shouldDeletePlayersWhenDeletingByMachineId() throws Exception {
+        GameStateDto state = createSampleState("game-m6");
+        state.setMachineId("machine-006");
+
+        PlayerStateDto p = new PlayerStateDto();
+        p.setPlayerId("p1");
+        p.setName("Alice");
+        p.setChips(5000);
+        p.setRole(PlayerRole.NONE);
+        p.setHand(List.of());
+        p.setAi(false);
+        state.setPlayers(List.of(p));
+
+        repository.saveByMachineId("machine-006", state);
+        repository.deleteByMachineId("machine-006");
+
+        // Verify no orphaned players remain
+        Optional<GameStateDto> found = repository.loadByMachineId("machine-006");
+        assertTrue(found.isEmpty(), "game state should be deleted");
     }
 
     // ------------------------------------------------------------------
