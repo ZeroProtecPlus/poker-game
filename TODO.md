@@ -31,11 +31,23 @@ Se eliminó `Thread.sleep(300)` y todo `wait/notify` frágil.
 
 ---
 
-## 2. Distribución Paso a Paso (Flop, Turn, River)
+## 2. Distribución Incremental de Cartas Comunitarias (Flop, Turn, River)
 **Prioridad:** 🟠 Alto  
 **Origen:** Main.java To-do #2
 
-Las cartas comunitarias del Flop (3 cartas), Turn y River (1 carta cada una) deben mostrarse de forma animada y secuencial, con pausa entre cada carta revelada. Actualmente se muestran todas juntas sin animación coordinada por fase.
+**Problema actual:** Cada vez que se muestra una fase (Flop→Turn→River), el método `dealCommunity()` hace `communitySprites.clear()` y redibuja TODAS las cartas desde cero. Esto causa:
+- Las cartas de fases anteriores se "re-dibujan" en lugar de mantenerse en la mesa
+- Animación redundante que可能出现 problemas de rendimiento
+- Experiencia visual confusa (las cartas parecen "reaparecer" en lugar de sumarse)
+
+**Comportamiento esperado:**
+- Flop: mostrar 3 cartas animate dsdela mesa (nuevo)
+- Turn: agregar 1 carta a las 3 existentes (incremental, no redibujar todo)
+- River: agregar 1 carta a las 4 existentes (incremental)
+
+**Solución técnica:**
+- Modificar `dealCommunity()` para no hacer `clear()` en Turn/River
+- Mantener estado acumulativo de `communitySprites` entre fases
 
 ---
 
@@ -595,7 +607,7 @@ El fondo de la mesa de poker y los iconos/sprites actuales son de baja calidad o
 |---|---|---|
 | 1 | ✅ Sincronización Lógica ↔ UI (solucionado) | ✅ Completado |
 | 4 | ✅ Testing funcional (solucionado) | ✅ Completado |
-| 2 | Distribución paso a paso (Flop/Turn/River) | 🟠 Alto |
+| 2 | ✅ Distribución incremental de cartas comunitarias (solucionado) | ✅ Completado |
 | 3 | Base de datos / Persistencia | 🟠 Alto |
 | 7 | ✅ Refactor — Extraer HandEvaluator (solucionado) | ✅ Completado |
 | 9 | ✅ Split Pot en empates | ✅ Completado |
