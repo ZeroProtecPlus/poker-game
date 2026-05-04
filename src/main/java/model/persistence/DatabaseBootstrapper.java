@@ -29,6 +29,15 @@ public class DatabaseBootstrapper {
     private static final String DB_FILE = "poker.db";
     private static final String MIGRATION_PATH = "db/migration/";
 
+    /**
+     * Known migration filenames. Add new entries here when creating migrations.
+     * Files are applied in the order listed, filtered by version > currentVersion.
+     */
+    private static final String[] MIGRATION_FILES = {
+        "V1__init.sql",
+        "V2__add_machine_id.sql",
+    };
+
     private final ConnectionFactory connectionFactory;
 
     /**
@@ -107,21 +116,30 @@ public class DatabaseBootstrapper {
 
     private List<Migration> loadPendingMigrations(int currentVersion) throws IOException {
         List<Migration> migrations = new ArrayList<>();
-        int version = 1;
-        while (true) {
-            String fileName = "V" + version + "__init.sql";
-            String path = MIGRATION_PATH + fileName;
-            try (InputStream is = getClass().getClassLoader().getResourceAsStream(path)) {
-                if (is == null) {
-                    break;
+        for (String fileName : MIGRATION_FILES) {
+            int version = extractVersion(fileName);
+            if (version > currentVersion) {
+                String path = MIGRATION_PATH + fileName;
+                try (InputStream is = getClass().getClassLoader().getResourceAsStream(path)) {
+                    if (is != null) {
+                        migrations.add(new Migration(version, path));
+                    }
                 }
             }
-            if (version > currentVersion) {
-                migrations.add(new Migration(version, path));
-            }
-            version++;
         }
+        migrations.sort(Comparator.comparingInt(m -> m.version));
         return migrations;
+    }
+
+    /**
+     * Extracts the version number from a migration filename like "V2__add_machine_id.sql".
+     */
+    private int extractVersion(String fileName) {
+        int end = fileName.indexOf("__");
+        if (end < 2) {
+            throw new IllegalArgumentException("Invalid migration filename: " + fileName);
+        }
+        return Integer.parseInt(fileName.substring(1, end));
     }
 
     private void applyMigration(Connection conn, Migration migration) throws SQLException, IOException {
