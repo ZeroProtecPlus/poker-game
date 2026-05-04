@@ -547,4 +547,12 @@ public class PokerGame {
     public int getPlayerCurrentBet() {
         return player.getCurrentBet();
     }
+
+    public int getDealerIndex() {
+        return dealerIndex;
+    }
+
+    public ArrayList<Card> getRemainingDeck() {
+        return deck.getRemainingCardsList();
+    }
 }

@@ -58,6 +58,11 @@ public class User implements Player {
     }
 
     @Override
+    public void setCurrentBet(int bet) {
+        this.currentBet = bet;
+    }
+
+    @Override
     public boolean isFolded() {
         return folded;
     }

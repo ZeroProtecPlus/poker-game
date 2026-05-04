@@ -455,6 +455,22 @@ public class GameView {
         });
     }
 
+    /** Pregunta si el jugador quiere reanudar la partida guardada. Bloquea hasta respuesta. */
+    public boolean askResumeGame(int savedChips) {
+        return callOnEdtAndWait(() -> {
+            int opt = JOptionPane.showConfirmDialog(
+                frame,
+                "Tenés una partida guardada con " +
+                    String.format("%,d", savedChips) +
+                    " fichas.\n¿Querés reanudar?",
+                "Reanudar partida",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE
+            );
+            return opt == JOptionPane.YES_OPTION;
+        });
+    }
+
     /** Pantalla de fin de juego */
     public void showGameOver(int chips) {
         SwingUtilities.invokeLater(() -> tablePanel.showGameOver(chips));

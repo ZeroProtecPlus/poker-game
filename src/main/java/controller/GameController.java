@@ -1,15 +1,26 @@
 package controller;
 
 import model.*;
+import model.dto.GameStateDto;
+import model.dto.PlayerStateDto;
+import model.persistence.DatabaseBootstrapper;
+import model.persistence.RepositoryException;
+import model.repository.GameRepository;
+import model.repository.PlayerRepository;
+import model.repository.impl.SqliteGameRepository;
+import model.repository.impl.SqlitePlayerRepository;
 import network.contracts.JoinDecision;
 import network.contracts.JoinRequest;
 import network.contracts.RejectReason;
 import network.host.HostJoinHandler;
 import network.session.SessionNameRegistry;
 import network.validation.NameValidator;
+import util.CardSerializer;
 import view.GameView;
+
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 public class GameController {
 
@@ -19,26 +30,50 @@ public class GameController {
     private User newPlayer;
     private final GameView newGame;
     private final HostJoinHandler hostJoinHandler;
+    private final PlayerRepository playerRepository;
+    private final GameRepository gameRepository;
 
     public GameController() {
-        this(new GameView(), createDefaultHostJoinHandler());
+        this(new GameView(), createDefaultHostJoinHandler(), createDefaultRepositories());
     }
 
     protected GameController(GameView gameView) {
-        this(gameView, createDefaultHostJoinHandler());
+        this(gameView, createDefaultHostJoinHandler(), createDefaultRepositories());
     }
 
     protected GameController(GameView gameView, HostJoinHandler hostJoinHandler) {
+        this(gameView, hostJoinHandler, createDefaultRepositories());
+    }
+
+    protected GameController(GameView gameView, HostJoinHandler hostJoinHandler, Repositories repositories) {
         this.newGame = gameView;
         this.hostJoinHandler = hostJoinHandler;
+        this.playerRepository = repositories.playerRepository();
+        this.gameRepository = repositories.gameRepository();
         this.newGame.awaitUiReady(this.newGame.getUiSyncTimeoutMs());
     }
+
+    private static Repositories createDefaultRepositories() {
+        DatabaseBootstrapper bootstrapper = new DatabaseBootstrapper();
+        try {
+            bootstrapper.bootstrap();
+        } catch (RepositoryException e) {
+            throw new IllegalStateException("Failed to bootstrap database", e);
+        }
+        return new Repositories(
+            new SqlitePlayerRepository(bootstrapper.getConnectionFactory()),
+            new SqliteGameRepository(bootstrapper.getConnectionFactory())
+        );
+    }
+
+    public record Repositories(PlayerRepository playerRepository, GameRepository gameRepository) {}
 
     public void createNewPlayer() {
         while (true) {
             JoinDecision decision = requestJoinAdmission(newGame.getUserName());
             if (decision.isAccepted()) {
                 applyAcceptedJoinDecision(decision);
+                loadOrCreatePlayerProfile();
                 return;
             }
 
@@ -57,6 +92,28 @@ public class GameController {
         this.playerId = decision.getPlayerId();
         this.userNamePlayer = decision.getDisplayName();
         this.newPlayer = new User(playerId, userNamePlayer);
+    }
+
+    private void loadOrCreatePlayerProfile() {
+        try {
+            Optional<User> existing = playerRepository.findByName(userNamePlayer);
+            if (existing.isPresent()) {
+                User profile = existing.get();
+                newPlayer.setChips(profile.getChips());
+            } else {
+                playerRepository.save(newPlayer);
+            }
+        } catch (RepositoryException e) {
+            System.err.println("Warning: failed to load player profile: " + e.getMessage());
+        }
+    }
+
+    private void savePlayerProfile() {
+        try {
+            playerRepository.save(newPlayer);
+        } catch (RepositoryException e) {
+            System.err.println("Warning: failed to save player profile: " + e.getMessage());
+        }
     }
 
     private String toJoinRejectionMessage(JoinDecision decision) {
@@ -88,6 +145,8 @@ public class GameController {
 
     public void createNewGame() {
         newGame.setGameActive(true);
+        offerResume();
+
         while (newPlayer.getNumbChips() > 0) {
             playOneHand();
 
@@ -99,6 +158,66 @@ public class GameController {
             }
         }
         newGame.showGameOver(newPlayer.getNumbChips());
+    }
+
+    private void offerResume() {
+        try {
+            Optional<GameStateDto> latest = gameRepository.findLatest();
+            if (latest.isPresent()) {
+                GameStateDto state = latest.get();
+                PlayerStateDto human = state.findHumanPlayer();
+                if (human != null && human.getName().equals(userNamePlayer)) {
+                    boolean resume = newGame.askResumeGame(human.getChips());
+                    if (resume) {
+                        newPlayer.setChips(human.getChips());
+                    } else {
+                        gameRepository.delete(state.getGameId());
+                    }
+                }
+            }
+        } catch (RepositoryException e) {
+            System.err.println("Warning: failed to check for saved game: " + e.getMessage());
+        }
+    }
+
+    private void saveGameState(BettingRound.Phase phase) {
+        if (pokerGame == null) return;
+        try {
+            GameStateDto state = buildGameStateDto(phase);
+            gameRepository.save(state);
+        } catch (RepositoryException e) {
+            System.err.println("Warning: failed to save game state: " + e.getMessage());
+        }
+    }
+
+    private GameStateDto buildGameStateDto(BettingRound.Phase phase) {
+        GameStateDto state = new GameStateDto();
+        state.setGameId(userNamePlayer + "_latest");
+        state.setPot(pokerGame.getPot());
+        state.setCommunityCards(pokerGame.getCommunityCards());
+        state.setRemainingDeck(pokerGame.getRemainingDeck());
+        state.setDealerIndex(pokerGame.getDealerIndex());
+        state.setCurrentPhase(phase);
+        state.setPlayers(mapPlayers(pokerGame.getPlayers()));
+        return state;
+    }
+
+    private List<PlayerStateDto> mapPlayers(List<Player> players) {
+        List<PlayerStateDto> list = new ArrayList<>();
+        for (Player p : players) {
+            PlayerStateDto dto = new PlayerStateDto();
+            dto.setPlayerId(p.getPlayerId());
+            dto.setName(p.getName());
+            dto.setHand(p.getHand());
+            dto.setChips(p.getChips());
+            dto.setCurrentBet(p.getCurrentBet());
+            dto.setFolded(p.isFolded());
+            dto.setAllIn(p.isAllIn());
+            dto.setRole(p.getPlayerRole());
+            dto.setAi(p instanceof AIPlayer);
+            list.add(dto);
+        }
+        return list;
     }
 
     private void playOneHand() {
@@ -114,21 +233,21 @@ public class GameController {
 
 // ── PREFLOP ──────────────────────────────────────────────────────────
         runBettingPhase(BettingRound.Phase.PREFLOP);
-        if (allFolded()) return; // allFolded already awards pot - no showdown needed
+        if (allFolded()) { saveHandEnd(); return; }
 
 // ── FLOP ─────────────────────────────────────────────────────────────
         pokerGame.dealFlop();
         newGame.showCommunityCards(pokerGame.getCommunityCards(), manoJugador, 3);
         newGame.awaitLastAnimation(newGame.getUiSyncTimeoutMs());
         runBettingPhase(BettingRound.Phase.FLOP);
-        if (allFolded()) return; // allFolded already awards pot - no showdown needed
+        if (allFolded()) { saveHandEnd(); return; }
 
 // ── TURN ─────────────────────────────────────────────────────────────
         pokerGame.dealTurnOrRiver();
         newGame.showCommunityCards(pokerGame.getCommunityCards(), manoJugador, 1);
         newGame.awaitLastAnimation(newGame.getUiSyncTimeoutMs());
         runBettingPhase(BettingRound.Phase.TURN);
-        if (allFolded()) return; // allFolded already awards pot - no showdown needed
+        if (allFolded()) { saveHandEnd(); return; }
 
 // ── RIVER ────────────────────────────────────────────────────────────
         pokerGame.dealTurnOrRiver();
@@ -138,6 +257,12 @@ public class GameController {
 
         // ── SHOWDOWN ─────────────────────────────────────────────────────────
         endRound();
+        saveHandEnd();
+    }
+
+    private void saveHandEnd() {
+        saveGameState(BettingRound.Phase.RIVER);
+        savePlayerProfile();
     }
 
     // =========================================================================

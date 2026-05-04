@@ -58,4 +58,12 @@ public class Deck {
     public int getRemainingCards() {
         return cards.size();
     }
+
+    /**
+     * Devuelve una copia de las cartas restantes en el mazo.
+     * Útil para serializar el estado del juego.
+     */
+    public ArrayList<Card> getRemainingCardsList() {
+        return new ArrayList<>(cards);
+    }
 }

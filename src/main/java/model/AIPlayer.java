@@ -229,6 +229,11 @@ private double evaluateHandStrength(ArrayList<Card> community) {
     }
 
     @Override
+    public void setCurrentBet(int bet) {
+        this.currentBet = bet;
+    }
+
+    @Override
     public boolean isFolded() {
         return folded;
     }

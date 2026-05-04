@@ -13,6 +13,8 @@ public interface Player {
 
     int getCurrentBet();
 
+    void setCurrentBet(int bet);
+
     boolean isFolded();
 
     boolean isAllIn();
