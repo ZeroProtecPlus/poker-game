@@ -593,8 +593,8 @@ El fondo de la mesa de poker y los iconos/sprites actuales son de baja calidad o
 
 | # | Tarea | Prioridad |
 |---|---|---|
-| 1 | Sincronización Lógica ↔ UI | 🔴 Crítico |
-| 4 | Testing funcional y no funcional | 🟠 Alto |
+| 1 | ✅ Sincronización Lógica ↔ UI (solucionado) | ✅ Completado |
+| 4 | ✅ Testing funcional (solucionado) | ✅ Completado |
 | 2 | Distribución paso a paso (Flop/Turn/River) | 🟠 Alto |
 | 3 | Base de datos / Persistencia | 🟠 Alto |
 | 7 | ✅ Refactor — Extraer HandEvaluator (solucionado) | ✅ Completado |
