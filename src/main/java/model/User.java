@@ -33,6 +33,11 @@ public class User implements Player {
     }
 
     @Override
+    public void setChips(int chips) {
+        this.numbChips = chips;
+    }
+
+    @Override
     public String getName() {
         return userName;
     }

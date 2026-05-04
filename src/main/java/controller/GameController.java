@@ -87,6 +87,7 @@ public class GameController {
     // =========================================================================
 
     public void createNewGame() {
+        newGame.setGameActive(true);
         while (newPlayer.getNumbChips() > 0) {
             playOneHand();
 

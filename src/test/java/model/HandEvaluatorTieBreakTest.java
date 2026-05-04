@@ -6,6 +6,9 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Assertions;
 
+import model.HandEvaluator.HandRank;
+import model.HandEvaluator.HandStrength;
+
 /**
  * JUnit 5 style tests for HandEvaluator tie-break logic.
  */
@@ -57,7 +60,7 @@ class HandEvaluatorTieBreakTest {
             card("A", "H"), card("K", "D"), card("Q", "C"), card("J", "S"), card("10", "H"), card("2", "D"), card("3", "C")
         ));
 
-        TestUtils.assertRank(HandRank.STRAIGHT, rank);
+        Assertions.assertEquals(HandRank.STRAIGHT, rank, "rank should be straight");
         TestUtils.assertRank(HandRank.STRAIGHT, strength);
         Assertions.assertEquals(rank, strength.getRank(), "rank wrapper should match strength rank");
     }
@@ -66,5 +69,9 @@ class HandEvaluatorTieBreakTest {
 
     private static ArrayList<Card> cards(Card... values) {
         return new ArrayList<>(List.of(values));
+    }
+
+    private static Card card(String rank, String suit) {
+        return new Card(rank, suit);
     }
 }

@@ -4,6 +4,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import model.HandEvaluator.HandRank;
+import model.HandEvaluator.HandStrength;
+
 /**
  * Test utilities for poker game tests.
  * Provides helpers for card creation and assertions.

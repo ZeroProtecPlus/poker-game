@@ -219,6 +219,11 @@ private double evaluateHandStrength(ArrayList<Card> community) {
     }
 
     @Override
+    public void setChips(int chips) {
+        this.chips = chips;
+    }
+
+    @Override
     public int getCurrentBet() {
         return currentBet;
     }

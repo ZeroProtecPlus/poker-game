@@ -9,6 +9,8 @@ public interface Player {
 
     int getChips();
 
+    void setChips(int chips);
+
     int getCurrentBet();
 
     boolean isFolded();

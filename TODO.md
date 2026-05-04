@@ -139,6 +139,30 @@ Los clientes no almacenan estado persistente; únicamente envían acciones y rec
 
 ---
 
+### 3.2 Empaquetado de Base de Datos SQLite para Distribución (.exe)
+**Prioridad:** 🟠 Alto  
+**Origen:** Decisión de empaquetado
+
+Al compilar el proyecto a un `.exe` (mediante `jpackage`, Launch4j o similar), la base de datos SQLite debe inicializarse correctamente en el entorno del usuario final.
+
+**Decisión arquitectónica:**
+- Incluir una base de datos SQLite **vacía o con datos iniciales** como recurso empaquetado dentro del ejecutable.
+- Al iniciar la aplicación, verificar si existe una base de datos en el directorio de datos del usuario (ej. `%APPDATA%/PokerGame/` en Windows, `~/.pokergame/` en Linux/Mac).
+- Si **no existe**, copiar la base de datos empaquetada al directorio de datos del usuario y luego inicializar/actualizar el esquema si es necesario.
+- Si **existe**, conectar directamente a esa base de datos (persistencia entre sesiones).
+
+**Ventajas:**
+- No requiere instalador separado ni permisos de administrador.
+- La base de datos del usuario persiste entre actualizaciones del ejecutable.
+- Permite migraciones de esquema futuras (versionado de DB).
+
+**Implementación técnica:**
+- Clase `DatabaseBootstrapper` que maneje la copia inicial y migraciones.
+- Ruta configurable: `System.getProperty("user.home") + "/.pokergame/poker.db"`.
+- Uso de `getClass().getResourceAsStream()` para leer la DB empaquetada.
+
+---
+
 ### Futuro (no implementar aún)
 
 - Sincronización por sockets (LAN)
@@ -627,3 +651,69 @@ El fondo de la mesa de poker y los iconos/sprites actuales son de baja calidad o
 | 20 | Indicadores de turno (BB, SB, Dealer) no visibles | 🟡 Medio |
 | 21 | ✅ Modal "Continuar?" no cierra el juego al responder "No" (solucionado) | ✅ Completado |
 | 22 | Mejora de gráficos y sprites de la mesa | 🟡 Medio |
+
+---
+
+## Futuras Features (Backlog)
+
+Funcionalidades identificadas como fuera de alcance para el ciclo actual, pero planificadas para futuras iteraciones.
+
+### F-1. ORM / Mapeo Objeto-Relacional
+**Prioridad:** 🔵 Bajo  
+**Origen:** Propuesta de arquitectura #3
+
+Evaluar migración de DAOs plain-JDBC a un ORM (Hibernate/JPA) si la complejidad de las entidades crece significativamente.
+
+**Criterio de activación:**
+- Más de 10 tablas con relaciones complejas
+- Necesidad de queries dinámicas o criteria API
+- Equipo con experiencia en JPA
+
+---
+
+### F-2. Cambios de Reglas del Juego
+**Prioridad:** 🔵 Bajo  
+**Origen:** Propuesta de arquitectura #3
+
+Soporte para variantes de poker (Omaha, Texas Hold'em con diferentes estructuras de apuestas, torneos con ciegas crecientes, etc.). Requiere abstraer las reglas actuales en un motor configurable.
+
+**Dependencias:**
+- Motor de reglas desacoplado del controlador
+- Configuración de variantes en base de datos
+
+---
+
+### F-3. Sincronización LAN en Tiempo Real
+**Prioridad:** 🟡 Medio  
+**Origen:** TODO #3.1 / Arquitectura
+
+Implementar comunicación por sockets para partidas multijugador en red local (LAN). El host centraliza estado y los clientes reciben actualizaciones en tiempo real.
+
+**Dependencias:**
+- Issue #3 (persistencia) completada
+- Protocolo de mensajes definido
+- Manejo de reconexiones y desconexiones
+
+---
+
+### F-4. Broadcasting de Estado a Clientes
+**Prioridad:** 🟡 Medio  
+**Origen:** TODO #3.1 / Arquitectura
+
+Mecanismo de pub/sub para sincronizar estado del juego entre host y clientes LAN. Optimizar para latencia baja y consistencia eventual.
+
+**Dependencias:**
+- F-3 (sincronización LAN)
+
+---
+
+### F-5. Persistencia Remota (Backend Cloud)
+**Prioridad:** 🔵 Bajo  
+**Origen:** TODO #3.1 / Arquitectura
+
+Migrar la base de datos SQLite local a un backend remoto (PostgreSQL, Supabase, Firebase) para soporte de multijugador online y rankings globales.
+
+**Criterio de activación:**
+- MVP de juego local validado
+- Infraestructura de backend definida
+- Modelo de negocio claro (free-to-play, premium, etc.)

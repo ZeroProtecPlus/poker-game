@@ -4,12 +4,15 @@ import java.awt.*;
 import java.awt.event.*;
 import java.awt.geom.*;
 import java.awt.image.BufferedImage;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import javax.imageio.ImageIO;
 import javax.sound.sampled.*;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -265,6 +268,11 @@ public class GameView {
     /** Indica que el jugador se retiró */
     public void showPlayerFolded() {
         SwingUtilities.invokeLater(() -> tablePanel.setPlayerFolded());
+    }
+
+    /** Sets whether a game is currently active (affects background and deck visibility) */
+    public void setGameActive(boolean active) {
+        SwingUtilities.invokeLater(() -> tablePanel.setGameActive(active));
     }
 
     /**
@@ -623,6 +631,11 @@ public class GameView {
         private static final int DECK_X = 820;
         private static final int DECK_Y = 80;
 
+        // Background images
+        private BufferedImage bgImageMenu = null;
+        private BufferedImage bgImageGame = null;
+        private boolean isGameActive = false;
+
         // Chip animation
         private long chipAnimStart = -1;
         private int chipAnimFrom = 0;
@@ -640,6 +653,26 @@ public class GameView {
         TablePanel() {
             setBackground(DARK_BG);
             setLayout(null);
+
+            // Load optional background images from classpath (works in JAR and IDE)
+            try (
+                InputStream is = getClass().getResourceAsStream("/menu-bg.png")
+            ) {
+                if (is != null) {
+                    bgImageMenu = ImageIO.read(is);
+                }
+            } catch (IOException e) {
+                // fallback silently to gradient
+            }
+            try (
+                InputStream is = getClass().getResourceAsStream("/game-bg.png")
+            ) {
+                if (is != null) {
+                    bgImageGame = ImageIO.read(is);
+                }
+            } catch (IOException e) {
+                // fallback silently to gradient
+            }
         }
 
         // ── Setters ──────────────────────────────────────────────────────────
@@ -663,6 +696,11 @@ public class GameView {
 
         void setPlayerFolded() {
             this.playerFolded = true;
+        }
+
+        void setGameActive(boolean active) {
+            this.isGameActive = active;
+            repaint();
         }
 
         void setActionLog(List<String> log) {
@@ -984,16 +1022,34 @@ public class GameView {
             int W = getWidth(),
                 H = getHeight();
 
-            drawBackground(g2, W, H);
-            drawFeltTable(g2, W, H);
-            drawDeckPile(g2);
-            drawLabels(g2, W, H);
-            drawChipCounter(g2, W, H);
-            drawPot(g2, W, H);
-            drawRoleBadges(g2, W, H);
-            drawActionLog(g2, W, H);
-            drawCards(g2);
-            drawResult(g2, W, H);
+            BufferedImage bg = !isGameActive ? bgImageMenu : bgImageGame;
+            if (bg != null) {
+                // scale-to-fill
+                float sx = (float) W / bg.getWidth();
+                float sy = (float) H / bg.getHeight();
+                float scale = Math.max(sx, sy);
+                int iw = (int) (bg.getWidth() * scale);
+                int ih = (int) (bg.getHeight() * scale);
+                int ix = (W - iw) / 2;
+                int iy = (H - ih) / 2;
+                g2.drawImage(bg, ix, iy, iw, ih, null);
+            } else {
+                // Sin imagen: dibujar fondo y felt normalmente
+                drawBackground(g2, W, H);
+                if (!isGameActive) drawFeltTable(g2, W, H);
+            }
+            // Mazo solo en menú Y sin imagen
+            if (!isGameActive && bg == null) drawDeckPile(g2); // solo mazo si NO hay imagen
+            if (isGameActive) {
+                // Solo dibujar elementos de juego cuando está activo
+                drawLabels(g2, W, H);
+                drawChipCounter(g2, W, H);
+                drawPot(g2, W, H);
+                drawRoleBadges(g2, W, H);
+                drawActionLog(g2, W, H);
+                drawCards(g2);
+                drawResult(g2, W, H);
+            }
             animateChips();
         }
 

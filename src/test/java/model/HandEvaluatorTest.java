@@ -6,6 +6,9 @@ import java.util.Arrays;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Assertions;
 
+import model.HandEvaluator.HandRank;
+import model.HandEvaluator.HandStrength;
+
 /**
  * JUnit 5 tests for HandEvaluator - 16 test cases covering all HandRanks.
  */
