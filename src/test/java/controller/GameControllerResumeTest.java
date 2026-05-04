@@ -18,6 +18,9 @@ import network.session.SessionNameRegistry;
 import network.validation.NameValidator;
 import view.GameView;
 
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Assertions;
+
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -29,20 +32,12 @@ import java.util.Optional;
  * Verifies: T-15 (checkForSavedGame), T-16 (offerResume with machine_id),
  * T-18 (loadGameByMachineId), T-19 (deleteSavedGame).
  */
-public class GameControllerResumeTest {
-
-    public static void main(String[] args) {
-        shouldRestoreChipsWhenResumingSavedGame();
-        shouldDeleteSavedGameWhenDecliningResume();
-        shouldSkipResumeDialogWhenNoSavedGame();
-        shouldBuildDtoWithMachineIdAndHumanChips();
-        shouldFullFlowNewGameSaveResumeNewGameDeletesOld();
-        System.out.println("GameControllerResumeTest: all tests passed");
-    }
+class GameControllerResumeTest {
 
     // ── Test: Resume restores saved chips ──────────────────────────────────
 
-    private static void shouldRestoreChipsWhenResumingSavedGame() {
+    @Test
+    void shouldRestoreChipsWhenResumingSavedGame() {
         String machineId = "test-machine-001";
         int savedChips = 5000;
 
@@ -56,21 +51,22 @@ public class GameControllerResumeTest {
         // Resume flow is inside createNewGame(), not createNewPlayer()
         invokeCreateNewGame(controller);
 
-        require(view.askResumeGameCalled, "askResumeGame should be called when saved game exists");
-        require(view.resumeChipsArg == savedChips,
-            "askResumeGame should receive saved chips: expected=" + savedChips + " actual=" + view.resumeChipsArg);
-        require(!repo.deleteByMachineIdCalled,
+        Assertions.assertTrue(view.askResumeGameCalled, "askResumeGame should be called when saved game exists");
+        Assertions.assertEquals(savedChips, view.resumeChipsArg,
+            "askResumeGame should receive saved chips");
+        Assertions.assertFalse(repo.deleteByMachineIdCalled,
             "deleteByMachineId should NOT be called when user accepts resume");
 
         model.User user = readUser(controller);
-        require(user != null, "user should be created");
-        require(user.getNumbChips() == savedChips,
-            "user chips should be restored from saved game: expected=" + savedChips + " actual=" + user.getNumbChips());
+        Assertions.assertNotNull(user, "user should be created");
+        Assertions.assertEquals(savedChips, user.getNumbChips(),
+            "user chips should be restored from saved game");
     }
 
     // ── Test: Decline resume deletes save ──────────────────────────────────
 
-    private static void shouldDeleteSavedGameWhenDecliningResume() {
+    @Test
+    void shouldDeleteSavedGameWhenDecliningResume() {
         String machineId = "test-machine-002";
         int savedChips = 3000;
 
@@ -83,16 +79,17 @@ public class GameControllerResumeTest {
         controller.createNewPlayer();
         invokeCreateNewGame(controller);
 
-        require(view.askResumeGameCalled, "askResumeGame should be called when saved game exists");
-        require(repo.deleteByMachineIdCalled,
+        Assertions.assertTrue(view.askResumeGameCalled, "askResumeGame should be called when saved game exists");
+        Assertions.assertTrue(repo.deleteByMachineIdCalled,
             "deleteByMachineId should be called when user declines resume");
-        require(repo.deletedMachineId.equals(machineId),
+        Assertions.assertEquals(machineId, repo.deletedMachineId,
             "deleteByMachineId should be called with correct machine ID");
     }
 
     // ── Test: No saved game skips dialog ───────────────────────────────────
 
-    private static void shouldSkipResumeDialogWhenNoSavedGame() {
+    @Test
+    void shouldSkipResumeDialogWhenNoSavedGame() {
         String machineId = "test-machine-003";
 
         MockGameRepository repo = new MockGameRepository();
@@ -103,15 +100,16 @@ public class GameControllerResumeTest {
         controller.createNewPlayer();
         invokeCreateNewGame(controller);
 
-        require(!view.askResumeGameCalled,
+        Assertions.assertFalse(view.askResumeGameCalled,
             "askResumeGame should NOT be called when no saved game exists");
-        require(!repo.deleteByMachineIdCalled,
+        Assertions.assertFalse(repo.deleteByMachineIdCalled,
             "deleteByMachineId should NOT be called when no saved game");
     }
 
     // ── Test: buildGameStateDto includes machineId + humanChips ────────────
 
-    private static void shouldBuildDtoWithMachineIdAndHumanChips() {
+    @Test
+    void shouldBuildDtoWithMachineIdAndHumanChips() {
         String machineId = "test-machine-004";
 
         MockGameRepository repo = new MockGameRepository();
@@ -123,21 +121,22 @@ public class GameControllerResumeTest {
         invokeCreateNewGame(controller);
 
         // playOneHand is called by createNewGame loop; inspect saved state
-        require(repo.lastSavedMachineId != null,
+        Assertions.assertNotNull(repo.lastSavedMachineId,
             "saveByMachineId should have been called");
-        require(repo.lastSavedMachineId.equals(machineId),
-            "saveByMachineId should use machine ID: expected=" + machineId + " actual=" + repo.lastSavedMachineId);
-        require(repo.lastSavedState != null,
-            " GameStateDto should have been saved");
-        require(repo.lastSavedState.getHumanChips() > 0,
-            "humanChips should be set in saved DTO: actual=" + repo.lastSavedState.getHumanChips());
-        require(repo.lastSavedState.getMachineId().equals(machineId),
+        Assertions.assertEquals(machineId, repo.lastSavedMachineId,
+            "saveByMachineId should use machine ID");
+        Assertions.assertNotNull(repo.lastSavedState,
+            "GameStateDto should have been saved");
+        Assertions.assertTrue(repo.lastSavedState.getHumanChips() > 0,
+            "humanChips should be set in saved DTO");
+        Assertions.assertEquals(machineId, repo.lastSavedState.getMachineId(),
             "machineId should be set in saved DTO");
     }
 
     // ── Test: Full flow — new game → save → resume → new game deletes old ──
 
-    private static void shouldFullFlowNewGameSaveResumeNewGameDeletesOld() {
+    @Test
+    void shouldFullFlowNewGameSaveResumeNewGameDeletesOld() {
         String machineId = "test-machine-full";
 
         // Phase 1: New game, no saved state → starts fresh
@@ -148,9 +147,9 @@ public class GameControllerResumeTest {
         controller1.createNewPlayer();
         invokeCreateNewGame(controller1);
 
-        require(!view1.askResumeGameCalled, "first run should not show resume dialog");
-        require(repo.lastSavedMachineId != null, "first game should save state");
-        require(repo.lastSavedMachineId.equals(machineId), "save should use machine ID");
+        Assertions.assertFalse(view1.askResumeGameCalled, "first run should not show resume dialog");
+        Assertions.assertNotNull(repo.lastSavedMachineId, "first game should save state");
+        Assertions.assertEquals(machineId, repo.lastSavedMachineId, "save should use machine ID");
 
         // Phase 2: New game, saved state exists → accept resume
         repo.loadByMachineIdResult = Optional.of(repo.lastSavedState);
@@ -160,14 +159,14 @@ public class GameControllerResumeTest {
         controller2.createNewPlayer();
         invokeCreateNewGame(controller2);
 
-        require(view2.askResumeGameCalled, "second run should show resume dialog");
-        require(view2.resumeChipsArg == savedChips,
-            "resume dialog should show saved chips: expected=" + savedChips + " actual=" + view2.resumeChipsArg);
-        require(!repo.deleteByMachineIdCalled, "accepting resume should NOT delete save");
+        Assertions.assertTrue(view2.askResumeGameCalled, "second run should show resume dialog");
+        Assertions.assertEquals(savedChips, view2.resumeChipsArg,
+            "resume dialog should show saved chips");
+        Assertions.assertFalse(repo.deleteByMachineIdCalled, "accepting resume should NOT delete save");
 
         model.User user2 = readUser(controller2);
-        require(user2.getNumbChips() == savedChips,
-            "user chips should be restored: expected=" + savedChips + " actual=" + user2.getNumbChips());
+        Assertions.assertEquals(savedChips, user2.getNumbChips(),
+            "user chips should be restored");
 
         // Phase 3: New game, saved state exists → decline resume → deletes old save
         repo.deleteByMachineIdCalled = false;
@@ -177,9 +176,9 @@ public class GameControllerResumeTest {
         controller3.createNewPlayer();
         invokeCreateNewGame(controller3);
 
-        require(view3.askResumeGameCalled, "third run should show resume dialog");
-        require(repo.deleteByMachineIdCalled, "declining resume should delete old save");
-        require(repo.deletedMachineId.equals(machineId), "delete should use correct machine ID");
+        Assertions.assertTrue(view3.askResumeGameCalled, "third run should show resume dialog");
+        Assertions.assertTrue(repo.deleteByMachineIdCalled, "declining resume should delete old save");
+        Assertions.assertEquals(machineId, repo.deletedMachineId, "delete should use correct machine ID");
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────
