@@ -583,11 +583,15 @@ public class GameView {
         }
 
         void dealCommunity(List<Card> comm) {
-            communitySprites.clear();
+            if (comm.size() <= 3) {
+                communitySprites.clear();  // Flop: reiniciar desde cero
+            }
+            // Turn/River: agregar incrementally
             int total  = comm.size();
             int startX = getWidth() / 2 - (total * 90) / 2;
             int y = 220;
             for (int i = 0; i < total; i++) {
+                if (i < communitySprites.size()) continue;  // skip existentes
                 communitySprites.add(new CardSprite(comm.get(i), startX + i * 90, y, DECK_X, DECK_Y, i * 150L));
             }
         }
