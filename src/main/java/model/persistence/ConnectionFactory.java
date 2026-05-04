@@ -23,9 +23,10 @@ public class ConnectionFactory {
 
     /**
      * Creates a factory for an in-memory database (useful for testing).
+     * Uses a shared cache so multiple connections see the same data.
      */
     public static ConnectionFactory forMemory() {
-        return new ConnectionFactory(":memory:");
+        return new ConnectionFactory("file::memory:?cache=shared");
     }
 
     /**
