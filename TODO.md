@@ -632,7 +632,7 @@ El fondo de la mesa de poker y los iconos/sprites actuales son de baja calidad o
 | 1 | ✅ Sincronización Lógica ↔ UI (solucionado) | ✅ Completado |
 | 4 | ✅ Testing funcional (solucionado) | ✅ Completado |
 | 2 | ✅ Distribución incremental de cartas comunitarias (solucionado) | ✅ Completado |
-| 3 | Base de datos / Persistencia | 🟠 Alto |
+| 3 | ✅ Base de datos / Persistencia (solucionado) | ✅ Completado |
 | 7 | ✅ Refactor — Extraer HandEvaluator (solucionado) | ✅ Completado |
 | 9 | ✅ Split Pot en empates | ✅ Completado |
 | 5 | Modal "¿Continuar?" custom | 🟡 Medio |
@@ -651,6 +651,47 @@ El fondo de la mesa de poker y los iconos/sprites actuales son de baja calidad o
 | 20 | Indicadores de turno (BB, SB, Dealer) no visibles | 🟡 Medio |
 | 21 | ✅ Modal "Continuar?" no cierra el juego al responder "No" (solucionado) | ✅ Completado |
 | 22 | Mejora de gráficos y sprites de la mesa | 🟡 Medio |
+| 23 | Deuda técnica — Persistencia (warnings) | 🔵 Bajo |
+
+---
+
+## 23. Deuda Técnica — Persistencia (Warnings Post-Verificación)
+**Prioridad:** 🔵 Bajo  
+**Origen:** Verificación SDD `db-persistence` (Issue #3)
+
+Items identificados durante la verificación del cambio #3 que no bloquean funcionalidad pero deben corregirse en iteraciones futuras.
+
+### Warnings encontrados
+
+#### 23.1 Bootstrap mechanism deviation
+**Descripción:** El spec decía "copiar db/schema.sql desde classpath a user.home", pero la implementación crea el archivo SQLite vía JDBC y ejecuta migraciones.  
+**Impacto:** Funcionalmente idéntico, pero diferente al diseño especificado.  
+**Acción:** Unificar con el approach de copia desde recurso empaquetado para compatibilidad con distribución .exe.
+
+#### 23.2 Falta métodos de serialización de Deck
+**Descripción:** El spec C3 requiere `CardSerializer.deckToJson(Deck)` y `deckFromJson(String)`, no implementados.  
+**Impacto:** No se usa actualmente (el mazo se persiste como lista de cartas).  
+**Acción:** Agregar métodos cuando se necesite serializar el estado completo del mazo.
+
+#### 23.3 UUID generation en PlayerRepository.create()
+**Descripción:** El spec C4 dice que `create()` DEBE generar UUID si `playerId` es null. Actualmente se genera en `User`/`AIPlayer`.  
+**Impacto:** Bajo — los constructores de entidades ya generan UUID.  
+**Acción:** Mover la lógica de generación al repositorio para cumplir con el contrato.
+
+#### 23.4 Tabla actions_log sin uso
+**Descripción:** El spec C5 dice que `save()` DEBE escribir en `actions_log` atómicamente. La tabla existe pero nunca se escribe.  
+**Impacto:** Funcionalidad de log de acciones no disponible.  
+**Acción:** Implementar escritura de acciones o eliminar la tabla si no se va a usar.
+
+#### 23.5 Jerarquía de excepciones simplificada
+**Descripción:** El diseño especifica `EntityNotFoundException extends RepositoryException`, pero la implementación extiende `PersistenceException` directamente.  
+**Impacto:** Bajo — no afecta el manejo de errores actual.  
+**Acción:** Completar la jerarquía: `PersistenceException → RepositoryException → EntityNotFoundException`.
+
+### Criterios de cierre
+- [ ] Todos los warnings resueltos o convertidos en issues individuales
+- [ ] Tests actualizados para reflejar comportamiento corregido
+- [ ] Documentación actualizada
 
 ---
 
