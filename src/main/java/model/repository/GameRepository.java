@@ -15,7 +15,9 @@ public interface GameRepository {
      *
      * @param state the game state to save
      * @throws RepositoryException if the operation fails
+     * @deprecated use saveByMachineId instead
      */
+    @Deprecated
     void save(GameStateDto state) throws RepositoryException;
 
     /**
@@ -70,6 +72,8 @@ public interface GameRepository {
      * @param gameId the game's identifier
      * @return true if a game state was deleted
      * @throws RepositoryException if the operation fails
+     * @deprecated use deleteByMachineId instead
      */
+    @Deprecated
     boolean delete(String gameId) throws RepositoryException;
 }

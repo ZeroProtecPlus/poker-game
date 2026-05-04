@@ -170,17 +170,15 @@ public class GameController {
 
     private void offerResume() {
         try {
-            Optional<GameStateDto> latest = gameRepository.findLatest();
-            if (latest.isPresent()) {
-                GameStateDto state = latest.get();
-                PlayerStateDto human = state.findHumanPlayer();
-                if (human != null && human.getName().equals(userNamePlayer)) {
-                    boolean resume = newGame.askResumeGame(human.getChips());
-                    if (resume) {
-                        newPlayer.setChips(human.getChips());
-                    } else {
-                        gameRepository.delete(state.getGameId());
-                    }
+            String machineId = machineIdProvider.getMachineId();
+            Optional<GameStateDto> savedGame = gameRepository.loadByMachineId(machineId);
+            if (savedGame.isPresent()) {
+                GameStateDto state = savedGame.get();
+                boolean resume = newGame.askResumeGame(state.getHumanChips());
+                if (resume) {
+                    newPlayer.setChips(state.getHumanChips());
+                } else {
+                    gameRepository.deleteByMachineId(machineId);
                 }
             }
         } catch (RepositoryException e) {
@@ -192,7 +190,8 @@ public class GameController {
         if (pokerGame == null) return;
         try {
             GameStateDto state = buildGameStateDto(phase);
-            gameRepository.save(state);
+            String machineId = machineIdProvider.getMachineId();
+            gameRepository.saveByMachineId(machineId, state);
         } catch (RepositoryException e) {
             System.err.println("Warning: failed to save game state: " + e.getMessage());
         }
@@ -200,6 +199,8 @@ public class GameController {
 
     private GameStateDto buildGameStateDto(BettingRound.Phase phase) {
         GameStateDto state = new GameStateDto();
+        String machineId = machineIdProvider.getMachineId();
+        state.setMachineId(machineId);
         state.setGameId(userNamePlayer + "_latest");
         state.setPot(pokerGame.getPot());
         state.setCommunityCards(pokerGame.getCommunityCards());
@@ -207,7 +208,20 @@ public class GameController {
         state.setDealerIndex(pokerGame.getDealerIndex());
         state.setCurrentPhase(phase);
         state.setPlayers(mapPlayers(pokerGame.getPlayers()));
+        Player human = findHumanPlayer();
+        if (human != null) {
+            state.setHumanChips(human.getChips());
+        }
         return state;
+    }
+
+    private Player findHumanPlayer() {
+        for (Player p : pokerGame.getPlayers()) {
+            if (!(p instanceof AIPlayer)) {
+                return p;
+            }
+        }
+        return null;
     }
 
     private List<PlayerStateDto> mapPlayers(List<Player> players) {
