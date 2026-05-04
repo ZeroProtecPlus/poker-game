@@ -3,73 +3,68 @@ package model;
 import java.util.ArrayList;
 import java.util.List;
 
-public class HandEvaluatorTieBreakTest {
-    public static void main(String[] args) {
-        shouldCompareHigherKickerWithinSameRankAsStronger();
-        shouldTreatEquivalentBestFiveAsExactTie();
-        shouldKeepEvaluateBestRankAsCompatibilityWrapper();
-        System.out.println("HandEvaluatorTieBreakTest: all tests passed");
-    }
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Assertions;
 
-    private static void shouldCompareHigherKickerWithinSameRankAsStronger() {
+/**
+ * JUnit 5 style tests for HandEvaluator tie-break logic.
+ */
+class HandEvaluatorTieBreakTest {
+
+    @Test
+    void shouldCompareHigherKickerWithinSameRankAsStronger() {
         HandEvaluator evaluator = new HandEvaluator();
 
-        HandEvaluator.HandStrength stronger = evaluator.evaluateBestHandStrength(cards(
-            c("A", "S"), c("A", "H"), c("K", "D"), c("9", "C"), c("7", "D"), c("4", "S"), c("2", "H")
+        HandStrength stronger = evaluator.evaluateBestHandStrength(cards(
+            card("A", "S"), card("A", "H"), card("K", "D"), card("9", "C"), card("7", "D"), card("4", "S"), card("2", "H")
         ));
 
-        HandEvaluator.HandStrength weaker = evaluator.evaluateBestHandStrength(cards(
-            c("A", "S"), c("A", "H"), c("Q", "D"), c("9", "C"), c("7", "D"), c("4", "S"), c("2", "H")
+        HandStrength weaker = evaluator.evaluateBestHandStrength(cards(
+            card("A", "S"), card("A", "H"), card("Q", "D"), card("9", "C"), card("7", "D"), card("4", "S"), card("2", "H")
         ));
 
-        require(stronger.getRank() == HandEvaluator.HandRank.ONE_PAIR, "expected one pair rank for stronger hand");
-        require(weaker.getRank() == HandEvaluator.HandRank.ONE_PAIR, "expected one pair rank for weaker hand");
-        require(stronger.compareTo(weaker) > 0, "higher kicker should compare as stronger within same rank");
+        TestUtils.assertRank(HandRank.ONE_PAIR, stronger);
+        TestUtils.assertRank(HandRank.ONE_PAIR, weaker);
+        Assertions.assertTrue(stronger.compareTo(weaker) > 0, "higher kicker should compare as stronger within same rank");
     }
 
-    private static void shouldTreatEquivalentBestFiveAsExactTie() {
+    @Test
+    void shouldTreatEquivalentBestFiveAsExactTie() {
         HandEvaluator evaluator = new HandEvaluator();
 
-        HandEvaluator.HandStrength first = evaluator.evaluateBestHandStrength(cards(
-            c("A", "H"), c("K", "D"), c("Q", "C"), c("J", "S"), c("10", "H"), c("3", "D"), c("2", "C")
+        HandStrength first = evaluator.evaluateBestHandStrength(cards(
+            card("A", "H"), card("K", "D"), card("Q", "C"), card("J", "S"), card("10", "H"), card("3", "D"), card("2", "C")
         ));
 
-        HandEvaluator.HandStrength second = evaluator.evaluateBestHandStrength(cards(
-            c("A", "S"), c("K", "H"), c("Q", "D"), c("J", "C"), c("10", "S"), c("4", "H"), c("2", "D")
+        HandStrength second = evaluator.evaluateBestHandStrength(cards(
+            card("A", "S"), card("K", "H"), card("Q", "D"), card("J", "C"), card("10", "S"), card("4", "H"), card("2", "D")
         ));
 
-        require(first.getRank() == HandEvaluator.HandRank.STRAIGHT, "expected straight rank for first hand");
-        require(second.getRank() == HandEvaluator.HandRank.STRAIGHT, "expected straight rank for second hand");
-        require(first.compareTo(second) == 0, "equivalent best five should compare equal");
-        require(first.equals(second), "equivalent rank and tie-break vector should be equal");
+        TestUtils.assertRank(HandRank.STRAIGHT, first);
+        TestUtils.assertRank(HandRank.STRAIGHT, second);
+        Assertions.assertEquals(0, first.compareTo(second), "equivalent best five should compare equal");
+        TestUtils.assertHandEquals(first, second);
     }
 
-    private static void shouldKeepEvaluateBestRankAsCompatibilityWrapper() {
+    @Test
+    void shouldKeepEvaluateBestRankAsCompatibilityWrapper() {
         HandEvaluator evaluator = new HandEvaluator();
-        ArrayList<Card> holeCards = cards(c("A", "H"), c("K", "D"));
-        ArrayList<Card> communityCards = cards(c("Q", "C"), c("J", "S"), c("10", "H"), c("2", "D"), c("3", "C"));
+        ArrayList<Card> holeCards = cards(card("A", "H"), card("K", "D"));
+        ArrayList<Card> communityCards = cards(card("Q", "C"), card("J", "S"), card("10", "H"), card("2", "D"), card("3", "C"));
 
-        HandEvaluator.HandRank rank = evaluator.evaluateBestRank(holeCards, communityCards);
-        HandEvaluator.HandStrength strength = evaluator.evaluateBestHandStrength(cards(
-            c("A", "H"), c("K", "D"), c("Q", "C"), c("J", "S"), c("10", "H"), c("2", "D"), c("3", "C")
+        HandRank rank = evaluator.evaluateBestRank(holeCards, communityCards);
+        HandStrength strength = evaluator.evaluateBestHandStrength(cards(
+            card("A", "H"), card("K", "D"), card("Q", "C"), card("J", "S"), card("10", "H"), card("2", "D"), card("3", "C")
         ));
 
-        require(rank == HandEvaluator.HandRank.STRAIGHT, "compatibility wrapper should return the same rank category");
-        require(rank == strength.getRank(), "rank wrapper should match strength rank");
+        TestUtils.assertRank(HandRank.STRAIGHT, rank);
+        TestUtils.assertRank(HandRank.STRAIGHT, strength);
+        Assertions.assertEquals(rank, strength.getRank(), "rank wrapper should match strength rank");
     }
 
-    @SafeVarargs
+    // ========== Test Utils ==========
+
     private static ArrayList<Card> cards(Card... values) {
         return new ArrayList<>(List.of(values));
-    }
-
-    private static Card c(String rank, String suit) {
-        return new Card(rank, suit);
-    }
-
-    private static void require(boolean condition, String message) {
-        if (!condition) {
-            throw new AssertionError(message);
-        }
     }
 }
