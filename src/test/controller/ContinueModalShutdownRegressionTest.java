@@ -101,7 +101,7 @@ public class ContinueModalShutdownRegressionTest {
         }
 
         @Override
-        public void showCommunityCards(ArrayList<Card> community, ArrayList<Card> playerHand) {
+        public void showCommunityCards(ArrayList<Card> community, ArrayList<Card> playerHand, int newCardsCount) {
         }
 
         @Override

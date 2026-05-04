@@ -1,15 +1,5 @@
 package view;
 
-import model.AIPlayer;
-import model.BettingRound;
-import model.Card;
-import model.PokerGame;
-import model.Player;
-import model.ShowdownResult;
-
-import javax.sound.sampled.*;
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.geom.*;
@@ -20,6 +10,15 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import javax.sound.sampled.*;
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import model.AIPlayer;
+import model.BettingRound;
+import model.Card;
+import model.Player;
+import model.PokerGame;
+import model.ShowdownResult;
 
 /**
  * GameView — Casino-style Swing UI
@@ -28,25 +27,29 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class GameView {
 
     // ── Palette ──────────────────────────────────────────────────────────────
-    private static final Color FELT_DARK   = new Color(0x0B3220);
-    private static final Color FELT_MID    = new Color(0x145233);
-    private static final Color FELT_LIGHT  = new Color(0x1A6B42);
-    private static final Color GOLD        = new Color(0xC9A84C);
-    private static final Color GOLD_LIGHT  = new Color(0xE8C96A);
-    private static final Color GOLD_DIM    = new Color(0x8B6914);
-    private static final Color CREAM       = new Color(0xF5EDD8);
-    private static final Color RED_SUIT    = new Color(0xC0392B);
-    private static final Color DARK_BG     = new Color(0x060E0A);
-    private static final Color PANEL_BG    = new Color(0x0D2B1A);
+    private static final Color FELT_DARK = new Color(0x0B3220);
+    private static final Color FELT_MID = new Color(0x145233);
+    private static final Color FELT_LIGHT = new Color(0x1A6B42);
+    private static final Color GOLD = new Color(0xC9A84C);
+    private static final Color GOLD_LIGHT = new Color(0xE8C96A);
+    private static final Color GOLD_DIM = new Color(0x8B6914);
+    private static final Color CREAM = new Color(0xF5EDD8);
+    private static final Color RED_SUIT = new Color(0xC0392B);
+    private static final Color DARK_BG = new Color(0x060E0A);
+    private static final Color PANEL_BG = new Color(0x0D2B1A);
 
     // ── Fonts ─────────────────────────────────────────────────────────────────
-    private static final Font FONT_TITLE  = new Font("Serif",  Font.BOLD,  28);
-    private static final Font FONT_LABEL  = new Font("Serif",  Font.BOLD,  15);
-    private static final Font FONT_MONO   = new Font("Monospaced", Font.PLAIN, 13);
-    private static final Font FONT_CARD_R = new Font("Serif",  Font.BOLD,  22);
-    private static final Font FONT_CARD_S = new Font("Serif",  Font.PLAIN, 18);
-    private static final Font FONT_BTN    = new Font("Serif",  Font.BOLD,  14);
-    private static final Font FONT_CHIP   = new Font("Monospaced", Font.BOLD, 20);
+    private static final Font FONT_TITLE = new Font("Serif", Font.BOLD, 28);
+    private static final Font FONT_LABEL = new Font("Serif", Font.BOLD, 15);
+    private static final Font FONT_MONO = new Font(
+        "Monospaced",
+        Font.PLAIN,
+        13
+    );
+    private static final Font FONT_CARD_R = new Font("Serif", Font.BOLD, 22);
+    private static final Font FONT_CARD_S = new Font("Serif", Font.PLAIN, 18);
+    private static final Font FONT_BTN = new Font("Serif", Font.BOLD, 14);
+    private static final Font FONT_CHIP = new Font("Monospaced", Font.BOLD, 20);
 
     // ── Main window ───────────────────────────────────────────────────────────
     private JFrame frame;
@@ -56,7 +59,7 @@ public class GameView {
     private javax.swing.Timer repaintTimer;
     private final AtomicBoolean shutdownRequested = new AtomicBoolean(false);
 
-// ═══════════════════════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════════════════════════════
     //  UI THREAD SYNCHRONIZATION CONTRACTS
     // ═══════════════════════════════════════════════════════════════════════
     // Pattern: Game thread waits on signals from EDT, never blocks EDT.
@@ -94,8 +97,11 @@ public class GameView {
 
     private void buildFrame() {
         // Force cross-platform L&F — looks identical everywhere
-        try { UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName()); }
-        catch (Exception ignored) {}
+        try {
+            UIManager.setLookAndFeel(
+                UIManager.getCrossPlatformLookAndFeelClassName()
+            );
+        } catch (Exception ignored) {}
 
         frame = new JFrame("♠  Royal Poker  ♠");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -170,12 +176,13 @@ public class GameView {
     }
 
     public void showJoinRejectionMessage(String message) {
-        Runnable showDialog = () -> JOptionPane.showMessageDialog(
-            frame,
-            message,
-            "No se pudo unir",
-            JOptionPane.WARNING_MESSAGE
-        );
+        Runnable showDialog = () ->
+            JOptionPane.showMessageDialog(
+                frame,
+                message,
+                "No se pudo unir",
+                JOptionPane.WARNING_MESSAGE
+            );
         if (SwingUtilities.isEventDispatchThread()) {
             showDialog.run();
             return;
@@ -183,8 +190,7 @@ public class GameView {
 
         try {
             SwingUtilities.invokeAndWait(showDialog);
-        } catch (Exception ignored) {
-        }
+        } catch (Exception ignored) {}
     }
 
     public boolean askRetryJoin() {
@@ -202,7 +208,9 @@ public class GameView {
 
     /** Replaces showUserChips */
     public void showUserChips(String userName, int chips) {
-        SwingUtilities.invokeLater(() -> tablePanel.setPlayerInfo(userName, chips));
+        SwingUtilities.invokeLater(() ->
+            tablePanel.setPlayerInfo(userName, chips)
+        );
     }
 
     /** Replaces showPlayerHand — animates cards from deck pile */
@@ -220,21 +228,27 @@ public class GameView {
     }
 
     /** Muestra cartas comunitarias sin resultado (para fases intermedias) */
-    public void showCommunityCards(ArrayList<Card> community, ArrayList<Card> playerHand) {
+    public void showCommunityCards(
+        ArrayList<Card> community,
+        ArrayList<Card> playerHand,
+        int newCardsCount
+    ) {
         CompletableFuture<Boolean> completion = new CompletableFuture<>();
         animationFuture = completion;
 
         SwingUtilities.invokeLater(() -> {
             tablePanel.dealCommunity(community);
-            SoundFX.playDeal();
         });
-        long wait = (community.size() - 1) * 150L + 600L;
+        SoundFX.playDeal();
+        long wait = (newCardsCount - 1) * 80L + 500L;
         scheduleAnimationCompletion(completion, wait);
     }
 
     /** Muestra roles de cada jugador en la mesa */
     public void showRoles(AIPlayer.Role humanRole, List<AIPlayer> aiPlayers) {
-        SwingUtilities.invokeLater(() -> tablePanel.setRoles(humanRole, aiPlayers));
+        SwingUtilities.invokeLater(() ->
+            tablePanel.setRoles(humanRole, aiPlayers)
+        );
     }
 
     /** Actualiza el bote visible */
@@ -257,23 +271,40 @@ public class GameView {
      * Bloquea el hilo del juego hasta que el jugador elige una acción.
      * Muestra los botones correspondientes según el estado de la ronda.
      */
-    public BettingRound.Action waitForPlayerAction(BettingRound round, int playerCurrentBet) {
+    public BettingRound.Action waitForPlayerAction(
+        BettingRound round,
+        int playerCurrentBet
+    ) {
         return waitForPlayerAction(round, playerCurrentBet, UI_SYNC_TIMEOUT_MS);
     }
 
-    public BettingRound.Action waitForPlayerAction(BettingRound round, int playerCurrentBet, long timeoutMs) {
-        CompletableFuture<BettingRound.Action> future = new CompletableFuture<>();
+    public BettingRound.Action waitForPlayerAction(
+        BettingRound round,
+        int playerCurrentBet,
+        long timeoutMs
+    ) {
+        CompletableFuture<BettingRound.Action> future =
+            new CompletableFuture<>();
         pendingActionFuture = future;
 
         SwingUtilities.invokeLater(() ->
-            tablePanel.showBettingButtons(round, playerCurrentBet, false, action -> {
-                if (future.complete(action)) {
-                    pendingActionFuture = null;
+            tablePanel.showBettingButtons(
+                round,
+                playerCurrentBet,
+                false,
+                action -> {
+                    if (future.complete(action)) {
+                        pendingActionFuture = null;
+                    }
                 }
-            })
+            )
         );
 
-        BettingRound.Action action = awaitFuture(future, timeoutMs, "player-action");
+        BettingRound.Action action = awaitFuture(
+            future,
+            timeoutMs,
+            "player-action"
+        );
         SwingUtilities.invokeLater(() -> tablePanel.hideBettingButtons());
         return action;
     }
@@ -302,7 +333,9 @@ public class GameView {
                 JPanel panel = new JPanel(new BorderLayout(8, 8));
                 panel.setBackground(new Color(0x0D2B1A));
 
-                JLabel lbl = new JLabel("Monto (" + minBet + " – " + maxBet + "):");
+                JLabel lbl = new JLabel(
+                    "Monto (" + minBet + " – " + maxBet + "):"
+                );
                 lbl.setForeground(CREAM);
                 lbl.setFont(FONT_LABEL);
 
@@ -316,16 +349,25 @@ public class GameView {
                 JLabel valLabel = new JLabel(String.valueOf(minBet));
                 valLabel.setForeground(GOLD_LIGHT);
                 valLabel.setFont(FONT_CHIP);
-                slider.addChangeListener(e -> valLabel.setText(String.valueOf(slider.getValue())));
+                slider.addChangeListener(e ->
+                    valLabel.setText(String.valueOf(slider.getValue()))
+                );
 
-                panel.add(lbl,      BorderLayout.NORTH);
-                panel.add(slider,   BorderLayout.CENTER);
+                panel.add(lbl, BorderLayout.NORTH);
+                panel.add(slider, BorderLayout.CENTER);
                 panel.add(valLabel, BorderLayout.SOUTH);
 
-                int opt = JOptionPane.showConfirmDialog(frame, panel, "¿Cuánto apostás?",
-                    JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+                int opt = JOptionPane.showConfirmDialog(
+                    frame,
+                    panel,
+                    "¿Cuánto apostás?",
+                    JOptionPane.OK_CANCEL_OPTION,
+                    JOptionPane.PLAIN_MESSAGE
+                );
 
-                return (opt == JOptionPane.OK_OPTION) ? slider.getValue() : minBet;
+                return (opt == JOptionPane.OK_OPTION)
+                    ? slider.getValue()
+                    : minBet;
             });
         } catch (RuntimeException ex) {
             return minBet;
@@ -333,11 +375,17 @@ public class GameView {
     }
 
     /** Muestra el resultado final con el bote y el ganador */
-    public void showResult(ArrayList<Card> community, ArrayList<Card> playerHand,
-                           ShowdownResult showdownResult, int pot) {
+    public void showResult(
+        ArrayList<Card> community,
+        ArrayList<Card> playerHand,
+        ShowdownResult showdownResult,
+        int pot
+    ) {
         if (showdownResult == null || showdownResult.getWinners().isEmpty()) {
             if (tablePanel != null) {
-                SwingUtilities.invokeLater(() -> tablePanel.showResult(showdownResult, pot));
+                SwingUtilities.invokeLater(() ->
+                    tablePanel.showResult(showdownResult, pot)
+                );
             }
             scheduleAnimationCompletion(new CompletableFuture<>(), 2500);
             return;
@@ -347,12 +395,21 @@ public class GameView {
             Player winner = showdownResult.getWinners().get(0);
             boolean humanWon = winner instanceof model.User;
             String aiWinnerName = humanWon ? null : winner.getName();
-            showResult(community, playerHand, showdownResult.getBestRank(), pot, humanWon, aiWinnerName);
+            showResult(
+                community,
+                playerHand,
+                showdownResult.getBestRank(),
+                pot,
+                humanWon,
+                aiWinnerName
+            );
             return;
         }
 
         if (tablePanel != null) {
-            SwingUtilities.invokeLater(() -> tablePanel.showResult(showdownResult, pot));
+            SwingUtilities.invokeLater(() ->
+                tablePanel.showResult(showdownResult, pot)
+            );
         }
         scheduleAnimationCompletion(new CompletableFuture<>(), 2500);
     }
@@ -360,21 +417,32 @@ public class GameView {
     /**
      * Compatibilidad con firmas previas.
      */
-    public void showResult(ArrayList<Card> community, ArrayList<Card> playerHand,
-                           PokerGame.HandRank bestHand, int pot,
-                           boolean humanWon, String aiWinnerName) {
-        SwingUtilities.invokeLater(() -> tablePanel.showResult(bestHand, pot, humanWon, aiWinnerName));
+    public void showResult(
+        ArrayList<Card> community,
+        ArrayList<Card> playerHand,
+        PokerGame.HandRank bestHand,
+        int pot,
+        boolean humanWon,
+        String aiWinnerName
+    ) {
+        SwingUtilities.invokeLater(() ->
+            tablePanel.showResult(bestHand, pot, humanWon, aiWinnerName)
+        );
         scheduleAnimationCompletion(new CompletableFuture<>(), 2500);
     }
 
     /** Pregunta si el jugador quiere jugar otra mano. Bloquea hasta respuesta. */
     public boolean askPlayAgain(int chips) {
         return callOnEdtAndWait(() -> {
-            int opt = JOptionPane.showConfirmDialog(frame,
-                "Fichas: " + String.format("%,d", chips) + "\n¿Jugar otra mano?",
+            int opt = JOptionPane.showConfirmDialog(
+                frame,
+                "Fichas: " +
+                    String.format("%,d", chips) +
+                    "\n¿Jugar otra mano?",
                 "¿Seguir jugando?",
                 JOptionPane.YES_NO_OPTION,
-                JOptionPane.QUESTION_MESSAGE);
+                JOptionPane.QUESTION_MESSAGE
+            );
             return opt == JOptionPane.YES_OPTION;
         });
     }
@@ -428,9 +496,13 @@ public class GameView {
             return;
         }
         try {
-            SwingUtilities.invokeAndWait(() -> tablePanel.clearRoundVisualState());
+            SwingUtilities.invokeAndWait(() ->
+                tablePanel.clearRoundVisualState()
+            );
         } catch (Exception ignored) {
-            SwingUtilities.invokeLater(() -> tablePanel.clearRoundVisualState());
+            SwingUtilities.invokeLater(() ->
+                tablePanel.clearRoundVisualState()
+            );
         }
     }
 
@@ -438,7 +510,11 @@ public class GameView {
     //  NAME DIALOG
     // =========================================================================
     private String showNameDialog() {
-        CasinoDialog dialog = new CasinoDialog(frame, "Bienvenido al Royal Poker", "Ingresa tu nombre:");
+        CasinoDialog dialog = new CasinoDialog(
+            frame,
+            "Bienvenido al Royal Poker",
+            "Ingresa tu nombre:"
+        );
         dialog.setVisible(true);
         return dialog.getResult();
     }
@@ -446,17 +522,23 @@ public class GameView {
     // =========================================================================
     //  HELPERS
     // =========================================================================
-    private void scheduleAnimationCompletion(CompletableFuture<Boolean> completion, long waitMs) {
+    private void scheduleAnimationCompletion(
+        CompletableFuture<Boolean> completion,
+        long waitMs
+    ) {
         animationFuture = completion;
         Timer timer = new Timer("ui-animation", true);
-        timer.schedule(new TimerTask() {
-            @Override
-            public void run() {
-                completion.complete(true);
-                animationFuture = null;
-                timer.cancel();
-            }
-        }, waitMs);
+        timer.schedule(
+            new TimerTask() {
+                @Override
+                public void run() {
+                    completion.complete(true);
+                    animationFuture = null;
+                    timer.cancel();
+                }
+            },
+            waitMs
+        );
     }
 
     public boolean awaitLastAnimation(long timeoutMs) {
@@ -467,27 +549,41 @@ public class GameView {
         return awaitFuture(current, timeoutMs, "animation");
     }
 
-    private static <T> T awaitFuture(CompletableFuture<T> future, long timeoutMs, String label) {
+    private static <T> T awaitFuture(
+        CompletableFuture<T> future,
+        long timeoutMs,
+        String label
+    ) {
         try {
             return future.get(timeoutMs, TimeUnit.MILLISECONDS);
         } catch (TimeoutException ex) {
-            System.out.println("Timeout esperando " + label + " (" + timeoutMs + "ms)");
+            System.out.println(
+                "Timeout esperando " + label + " (" + timeoutMs + "ms)"
+            );
             return null;
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
             System.out.println("Interrumpido esperando " + label);
             return null;
         } catch (ExecutionException ex) {
-            System.out.println("Error esperando " + label + ": " + ex.getCause());
+            System.out.println(
+                "Error esperando " + label + ": " + ex.getCause()
+            );
             return null;
         }
     }
 
-    private static boolean awaitLatch(CountDownLatch latch, long timeoutMs, String label) {
+    private static boolean awaitLatch(
+        CountDownLatch latch,
+        long timeoutMs,
+        String label
+    ) {
         try {
             boolean completed = latch.await(timeoutMs, TimeUnit.MILLISECONDS);
             if (!completed) {
-                System.out.println("Timeout esperando " + label + " (" + timeoutMs + "ms)");
+                System.out.println(
+                    "Timeout esperando " + label + " (" + timeoutMs + "ms)"
+                );
             }
             return completed;
         } catch (InterruptedException ex) {
@@ -503,13 +599,13 @@ public class GameView {
     class TablePanel extends JPanel {
 
         // Displayed data
-        private String playerName   = "";
-        private int    chips        = 0;
-        private int    displayChips = 0;
-        private List<CardSprite> playerSprites    = new ArrayList<>();
+        private String playerName = "";
+        private int chips = 0;
+        private int displayChips = 0;
+        private List<CardSprite> playerSprites = new ArrayList<>();
         private List<CardSprite> communitySprites = new ArrayList<>();
         private String resultMessage = null;
-        private Color  resultColor   = GOLD;
+        private Color resultColor = GOLD;
 
         // Roles & pot
         private AIPlayer.Role humanRole = AIPlayer.Role.NONE;
@@ -529,12 +625,17 @@ public class GameView {
 
         // Chip animation
         private long chipAnimStart = -1;
-        private int  chipAnimFrom  = 0;
-        private int  chipAnimTo    = 0;
+        private int chipAnimFrom = 0;
+        private int chipAnimTo = 0;
 
         // Functional interface for callbacks
-        interface ActionCallback  { void onAction(BettingRound.Action action); }
-        interface AmountCallback  { void onAmount(int amount); }
+        interface ActionCallback {
+            void onAction(BettingRound.Action action);
+        }
+
+        interface AmountCallback {
+            void onAmount(int amount);
+        }
 
         TablePanel() {
             setBackground(DARK_BG);
@@ -544,21 +645,29 @@ public class GameView {
         // ── Setters ──────────────────────────────────────────────────────────
 
         void setPlayerInfo(String name, int ch) {
-            this.playerName    = name;
-            this.chipAnimFrom  = displayChips;
-            this.chipAnimTo    = ch;
+            this.playerName = name;
+            this.chipAnimFrom = displayChips;
+            this.chipAnimTo = ch;
             this.chipAnimStart = System.currentTimeMillis();
             SoundFX.playChips();
         }
 
         void setRoles(AIPlayer.Role humanRole, List<AIPlayer> ais) {
-            this.humanRole  = humanRole;
-            this.aiPlayers  = new ArrayList<>(ais);
+            this.humanRole = humanRole;
+            this.aiPlayers = new ArrayList<>(ais);
         }
 
-        void setPot(int pot)               { this.pot = pot; }
-        void setPlayerFolded()             { this.playerFolded = true; }
-        void setActionLog(List<String> log){ this.actionLog = new ArrayList<>(log); }
+        void setPot(int pot) {
+            this.pot = pot;
+        }
+
+        void setPlayerFolded() {
+            this.playerFolded = true;
+        }
+
+        void setActionLog(List<String> log) {
+            this.actionLog = new ArrayList<>(log);
+        }
 
         void clearRoundVisualState() {
             playerSprites.clear();
@@ -575,29 +684,50 @@ public class GameView {
         void dealPlayerHand(List<Card> hand) {
             playerSprites.clear();
             resultMessage = null;
-            playerFolded  = false;
-            int startX = 120, y = 420;
+            playerFolded = false;
+            int startX = 120,
+                y = 420;
             for (int i = 0; i < hand.size(); i++) {
-                playerSprites.add(new CardSprite(hand.get(i), startX + i * 100, y, DECK_X, DECK_Y, i * 180L));
+                playerSprites.add(
+                    new CardSprite(
+                        hand.get(i),
+                        startX + i * 100,
+                        y,
+                        DECK_X,
+                        DECK_Y,
+                        i * 180L
+                    )
+                );
             }
         }
 
         void dealCommunity(List<Card> comm) {
             if (comm.size() <= 3) {
-                communitySprites.clear();  // Flop: reiniciar desde cero
+                communitySprites.clear(); // Flop: reiniciar desde cero
             }
             // Turn/River: agregar incrementally
-            int total  = comm.size();
-            int startX = getWidth() / 2 - (total * 90) / 2;
+            int total = comm.size();
+            int startX = getWidth() / 2 - (5 * 90) / 2; // fijo para 5 cartas
             int y = 220;
             for (int i = 0; i < total; i++) {
-                if (i < communitySprites.size()) continue;  // skip existentes
-                communitySprites.add(new CardSprite(comm.get(i), startX + i * 90, y, DECK_X, DECK_Y, i * 150L));
+                if (i < communitySprites.size()) continue; // skip existentes
+                communitySprites.add(
+                    new CardSprite(
+                        comm.get(i),
+                        startX + i * 90,
+                        y,
+                        DECK_X,
+                        DECK_Y,
+                        i * 100L
+                    )
+                );
             }
         }
 
         void showResult(ShowdownResult showdownResult, int finalPot) {
-            if (showdownResult == null || showdownResult.getWinners().isEmpty()) {
+            if (
+                showdownResult == null || showdownResult.getWinners().isEmpty()
+            ) {
                 resultMessage = "Sin ganador definido";
                 resultColor = new Color(0xCC4444);
                 return;
@@ -605,42 +735,79 @@ public class GameView {
 
             PokerGame.HandRank bestHand = showdownResult.getBestRank();
             if (showdownResult.isTie()) {
-                String winnerList = joinWinnerNames(showdownResult.getWinners());
-                resultMessage = "Empate: " + winnerList + " dividen " + String.format("%,d", finalPot)
-                    + "  |  " + bestHand.spanishName;
+                String winnerList = joinWinnerNames(
+                    showdownResult.getWinners()
+                );
+                resultMessage =
+                    "Empate: " +
+                    winnerList +
+                    " dividen " +
+                    String.format("%,d", finalPot) +
+                    "  |  " +
+                    bestHand.spanishName;
                 resultColor = GOLD_LIGHT;
                 return;
             }
 
             Player winner = showdownResult.getWinners().get(0);
             if (winner instanceof model.User) {
-                resultMessage = "¡Ganaste! +" + String.format("%,d", finalPot)
-                              + "  |  " + bestHand.spanishName;
-                resultColor   = GOLD_LIGHT;
-                if (bestHand.ordinal() >= PokerGame.HandRank.THREE_OF_A_KIND.ordinal()) SoundFX.playWin();
-            } else {
-                resultMessage = winner.getName() + " gana el bote de " + String.format("%,d", finalPot)
-                              + "  |  Tu mano: " + bestHand.spanishName;
-                resultColor   = new Color(0xCC4444);
-            }
-        }
-
-        // Sobrecarga para compatibilidad interna
-        void showResult(PokerGame.HandRank bestHand, int finalPot, boolean humanWon, String aiWinnerName) {
-            if (humanWon) {
-                resultMessage = "¡Ganaste! +" + String.format("%,d", finalPot)
-                    + "  |  " + bestHand.spanishName;
+                resultMessage =
+                    "¡Ganaste! +" +
+                    String.format("%,d", finalPot) +
+                    "  |  " +
+                    bestHand.spanishName;
                 resultColor = GOLD_LIGHT;
-                if (bestHand.ordinal() >= PokerGame.HandRank.THREE_OF_A_KIND.ordinal()) SoundFX.playWin();
+                if (
+                    bestHand.ordinal() >=
+                    PokerGame.HandRank.THREE_OF_A_KIND.ordinal()
+                ) SoundFX.playWin();
             } else {
-                resultMessage = aiWinnerName + " gana el bote de " + String.format("%,d", finalPot)
-                    + "  |  Tu mano: " + bestHand.spanishName;
+                resultMessage =
+                    winner.getName() +
+                    " gana el bote de " +
+                    String.format("%,d", finalPot) +
+                    "  |  Tu mano: " +
+                    bestHand.spanishName;
                 resultColor = new Color(0xCC4444);
             }
         }
 
-        void showResult(PokerGame.HandRank bestHand, int finalPot) { showResult(bestHand, finalPot, false, ""); }
-        void showResult(PokerGame.HandRank bestHand) { showResult(bestHand, pot, false, ""); }
+        // Sobrecarga para compatibilidad interna
+        void showResult(
+            PokerGame.HandRank bestHand,
+            int finalPot,
+            boolean humanWon,
+            String aiWinnerName
+        ) {
+            if (humanWon) {
+                resultMessage =
+                    "¡Ganaste! +" +
+                    String.format("%,d", finalPot) +
+                    "  |  " +
+                    bestHand.spanishName;
+                resultColor = GOLD_LIGHT;
+                if (
+                    bestHand.ordinal() >=
+                    PokerGame.HandRank.THREE_OF_A_KIND.ordinal()
+                ) SoundFX.playWin();
+            } else {
+                resultMessage =
+                    aiWinnerName +
+                    " gana el bote de " +
+                    String.format("%,d", finalPot) +
+                    "  |  Tu mano: " +
+                    bestHand.spanishName;
+                resultColor = new Color(0xCC4444);
+            }
+        }
+
+        void showResult(PokerGame.HandRank bestHand, int finalPot) {
+            showResult(bestHand, finalPot, false, "");
+        }
+
+        void showResult(PokerGame.HandRank bestHand) {
+            showResult(bestHand, pot, false, "");
+        }
 
         private String joinWinnerNames(List<Player> winners) {
             StringBuilder builder = new StringBuilder();
@@ -654,25 +821,40 @@ public class GameView {
         }
 
         void showGameOver(int finalChips) {
-            resultMessage = finalChips > 0
-                ? "¡Fin del juego!  Fichas finales: " + String.format("%,d", finalChips)
-                : "¡Te quedaste sin fichas!  Game Over";
+            resultMessage =
+                finalChips > 0
+                    ? "¡Fin del juego!  Fichas finales: " +
+                      String.format("%,d", finalChips)
+                    : "¡Te quedaste sin fichas!  Game Over";
             resultColor = finalChips > 0 ? GOLD_LIGHT : new Color(0xCC4444);
         }
 
         // ── Betting buttons ───────────────────────────────────────────────────
 
-        void showBettingButtons(BettingRound round, int playerCurrentBet, boolean alreadyAllIn, ActionCallback callback) {
+        void showBettingButtons(
+            BettingRound round,
+            int playerCurrentBet,
+            boolean alreadyAllIn,
+            ActionCallback callback
+        ) {
             hideBettingButtons();
 
             bettingPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 6)) {
-                @Override protected void paintComponent(Graphics g) {
+                @Override
+                protected void paintComponent(Graphics g) {
                     Graphics2D g2 = (Graphics2D) g;
                     g2.setColor(new Color(0x0A1E12, true));
                     g2.fillRoundRect(0, 0, getWidth(), getHeight(), 14, 14);
                     g2.setColor(GOLD_DIM);
                     g2.setStroke(new BasicStroke(1.5f));
-                    g2.drawRoundRect(0, 0, getWidth()-1, getHeight()-1, 14, 14);
+                    g2.drawRoundRect(
+                        0,
+                        0,
+                        getWidth() - 1,
+                        getHeight() - 1,
+                        14,
+                        14
+                    );
                 }
             };
             bettingPanel.setOpaque(false);
@@ -683,18 +865,40 @@ public class GameView {
             bettingPanel.add(phaseLabel);
 
             boolean canCheck = round.canCheck(playerCurrentBet);
-            boolean canBet   = round.canBet();
-            int callAmt      = round.callAmount(playerCurrentBet);
+            boolean canBet = round.canBet();
+            int callAmt = round.callAmount(playerCurrentBet);
 
-            if (canCheck)    addBtn(bettingPanel, "CHECK",          FELT_MID,              () -> callback.onAction(BettingRound.Action.CHECK));
-            if (canBet)      addBtn(bettingPanel, "BET",            GOLD_DIM,              () -> callback.onAction(BettingRound.Action.BET));
-            if (callAmt > 0) addBtn(bettingPanel, "CALL " + callAmt, new Color(0x1A5C8A), () -> callback.onAction(BettingRound.Action.CALL));
-            if (callAmt > 0) addBtn(bettingPanel, "RAISE",          new Color(0x7A3A00),  () -> callback.onAction(BettingRound.Action.RAISE));
-                             addBtn(bettingPanel, "FOLD",            new Color(0x6B1414),  () -> callback.onAction(BettingRound.Action.FOLD));
-            if (!alreadyAllIn) addBtn(bettingPanel, "ALL IN",       new Color(0x8B0000),  () -> callback.onAction(BettingRound.Action.ALL_IN));
+            if (canCheck) addBtn(bettingPanel, "CHECK", FELT_MID, () ->
+                callback.onAction(BettingRound.Action.CHECK)
+            );
+            if (canBet) addBtn(bettingPanel, "BET", GOLD_DIM, () ->
+                callback.onAction(BettingRound.Action.BET)
+            );
+            if (callAmt > 0) addBtn(
+                bettingPanel,
+                "CALL " + callAmt,
+                new Color(0x1A5C8A),
+                () -> callback.onAction(BettingRound.Action.CALL)
+            );
+            if (callAmt > 0) addBtn(
+                bettingPanel,
+                "RAISE",
+                new Color(0x7A3A00),
+                () -> callback.onAction(BettingRound.Action.RAISE)
+            );
+            addBtn(bettingPanel, "FOLD", new Color(0x6B1414), () ->
+                callback.onAction(BettingRound.Action.FOLD)
+            );
+            if (!alreadyAllIn) addBtn(
+                bettingPanel,
+                "ALL IN",
+                new Color(0x8B0000),
+                () -> callback.onAction(BettingRound.Action.ALL_IN)
+            );
 
-            int W = getWidth(), H = getHeight();
-            bettingPanel.setBounds(W/2 - 320, H - 100, 640, 60);
+            int W = getWidth(),
+                H = getHeight();
+            bettingPanel.setBounds(W / 2 - 320, H - 100, 640, 60);
             add(bettingPanel);
             revalidate();
             repaint();
@@ -709,25 +913,54 @@ public class GameView {
             }
         }
 
-        private void addBtn(JPanel parent, String label, Color bg, Runnable action) {
+        private void addBtn(
+            JPanel parent,
+            String label,
+            Color bg,
+            Runnable action
+        ) {
             JButton btn = new JButton(label) {
                 private boolean hov = false;
-                { setOpaque(false); setContentAreaFilled(false); setBorderPainted(false);
-                  setFocusPainted(false); setFont(FONT_BTN); setForeground(CREAM);
-                  setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-                  addMouseListener(new MouseAdapter() {
-                      public void mouseEntered(MouseEvent e) { hov = true;  repaint(); }
-                      public void mouseExited (MouseEvent e) { hov = false; repaint(); }
-                  });
+
+                {
+                    setOpaque(false);
+                    setContentAreaFilled(false);
+                    setBorderPainted(false);
+                    setFocusPainted(false);
+                    setFont(FONT_BTN);
+                    setForeground(CREAM);
+                    setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+                    addMouseListener(
+                        new MouseAdapter() {
+                            public void mouseEntered(MouseEvent e) {
+                                hov = true;
+                                repaint();
+                            }
+
+                            public void mouseExited(MouseEvent e) {
+                                hov = false;
+                                repaint();
+                            }
+                        }
+                    );
                 }
-                @Override protected void paintComponent(Graphics g) {
+
+                @Override
+                protected void paintComponent(Graphics g) {
                     Graphics2D g2 = (Graphics2D) g;
-                    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                    g2.setRenderingHint(
+                        RenderingHints.KEY_ANTIALIASING,
+                        RenderingHints.VALUE_ANTIALIAS_ON
+                    );
                     g2.setColor(hov ? bg.brighter() : bg);
                     g2.fillRoundRect(0, 0, getWidth(), getHeight(), 8, 8);
                     super.paintComponent(g);
                 }
-                @Override public Dimension getPreferredSize() { return new Dimension(90, 36); }
+
+                @Override
+                public Dimension getPreferredSize() {
+                    return new Dimension(90, 36);
+                }
             };
             btn.addActionListener(e -> action.run());
             parent.add(btn);
@@ -739,10 +972,17 @@ public class GameView {
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
             Graphics2D g2 = (Graphics2D) g;
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_HRGB);
+            g2.setRenderingHint(
+                RenderingHints.KEY_ANTIALIASING,
+                RenderingHints.VALUE_ANTIALIAS_ON
+            );
+            g2.setRenderingHint(
+                RenderingHints.KEY_TEXT_ANTIALIASING,
+                RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_HRGB
+            );
 
-            int W = getWidth(), H = getHeight();
+            int W = getWidth(),
+                H = getHeight();
 
             drawBackground(g2, W, H);
             drawFeltTable(g2, W, H);
@@ -758,7 +998,14 @@ public class GameView {
         }
 
         private void drawBackground(Graphics2D g2, int W, int H) {
-            GradientPaint bg = new GradientPaint(0, 0, new Color(0x060E0A), W, H, new Color(0x0A1F12));
+            GradientPaint bg = new GradientPaint(
+                0,
+                0,
+                new Color(0x060E0A),
+                W,
+                H,
+                new Color(0x0A1F12)
+            );
             g2.setPaint(bg);
             g2.fillRect(0, 0, W, H);
 
@@ -772,15 +1019,18 @@ public class GameView {
 
         private void drawFeltTable(Graphics2D g2, int W, int H) {
             // Oval felt surface
-            int tx = 30, ty = 40, tw = W - 60, th = H - 120;
+            int tx = 30,
+                ty = 40,
+                tw = W - 60,
+                th = H - 120;
             Ellipse2D oval = new Ellipse2D.Double(tx, ty, tw, th);
 
             // Felt gradient
             RadialGradientPaint felt = new RadialGradientPaint(
                 new Point2D.Double(W / 2.0, H / 2.0),
                 Math.max(tw, th) / 2.0f,
-                new float[]{0f, 0.6f, 1f},
-                new Color[]{FELT_LIGHT, FELT_MID, FELT_DARK}
+                new float[] { 0f, 0.6f, 1f },
+                new Color[] { FELT_LIGHT, FELT_MID, FELT_DARK }
             );
             g2.setPaint(felt);
             g2.fill(oval);
@@ -794,7 +1044,12 @@ public class GameView {
             g2.draw(oval);
 
             // Inner ring
-            Ellipse2D inner = new Ellipse2D.Double(tx + 14, ty + 14, tw - 28, th - 28);
+            Ellipse2D inner = new Ellipse2D.Double(
+                tx + 14,
+                ty + 14,
+                tw - 28,
+                th - 28
+            );
             g2.setStroke(new BasicStroke(1f));
             g2.setColor(new Color(201, 168, 76, 80));
             g2.draw(inner);
@@ -810,7 +1065,11 @@ public class GameView {
             g2.setColor(GOLD);
             FontMetrics fm = g2.getFontMetrics();
             String lbl = "MAZO";
-            g2.drawString(lbl, DECK_X + 31 - fm.stringWidth(lbl) / 2, DECK_Y + 100);
+            g2.drawString(
+                lbl,
+                DECK_X + 31 - fm.stringWidth(lbl) / 2,
+                DECK_Y + 100
+            );
         }
 
         private void drawCardBack(Graphics2D g2, int x, int y, int w, int h) {
@@ -872,7 +1131,8 @@ public class GameView {
             if (chips == 0 && displayChips == 0) return;
 
             // Chip icon + counter, bottom-right
-            int cx = W - 200, cy = H - 55;
+            int cx = W - 200,
+                cy = H - 55;
 
             // Chip stack icon
             for (int i = 3; i >= 0; i--) {
@@ -896,7 +1156,7 @@ public class GameView {
         private void drawCards(Graphics2D g2) {
             long now = System.currentTimeMillis();
             for (CardSprite cs : communitySprites) cs.draw(g2, now);
-            for (CardSprite cs : playerSprites)    cs.draw(g2, now);
+            for (CardSprite cs : playerSprites) cs.draw(g2, now);
         }
 
         private void drawResult(Graphics2D g2, int W, int H) {
@@ -914,7 +1174,11 @@ public class GameView {
             g2.setFont(new Font("Serif", Font.BOLD, 22));
             FontMetrics fm = g2.getFontMetrics();
             g2.setColor(resultColor);
-            g2.drawString(resultMessage, W / 2 - fm.stringWidth(resultMessage) / 2, ry + 6);
+            g2.drawString(
+                resultMessage,
+                W / 2 - fm.stringWidth(resultMessage) / 2,
+                ry + 6
+            );
         }
 
         private void drawPot(Graphics2D g2, int W, int H) {
@@ -940,26 +1204,40 @@ public class GameView {
             // Posiciones fijas para los 4 jugadores en la mesa
             // Humano abajo-centro, IAs en top-left, top-center, top-right
             String[] roleNames = { roleLabel(humanRole) };
-            String humanBadge  = playerName.isEmpty() ? "Tú" : playerName;
-            if (!roleNames[0].isEmpty()) humanBadge += " [" + roleNames[0] + "]";
+            String humanBadge = playerName.isEmpty() ? "Tú" : playerName;
+            if (!roleNames[0].isEmpty()) humanBadge +=
+                " [" + roleNames[0] + "]";
 
             drawBadge(g2, humanBadge, W / 2 - 60, H - 115, playerFolded);
 
             int[] aiX = { 60, W / 2 - 50, W - 160 };
-            int   aiY = 55;
+            int aiY = 55;
             for (int i = 0; i < Math.min(aiPlayers.size(), 3); i++) {
-                AIPlayer ai   = aiPlayers.get(i);
-                String badge  = ai.getName() + " [" + roleLabel(ai.getRole()) + "]"
-                              + "  " + String.format("%,d", ai.getChips());
+                AIPlayer ai = aiPlayers.get(i);
+                String badge =
+                    ai.getName() +
+                    " [" +
+                    roleLabel(ai.getRole()) +
+                    "]" +
+                    "  " +
+                    String.format("%,d", ai.getChips());
                 drawBadge(g2, badge, aiX[i], aiY, ai.isFolded());
             }
         }
 
-        private void drawBadge(Graphics2D g2, String text, int x, int y, boolean folded) {
+        private void drawBadge(
+            Graphics2D g2,
+            String text,
+            int x,
+            int y,
+            boolean folded
+        ) {
             g2.setFont(new Font("Monospaced", Font.PLAIN, 11));
             FontMetrics fm = g2.getFontMetrics();
             int w = fm.stringWidth(text) + 16;
-            g2.setColor(folded ? new Color(80, 20, 20, 180) : new Color(0, 0, 0, 160));
+            g2.setColor(
+                folded ? new Color(80, 20, 20, 180) : new Color(0, 0, 0, 160)
+            );
             g2.fillRoundRect(x, y, w, 20, 8, 8);
             g2.setColor(folded ? new Color(180, 80, 80) : GOLD);
             g2.setStroke(new BasicStroke(1f));
@@ -971,10 +1249,10 @@ public class GameView {
         private String roleLabel(AIPlayer.Role role) {
             if (role == null) return "";
             return switch (role) {
-                case DEALER      -> "D";
+                case DEALER -> "D";
                 case SMALL_BLIND -> "SB";
-                case BIG_BLIND   -> "BB";
-                case NONE        -> "";
+                case BIG_BLIND -> "BB";
+                case NONE -> "";
             };
         }
 
@@ -982,7 +1260,11 @@ public class GameView {
             if (actionLog.isEmpty()) return;
             int y = H - 110;
             g2.setFont(new Font("Monospaced", Font.ITALIC, 11));
-            for (int i = actionLog.size() - 1; i >= Math.max(0, actionLog.size() - 4); i--) {
+            for (
+                int i = actionLog.size() - 1;
+                i >= Math.max(0, actionLog.size() - 4);
+                i--
+            ) {
                 String line = actionLog.get(i);
                 g2.setColor(new Color(200, 200, 200, 180));
                 g2.drawString(line, W - 250, y);
@@ -991,17 +1273,21 @@ public class GameView {
         }
 
         private void animateChips() {
-            if (chipAnimStart < 0) { displayChips = chips; return; }
+            if (chipAnimStart < 0) {
+                displayChips = chips;
+                return;
+            }
             long elapsed = System.currentTimeMillis() - chipAnimStart;
             long duration = 800;
             if (elapsed >= duration) {
-                displayChips   = chipAnimTo;
-                chips          = chipAnimTo;
-                chipAnimStart  = -1;
+                displayChips = chipAnimTo;
+                chips = chipAnimTo;
+                chipAnimStart = -1;
             } else {
                 float t = elapsed / (float) duration;
                 t = 1 - (1 - t) * (1 - t); // ease-out quad
-                displayChips = (int)(chipAnimFrom + t * (chipAnimTo - chipAnimFrom));
+                displayChips = (int) (chipAnimFrom +
+                    t * (chipAnimTo - chipAnimFrom));
             }
         }
     }
@@ -1010,21 +1296,30 @@ public class GameView {
     //  CARD SPRITE — flies from deck pile to destination
     // =========================================================================
     static class CardSprite {
+
         final Card card;
         final int destX, destY;
         final int srcX, srcY;
-        final long delay;        // ms before animation starts
+        final long delay; // ms before animation starts
         final long duration = 400;
         long startTime = -1;
 
-        static final int W = 72, H = 100;
+        static final int W = 72,
+            H = 100;
 
-        CardSprite(Card card, int destX, int destY, int srcX, int srcY, long delay) {
-            this.card  = card;
+        CardSprite(
+            Card card,
+            int destX,
+            int destY,
+            int srcX,
+            int srcY,
+            long delay
+        ) {
+            this.card = card;
             this.destX = destX;
             this.destY = destY;
-            this.srcX  = srcX;
-            this.srcY  = srcY;
+            this.srcX = srcX;
+            this.srcY = srcY;
             this.delay = delay;
         }
 
@@ -1037,8 +1332,8 @@ public class GameView {
             // ease-out cubic
             t = 1 - (float) Math.pow(1 - t, 3);
 
-            int x = (int)(srcX + t * (destX - srcX));
-            int y = (int)(srcY + t * (destY - srcY));
+            int x = (int) (srcX + t * (destX - srcX));
+            int y = (int) (srcY + t * (destY - srcY));
 
             // Flip effect: scale X from 0→1 after half-way
             double scaleX = t < 0.5 ? t * 2 : 1.0;
@@ -1047,7 +1342,10 @@ public class GameView {
             cg.translate(x + W / 2.0, y + H / 2.0);
             cg.scale(scaleX, 1.0);
             cg.translate(-W / 2.0, -H / 2.0);
-            cg.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            cg.setRenderingHint(
+                RenderingHints.KEY_ANTIALIASING,
+                RenderingHints.VALUE_ANTIALIAS_ON
+            );
 
             if (t < 0.5) {
                 drawBack(cg);
@@ -1073,7 +1371,7 @@ public class GameView {
         private void drawFace(Graphics2D g2) {
             String rank = card.getRank();
             String suit = card.getSuit();
-            boolean red  = suit.equals("♥") || suit.equals("♦");
+            boolean red = suit.equals("♥") || suit.equals("♦");
             Color textColor = red ? RED_SUIT : new Color(0x111111);
 
             // Shadow
@@ -1129,19 +1427,37 @@ public class GameView {
             setBackground(new Color(0, 0, 0, 0));
 
             JPanel root = new JPanel() {
-                @Override protected void paintComponent(Graphics g) {
+                @Override
+                protected void paintComponent(Graphics g) {
                     Graphics2D g2 = (Graphics2D) g;
-                    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                    g2.setRenderingHint(
+                        RenderingHints.KEY_ANTIALIASING,
+                        RenderingHints.VALUE_ANTIALIAS_ON
+                    );
                     // Dark card bg
                     g2.setColor(new Color(0x0D2B1A));
                     g2.fillRoundRect(0, 0, getWidth(), getHeight(), 20, 20);
                     // Gold border
                     g2.setStroke(new BasicStroke(2f));
                     g2.setColor(GOLD);
-                    g2.drawRoundRect(1, 1, getWidth() - 2, getHeight() - 2, 20, 20);
+                    g2.drawRoundRect(
+                        1,
+                        1,
+                        getWidth() - 2,
+                        getHeight() - 2,
+                        20,
+                        20
+                    );
                     // Inner border
                     g2.setColor(new Color(201, 168, 76, 60));
-                    g2.drawRoundRect(6, 6, getWidth() - 12, getHeight() - 12, 16, 16);
+                    g2.drawRoundRect(
+                        6,
+                        6,
+                        getWidth() - 12,
+                        getHeight() - 12,
+                        16,
+                        16
+                    );
                 }
             };
             root.setOpaque(false);
@@ -1150,16 +1466,25 @@ public class GameView {
 
             GridBagConstraints gc = new GridBagConstraints();
             gc.insets = new Insets(6, 0, 6, 0);
-            gc.gridx = 0; gc.fill = GridBagConstraints.HORIZONTAL;
+            gc.gridx = 0;
+            gc.fill = GridBagConstraints.HORIZONTAL;
 
             // Suits header
-            JLabel suits = makeLabel("♠  ♥  ♦  ♣", new Font("Serif", Font.PLAIN, 22), GOLD);
+            JLabel suits = makeLabel(
+                "♠  ♥  ♦  ♣",
+                new Font("Serif", Font.PLAIN, 22),
+                GOLD
+            );
             suits.setHorizontalAlignment(SwingConstants.CENTER);
             gc.gridy = 0;
             root.add(suits, gc);
 
             // Title
-            JLabel titleLbl = makeLabel("ROYAL POKER", new Font("Serif", Font.BOLD, 26), GOLD_LIGHT);
+            JLabel titleLbl = makeLabel(
+                "ROYAL POKER",
+                new Font("Serif", Font.BOLD, 26),
+                GOLD_LIGHT
+            );
             titleLbl.setHorizontalAlignment(SwingConstants.CENTER);
             gc.gridy = 1;
             root.add(titleLbl, gc);
@@ -1172,14 +1497,19 @@ public class GameView {
             root.add(sep, gc);
 
             // Prompt
-            JLabel promptLbl = makeLabel(prompt, new Font("Serif", Font.ITALIC, 15), CREAM);
+            JLabel promptLbl = makeLabel(
+                prompt,
+                new Font("Serif", Font.ITALIC, 15),
+                CREAM
+            );
             promptLbl.setHorizontalAlignment(SwingConstants.CENTER);
             gc.gridy = 3;
             root.add(promptLbl, gc);
 
             // Text field — custom painted
             field = new JTextField(18) {
-                @Override protected void paintComponent(Graphics g) {
+                @Override
+                protected void paintComponent(Graphics g) {
                     Graphics2D g2 = (Graphics2D) g;
                     g2.setColor(new Color(0x061510));
                     g2.fillRoundRect(0, 0, getWidth(), getHeight(), 8, 8);
@@ -1190,10 +1520,12 @@ public class GameView {
             field.setForeground(CREAM);
             field.setCaretColor(GOLD);
             field.setFont(new Font("Monospaced", Font.PLAIN, 16));
-            field.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(GOLD, 1, true),
-                BorderFactory.createEmptyBorder(6, 10, 6, 10)
-            ));
+            field.setBorder(
+                BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(GOLD, 1, true),
+                    BorderFactory.createEmptyBorder(6, 10, 6, 10)
+                )
+            );
             field.setHorizontalAlignment(SwingConstants.CENTER);
             gc.gridy = 4;
             root.add(field, gc);
@@ -1201,6 +1533,7 @@ public class GameView {
             // Button
             JButton btn = new JButton("ENTRAR AL CASINO") {
                 private boolean hovered = false;
+
                 {
                     setOpaque(false);
                     setContentAreaFilled(false);
@@ -1209,25 +1542,45 @@ public class GameView {
                     setFont(FONT_BTN);
                     setForeground(DARK_BG);
                     setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-                    addMouseListener(new MouseAdapter() {
-                        public void mouseEntered(MouseEvent e) { hovered = true; repaint(); }
-                        public void mouseExited (MouseEvent e) { hovered = false; repaint(); }
-                    });
+                    addMouseListener(
+                        new MouseAdapter() {
+                            public void mouseEntered(MouseEvent e) {
+                                hovered = true;
+                                repaint();
+                            }
+
+                            public void mouseExited(MouseEvent e) {
+                                hovered = false;
+                                repaint();
+                            }
+                        }
+                    );
                 }
-                @Override protected void paintComponent(Graphics g) {
+
+                @Override
+                protected void paintComponent(Graphics g) {
                     Graphics2D g2 = (Graphics2D) g;
-                    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                    g2.setRenderingHint(
+                        RenderingHints.KEY_ANTIALIASING,
+                        RenderingHints.VALUE_ANTIALIAS_ON
+                    );
                     Color bg = hovered ? GOLD_LIGHT : GOLD;
                     g2.setColor(bg);
                     g2.fillRoundRect(0, 0, getWidth(), getHeight(), 10, 10);
                     super.paintComponent(g);
                 }
-                @Override public Dimension getPreferredSize() { return new Dimension(220, 40); }
+
+                @Override
+                public Dimension getPreferredSize() {
+                    return new Dimension(220, 40);
+                }
             };
             btn.addActionListener(e -> confirm());
             field.addActionListener(e -> confirm());
 
-            JPanel btnWrap = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+            JPanel btnWrap = new JPanel(
+                new FlowLayout(FlowLayout.CENTER, 0, 0)
+            );
             btnWrap.setOpaque(false);
             btnWrap.add(btn);
             gc.gridy = 5;
@@ -1242,10 +1595,12 @@ public class GameView {
         private void confirm() {
             String text = field.getText().trim();
             if (text.isEmpty() || text.matches(".*[\\d\\W].*")) {
-                field.setBorder(BorderFactory.createCompoundBorder(
-                    BorderFactory.createLineBorder(RED_SUIT, 2, true),
-                    BorderFactory.createEmptyBorder(6, 10, 6, 10)
-                ));
+                field.setBorder(
+                    BorderFactory.createCompoundBorder(
+                        BorderFactory.createLineBorder(RED_SUIT, 2, true),
+                        BorderFactory.createEmptyBorder(6, 10, 6, 10)
+                    )
+                );
                 field.setText("");
                 field.setToolTipText("Solo letras, sin números ni símbolos");
                 return;
@@ -1261,7 +1616,9 @@ public class GameView {
             return l;
         }
 
-        String getResult() { return result; }
+        String getResult() {
+            return result;
+        }
     }
 
     // =========================================================================
@@ -1278,37 +1635,51 @@ public class GameView {
             new Thread(() -> {
                 for (int i = 0; i < 4; i++) {
                     playTone(600 + i * 120, 35, 0.12f);
-                    try { Thread.sleep(45); } catch (InterruptedException ignored) {}
+                    try {
+                        Thread.sleep(45);
+                    } catch (InterruptedException ignored) {}
                 }
-            }).start();
+            })
+                .start();
         }
 
         static void playWin() {
             new Thread(() -> {
-                int[] notes = {523, 659, 784, 1047};
+                int[] notes = { 523, 659, 784, 1047 };
                 for (int note : notes) {
                     playTone(note, 100, 0.2f);
-                    try { Thread.sleep(90); } catch (InterruptedException ignored) {}
+                    try {
+                        Thread.sleep(90);
+                    } catch (InterruptedException ignored) {}
                 }
-            }).start();
+            })
+                .start();
         }
 
         static void playTone(int hz, int durationMs, float volume) {
             try {
                 AudioFormat fmt = new AudioFormat(44100, 16, 1, true, false);
-                int samples = (int)(44100 * durationMs / 1000.0);
-                byte[] buf   = new byte[samples * 2];
+                int samples = (int) ((44100 * durationMs) / 1000.0);
+                byte[] buf = new byte[samples * 2];
                 for (int i = 0; i < samples; i++) {
-                    double t     = i / 44100.0;
-                    double env   = Math.min(1.0, (samples - i) / (44100.0 * 0.02)); // fade-out
-                    double wave  = Math.sin(2 * Math.PI * hz * t) * env;
-                    short  s     = (short)(wave * Short.MAX_VALUE * volume);
-                    buf[i * 2]     = (byte)(s & 0xFF);
-                    buf[i * 2 + 1] = (byte)((s >> 8) & 0xFF);
+                    double t = i / 44100.0;
+                    double env = Math.min(
+                        1.0,
+                        (samples - i) / (44100.0 * 0.02)
+                    ); // fade-out
+                    double wave = Math.sin(2 * Math.PI * hz * t) * env;
+                    short s = (short) (wave * Short.MAX_VALUE * volume);
+                    buf[i * 2] = (byte) (s & 0xFF);
+                    buf[i * 2 + 1] = (byte) ((s >> 8) & 0xFF);
                 }
-                DataLine.Info info = new DataLine.Info(SourceDataLine.class, fmt);
+                DataLine.Info info = new DataLine.Info(
+                    SourceDataLine.class,
+                    fmt
+                );
                 if (!AudioSystem.isLineSupported(info)) return;
-                SourceDataLine line = (SourceDataLine) AudioSystem.getLine(info);
+                SourceDataLine line = (SourceDataLine) AudioSystem.getLine(
+                    info
+                );
                 line.open(fmt);
                 line.start();
                 line.write(buf, 0, buf.length);
@@ -1317,5 +1688,4 @@ public class GameView {
             } catch (Exception ignored) {}
         }
     }
-
 }

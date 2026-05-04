@@ -105,7 +105,7 @@ public class AutoFoldContinueRegressionTest {
         }
 
         @Override
-        public void showCommunityCards(ArrayList<model.Card> community, ArrayList<model.Card> playerHand) {
+        public void showCommunityCards(ArrayList<model.Card> community, ArrayList<model.Card> playerHand, int newCardsCount) {
         }
 
         @Override

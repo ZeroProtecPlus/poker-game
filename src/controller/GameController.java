@@ -115,23 +115,23 @@ public class GameController {
         runBettingPhase(BettingRound.Phase.PREFLOP);
         if (allFolded()) return; // allFolded already awards pot - no showdown needed
 
-        // ── FLOP ─────────────────────────────────────────────────────────────
+// ── FLOP ─────────────────────────────────────────────────────────────
         pokerGame.dealFlop();
-        newGame.showCommunityCards(pokerGame.getCommunityCards(), manoJugador);
+        newGame.showCommunityCards(pokerGame.getCommunityCards(), manoJugador, 3);
         newGame.awaitLastAnimation(newGame.getUiSyncTimeoutMs());
         runBettingPhase(BettingRound.Phase.FLOP);
         if (allFolded()) return; // allFolded already awards pot - no showdown needed
 
-        // ── TURN ─────────────────────────────────────────────────────────────
+// ── TURN ─────────────────────────────────────────────────────────────
         pokerGame.dealTurnOrRiver();
-        newGame.showCommunityCards(pokerGame.getCommunityCards(), manoJugador);
+        newGame.showCommunityCards(pokerGame.getCommunityCards(), manoJugador, 1);
         newGame.awaitLastAnimation(newGame.getUiSyncTimeoutMs());
         runBettingPhase(BettingRound.Phase.TURN);
         if (allFolded()) return; // allFolded already awards pot - no showdown needed
 
-        // ── RIVER ────────────────────────────────────────────────────────────
+// ── RIVER ────────────────────────────────────────────────────────────
         pokerGame.dealTurnOrRiver();
-        newGame.showCommunityCards(pokerGame.getCommunityCards(), manoJugador);
+        newGame.showCommunityCards(pokerGame.getCommunityCards(), manoJugador, 1);
         newGame.awaitLastAnimation(newGame.getUiSyncTimeoutMs());
         runBettingPhase(BettingRound.Phase.RIVER);
 
