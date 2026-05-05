@@ -51,7 +51,7 @@ public class GameView {
     );
     private static final Font FONT_CARD_R = new Font("Serif", Font.BOLD, 22);
     private static final Font FONT_CARD_S = new Font("Serif", Font.PLAIN, 18);
-    private static final Font FONT_BTN = new Font("Serif", Font.BOLD, 14);
+    private static final Font FONT_BTN = new Font("Serif", Font.BOLD, 18);
     private static final Font FONT_CHIP = new Font("Monospaced", Font.BOLD, 20);
 
     // ── Main window ───────────────────────────────────────────────────────────
@@ -218,6 +218,15 @@ public class GameView {
 
     /** Synchronous version of showUserChips — blocks until EDT updates the display */
     public void showUserChipsSync(String userName, int chips) {
+        showUserChipsSync(userName, chips, false);
+    }
+
+    /** Synchronous version of showUserChips with optional animation flag */
+    public void showUserChipsSync(
+        String userName,
+        int chips,
+        boolean animated
+    ) {
         if (SwingUtilities.isEventDispatchThread()) {
             tablePanel.setPlayerInfo(userName, chips);
         } else {
@@ -555,7 +564,8 @@ public class GameView {
         CasinoDialog dialog = new CasinoDialog(
             frame,
             "Bienvenido al Royal Poker",
-            "Ingresa tu nombre:"
+            "Ingresa tu nombre:",
+            tablePanel != null ? tablePanel.bgImageMenu : null
         );
         dialog.setVisible(true);
         return dialog.getResult();
@@ -666,7 +676,7 @@ public class GameView {
         private static final int DECK_Y = 80;
 
         // Background images
-        private BufferedImage bgImageMenu = null;
+        BufferedImage bgImageMenu = null;
         private BufferedImage bgImageGame = null;
         private boolean isGameActive = false;
 
@@ -1512,9 +1522,16 @@ public class GameView {
 
         private String result = null;
         private JTextField field;
+        private final BufferedImage bgImage;
 
-        CasinoDialog(Frame owner, String title, String prompt) {
+        CasinoDialog(
+            Frame owner,
+            String title,
+            String prompt,
+            BufferedImage bgImage
+        ) {
             super(owner, title, true);
+            this.bgImage = bgImage;
             setUndecorated(true);
             setBackground(new Color(0, 0, 0, 0));
 
@@ -1526,103 +1543,95 @@ public class GameView {
                         RenderingHints.KEY_ANTIALIASING,
                         RenderingHints.VALUE_ANTIALIAS_ON
                     );
-                    // Dark card bg
-                    g2.setColor(new Color(0x0D2B1A));
-                    g2.fillRoundRect(0, 0, getWidth(), getHeight(), 20, 20);
+                    // Solo pintar fondo verde si no hay imagen de fondo
+                    if (bgImage == null) {
+                        g2.setColor(new Color(0x0D2B1A));
+                        g2.fillRoundRect(0, 0, getWidth(), getHeight(), 20, 20);
+                    }
+                    // NOTA: Los bordes dorados se eliminaron para mostrar solo los componentes
+                    // sobre el fondo de la mesa. Si queres agregar un borde decorativo,
+                    // descomenta las lineas de abajo.
+                    /*
                     // Gold border
                     g2.setStroke(new BasicStroke(2f));
                     g2.setColor(GOLD);
-                    g2.drawRoundRect(
-                        1,
-                        1,
-                        getWidth() - 2,
-                        getHeight() - 2,
-                        20,
-                        20
-                    );
+                    g2.drawRoundRect(1, 1, getWidth() - 2, getHeight() - 2, 20, 20);
                     // Inner border
                     g2.setColor(new Color(201, 168, 76, 60));
-                    g2.drawRoundRect(
-                        6,
-                        6,
-                        getWidth() - 12,
-                        getHeight() - 12,
-                        16,
-                        16
-                    );
+                    g2.drawRoundRect(6, 6, getWidth() - 12, getHeight() - 12, 16, 16);
+                    */
                 }
             };
             root.setOpaque(false);
-            root.setLayout(new GridBagLayout());
-            root.setBorder(new EmptyBorder(30, 40, 30, 40));
+            // POSICIONAMIENTO ABSOLUTO EN PIXELES (null layout)
+            // Cada componente usa setBounds(x, y, ancho, alto)
+            root.setLayout(null);
 
-            GridBagConstraints gc = new GridBagConstraints();
-            gc.insets = new Insets(6, 0, 6, 0);
-            gc.gridx = 0;
-            gc.fill = GridBagConstraints.HORIZONTAL;
+            /*
+             * ================================================================
+             * POSICIONES DE LOS COMPONENTES EN PIXELES
+             * ================================================================
+             * Panel total: 380 x 310 pixels
+             *
+             * setBounds(x, y, width, height)
+             *   x = posicion horizontal (0 = izquierda)
+             *   y = posicion vertical (0 = arriba)
+             *   width = ancho del componente
+             *   height = alto del componente
+             * ================================================================
+             */
 
-            // Suits header
-            JLabel suits = makeLabel(
-                "♠  ♥  ♦  ♣",
-                new Font("Serif", Font.PLAIN, 22),
-                GOLD
-            );
-            suits.setHorizontalAlignment(SwingConstants.CENTER);
-            gc.gridy = 0;
-            root.add(suits, gc);
+            // POSICION 0: Suits header (♠ ♥ ♦ ♣)
+            // setBounds(x, y, width, height)
+            // JLabel suits = makeLabel(
+            //     "♠  ♥  ♦  ♣",
+            //     new Font("Serif", Font.PLAIN, 22),
+            //     GOLD
+            // );
+            // suits.setHorizontalAlignment(SwingConstants.CENTER);
+            // suits.setBounds(90, 20, 200, 30); // x=90, y=20, width=200, height=30
+            // root.add(suits);
 
-            // Title
+            // POSICION 1: Title (ROYAL POKER)
             JLabel titleLbl = makeLabel(
                 "ROYAL POKER",
                 new Font("Serif", Font.BOLD, 26),
                 GOLD_LIGHT
             );
             titleLbl.setHorizontalAlignment(SwingConstants.CENTER);
-            gc.gridy = 1;
-            root.add(titleLbl, gc);
+            titleLbl.setBounds(40, 70, 300, 35); // x=40, y=55, width=300, height=35
+            root.add(titleLbl);
 
-            // Separator line
-            JSeparator sep = new JSeparator();
-            sep.setForeground(GOLD_DIM);
-            sep.setBackground(GOLD_DIM);
-            gc.gridy = 2;
-            root.add(sep, gc);
+            // POSICION 2: Separator line
+            // JSeparator sep = new JSeparator();
+            // sep.setForeground(GOLD_DIM);
+            // sep.setBackground(GOLD_DIM);
+            // sep.setBounds(50, 95, 280, 2); // x=50, y=95, width=280, height=2
+            // root.add(sep);
 
-            // Prompt
+            // POSICION 3: Label (Ingresa tu nombre:)
             JLabel promptLbl = makeLabel(
                 prompt,
                 new Font("Serif", Font.ITALIC, 15),
                 CREAM
             );
             promptLbl.setHorizontalAlignment(SwingConstants.CENTER);
-            gc.gridy = 3;
-            root.add(promptLbl, gc);
+            promptLbl.setBounds(40, 133, 300, 25); // x=40, y=110, width=300, height=25
+            root.add(promptLbl);
 
-            // Text field — custom painted
-            field = new JTextField(18) {
-                @Override
-                protected void paintComponent(Graphics g) {
-                    Graphics2D g2 = (Graphics2D) g;
-                    g2.setColor(new Color(0x061510));
-                    g2.fillRoundRect(0, 0, getWidth(), getHeight(), 8, 8);
-                    super.paintComponent(g);
-                }
-            };
+            // POSICION 4: Input field
+            // Campo de texto TRANSPARENTE (sin fondo, sin borde)
+            field = new JTextField(18);
             field.setOpaque(false);
             field.setForeground(CREAM);
             field.setCaretColor(GOLD);
             field.setFont(new Font("Monospaced", Font.PLAIN, 16));
-            field.setBorder(
-                BorderFactory.createCompoundBorder(
-                    BorderFactory.createLineBorder(GOLD, 1, true),
-                    BorderFactory.createEmptyBorder(6, 10, 6, 10)
-                )
-            );
+            field.setBorder(null);
             field.setHorizontalAlignment(SwingConstants.CENTER);
-            gc.gridy = 4;
-            root.add(field, gc);
+            field.setBounds(65, 162, 250, 40); // x=65, y=145, width=250, height=40
+            root.add(field);
 
-            // Button
+            // POSICION 5: Button (ENTRAR AL CASINO)
             JButton btn = new JButton("ENTRAR AL CASINO") {
                 private boolean hovered = false;
 
@@ -1651,14 +1660,7 @@ public class GameView {
 
                 @Override
                 protected void paintComponent(Graphics g) {
-                    Graphics2D g2 = (Graphics2D) g;
-                    g2.setRenderingHint(
-                        RenderingHints.KEY_ANTIALIASING,
-                        RenderingHints.VALUE_ANTIALIAS_ON
-                    );
-                    Color bg = hovered ? GOLD_LIGHT : GOLD;
-                    g2.setColor(bg);
-                    g2.fillRoundRect(0, 0, getWidth(), getHeight(), 10, 10);
+                    // Boton transparente - solo texto, sin fondo
                     super.paintComponent(g);
                 }
 
@@ -1670,16 +1672,13 @@ public class GameView {
             btn.addActionListener(e -> confirm());
             field.addActionListener(e -> confirm());
 
-            JPanel btnWrap = new JPanel(
-                new FlowLayout(FlowLayout.CENTER, 0, 0)
-            );
-            btnWrap.setOpaque(false);
-            btnWrap.add(btn);
-            gc.gridy = 5;
-            root.add(btnWrap, gc);
+            // Boton sin JPanel wrapper para control directo de posicion
+            btn.setBounds(80, 220, 220, 40); // x=80, y=200, width=220, height=40
+            root.add(btn);
 
             setContentPane(root);
             pack();
+            // MODIFICAR TAMAÑO TOTAL DEL DIALOGO: Cambiar setSize(ancho, alto)
             setSize(380, 310);
             setLocationRelativeTo(owner);
         }

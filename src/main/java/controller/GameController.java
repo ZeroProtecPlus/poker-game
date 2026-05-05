@@ -161,10 +161,12 @@ public class GameController {
             // Preguntar si quiere seguir jugando
             boolean continuar = newGame.askPlayAgain(newPlayer.getNumbChips());
             if (!continuar) {
+                saveHandEnd();
                 newGame.requestGracefulShutdown();
                 return;
             }
         }
+        tryDeleteGameState();
         newGame.showGameOver(newPlayer.getNumbChips());
     }
 
@@ -177,13 +179,17 @@ public class GameController {
                 boolean resume = newGame.askResumeGame(state.getHumanChips());
                 if (resume) {
                     newPlayer.setChips(state.getHumanChips());
-                    newGame.showUserChipsSync(userNamePlayer, newPlayer.getNumbChips());
+                    newGame.showUserChipsSync(userNamePlayer, newPlayer.getNumbChips(), true);
+                    return;
                 } else {
                     gameRepository.deleteByMachineId(machineId);
                 }
             }
+            // No save or declined resume — show chips with animation
+            newGame.showUserChipsSync(userNamePlayer, newPlayer.getNumbChips(), false);
         } catch (RepositoryException e) {
             System.err.println("Warning: failed to check for saved game: " + e.getMessage());
+            newGame.showUserChipsSync(userNamePlayer, newPlayer.getNumbChips(), false);
         }
     }
 
@@ -195,6 +201,15 @@ public class GameController {
             gameRepository.saveByMachineId(machineId, state);
         } catch (RepositoryException e) {
             System.err.println("Warning: failed to save game state: " + e.getMessage());
+        }
+    }
+
+    private void tryDeleteGameState() {
+        try {
+            String machineId = machineIdProvider.getMachineId();
+            gameRepository.deleteByMachineId(machineId);
+        } catch (RepositoryException e) {
+            System.err.println("Warning: failed to delete game state on bust: " + e.getMessage());
         }
     }
 

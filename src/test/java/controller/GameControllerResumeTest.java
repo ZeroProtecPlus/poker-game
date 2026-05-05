@@ -181,6 +181,41 @@ class GameControllerResumeTest {
         Assertions.assertEquals(machineId, repo.deletedMachineId, "delete should use correct machine ID");
     }
 
+    // ── Test: tryDeleteGameState calls repository.deleteByMachineId ──────────
+
+    @Test
+    void shouldCallDeleteByMachineIdInTryDeleteGameState() {
+        String machineId = "test-machine-delete";
+
+        MockGameRepository repo = new MockGameRepository();
+        ResumeTestView view = new ResumeTestView(true);
+        GameController controller = createControllerWithMocks(view, repo, machineId);
+        controller.createNewPlayer();
+
+        invokeTryDeleteGameState(controller);
+
+        Assertions.assertTrue(repo.deleteByMachineIdCalled,
+                "tryDeleteGameState should call deleteByMachineId");
+        Assertions.assertEquals(machineId, repo.deletedMachineId,
+                "deleteByMachineId should use correct machine ID");
+    }
+
+    // ── Test: tryDeleteGameState catches RepositoryException gracefully ──────
+
+    @Test
+    void shouldHandleDeleteExceptionGracefully() {
+        String machineId = "test-machine-delete-error";
+
+        FailingDeleteGameRepository repo = new FailingDeleteGameRepository();
+        ResumeTestView view = new ResumeTestView(true);
+        GameController controller = createControllerWithMocks(view, repo, machineId);
+        controller.createNewPlayer();
+
+        // Should not throw — exception is caught inside tryDeleteGameState
+        invokeTryDeleteGameState(controller);
+        // If we reach here, the exception was handled gracefully
+    }
+
     // ── Helpers ────────────────────────────────────────────────────────────
 
     private static GameStateDto createSavedState(String machineId, int chips) {
@@ -219,7 +254,7 @@ class GameControllerResumeTest {
     }
 
     private static GameController createControllerWithMocks(
-        ResumeTestView view, MockGameRepository repo, String machineId
+        ResumeTestView view, GameRepository repo, String machineId
     ) {
         TestMachineIdProvider idProvider = new TestMachineIdProvider(machineId);
         GameController.Repositories repos = new GameController.Repositories(
@@ -259,6 +294,16 @@ class GameControllerResumeTest {
             m.invoke(controller);
         } catch (ReflectiveOperationException ex) {
             throw new AssertionError("failed to invoke createNewGame", ex);
+        }
+    }
+
+    private static void invokeTryDeleteGameState(GameController controller) {
+        try {
+            Method m = GameController.class.getDeclaredMethod("tryDeleteGameState");
+            m.setAccessible(true);
+            m.invoke(controller);
+        } catch (ReflectiveOperationException ex) {
+            throw new AssertionError("failed to invoke tryDeleteGameState", ex);
         }
     }
 
@@ -304,6 +349,32 @@ class GameControllerResumeTest {
             this.deleteByMachineIdCalled = true;
             this.deletedMachineId = machineId;
             return true;
+        }
+        @Override public boolean delete(String gameId) { return false; }
+    }
+
+    private static final class FailingDeleteGameRepository implements GameRepository {
+        boolean deleteByMachineIdCalled;
+        String deletedMachineId;
+
+        @Override public void save(GameStateDto state) {
+            throw new UnsupportedOperationException("use saveByMachineId");
+        }
+        @Override public Optional<GameStateDto> findByGameId(String gameId) {
+            return Optional.empty();
+        }
+        @Override public Optional<GameStateDto> findLatest() {
+            return Optional.empty();
+        }
+        @Override public void saveByMachineId(String machineId, GameStateDto state) {
+        }
+        @Override public Optional<GameStateDto> loadByMachineId(String machineId) {
+            return Optional.empty();
+        }
+        @Override public boolean deleteByMachineId(String machineId) throws RepositoryException {
+            deleteByMachineIdCalled = true;
+            deletedMachineId = machineId;
+            throw new RepositoryException("simulated delete failure");
         }
         @Override public boolean delete(String gameId) { return false; }
     }

@@ -19,7 +19,6 @@ public class Main {
             try {
                 GameController game = new GameController();
                 game.createNewPlayer();
-                game.viewUserChips();
                 game.createNewGame();
             } catch (IllegalStateException e) {
                 javax.swing.SwingUtilities.invokeLater(() ->
