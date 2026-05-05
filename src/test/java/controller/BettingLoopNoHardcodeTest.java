@@ -207,7 +207,7 @@ public class BettingLoopNoHardcodeTest {
         }
 
         @Override
-        public AIBettingResult runUnifiedBettingRound(int currentHighBet, BettingRound.Action humanAction, int humanAmount) {
+        public AIBettingResult runUnifiedBettingRound(int currentHighBet, BettingRound.Action humanAction, int humanAmount, BettingRound.Phase phase) {
             runCalls++;
 
             int highBet = Math.min(runCalls, 8) * 10;
@@ -238,7 +238,7 @@ public class BettingLoopNoHardcodeTest {
         }
 
         @Override
-        public AIBettingResult runUnifiedBettingRound(int currentHighBet, BettingRound.Action humanAction, int humanAmount) {
+        public AIBettingResult runUnifiedBettingRound(int currentHighBet, BettingRound.Action humanAction, int humanAmount, BettingRound.Phase phase) {
             runCalls++;
             for (Player player : getPlayers()) {
                 setPlayerBet(player, 0);
@@ -256,7 +256,7 @@ public class BettingLoopNoHardcodeTest {
         }
 
         @Override
-        public AIBettingResult runUnifiedBettingRound(int currentHighBet, BettingRound.Action humanAction, int humanAmount) {
+        public AIBettingResult runUnifiedBettingRound(int currentHighBet, BettingRound.Action humanAction, int humanAmount, BettingRound.Phase phase) {
             runCalls++;
             List<Player> players = getPlayers();
 
@@ -286,7 +286,7 @@ public class BettingLoopNoHardcodeTest {
         }
 
         @Override
-        public AIBettingResult runUnifiedBettingRound(int currentHighBet, BettingRound.Action humanAction, int humanAmount) {
+        public AIBettingResult runUnifiedBettingRound(int currentHighBet, BettingRound.Action humanAction, int humanAmount, BettingRound.Phase phase) {
             runCalls++;
             List<Player> players = getPlayers();
             players.get(0).setFolded(true);
@@ -304,7 +304,7 @@ public class BettingLoopNoHardcodeTest {
         }
 
         @Override
-        public AIBettingResult runUnifiedBettingRound(int currentHighBet, BettingRound.Action humanAction, int humanAmount) {
+        public AIBettingResult runUnifiedBettingRound(int currentHighBet, BettingRound.Action humanAction, int humanAmount, BettingRound.Phase phase) {
             runCalls++;
             List<Player> players = getPlayers();
             setPlayerBet(players.get(0), 10);

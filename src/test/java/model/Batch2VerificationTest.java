@@ -93,7 +93,7 @@ public class Batch2VerificationTest {
         BettingRound round = game.createBettingRound(BettingRound.Phase.PREFLOP);
         int callAmount = round.callAmount(humanBetBefore);
 
-        PokerGame.AIBettingResult result = game.runUnifiedBettingRound(round.getCurrentBet(), BettingRound.Action.CALL, callAmount);
+        PokerGame.AIBettingResult result = game.runUnifiedBettingRound(round.getCurrentBet(), BettingRound.Action.CALL, callAmount, BettingRound.Phase.PREFLOP);
 
         require(human.getCurrentBet() == humanBetBefore + callAmount, "human call should be applied in unified iterator");
         require(game.getPot() >= potBefore + callAmount, "pot should include human contribution in unified iterator");
@@ -178,7 +178,8 @@ public class Batch2VerificationTest {
             0,
             100,
             cards(c("8", "S"), c("K", "C"), c("K", "H"), c("2", "D"), c("3", "C")),
-            AIPlayer.Role.NONE
+            AIPlayer.Role.NONE,
+            BettingRound.Phase.FLOP
         );
         require(regularAction == BettingRound.Action.RAISE, "full house strength should trigger raise when call is zero");
 
@@ -187,7 +188,8 @@ public class Batch2VerificationTest {
             0,
             100,
             cards(c("7", "S"), c("8", "C"), c("9", "H"), c("2", "D"), c("K", "C")),
-            AIPlayer.Role.BIG_BLIND
+            AIPlayer.Role.BIG_BLIND,
+            BettingRound.Phase.FLOP
         );
         require(blindAction == BettingRound.Action.BET, "blind-protection threshold should trigger bet before generic check");
     }
@@ -200,7 +202,8 @@ public class Batch2VerificationTest {
             30,
             200,
             cards(c("J", "S"), c("J", "C"), c("2", "H"), c("3", "D"), c("9", "C")),
-            AIPlayer.Role.NONE
+            AIPlayer.Role.NONE,
+            BettingRound.Phase.FLOP
         );
         require(raiseAction == BettingRound.Action.RAISE, "very strong hand should raise over call in contested pot");
 
@@ -209,7 +212,8 @@ public class Batch2VerificationTest {
             20,
             100,
             cards(c("7", "S"), c("8", "C"), c("9", "H"), c("2", "D"), c("K", "C")),
-            AIPlayer.Role.NONE
+            AIPlayer.Role.NONE,
+            BettingRound.Phase.FLOP
         );
         require(valueCall == BettingRound.Action.CALL, "strength above pot-odds threshold should call");
 
@@ -218,7 +222,8 @@ public class Batch2VerificationTest {
             80,
             20,
             cards(c("K", "S"), c("K", "C"), c("2", "H"), c("7", "D"), c("9", "C")),
-            AIPlayer.Role.SMALL_BLIND
+            AIPlayer.Role.SMALL_BLIND,
+            BettingRound.Phase.FLOP
         );
         require(blindDefenseCall == BettingRound.Action.CALL, "blind defense threshold should call even when pot-odds gate is not met");
     }
@@ -229,7 +234,7 @@ public class Batch2VerificationTest {
         game.getPlayers().get(0).setFolded(true);
 
         BettingRound round = game.createBettingRound(BettingRound.Phase.FLOP);
-        PokerGame.AIBettingResult result = game.runUnifiedBettingRound(round.getCurrentBet(), null, 0);
+        PokerGame.AIBettingResult result = game.runUnifiedBettingRound(round.getCurrentBet(), null, 0, BettingRound.Phase.FLOP);
 
         require(result.humanFolded, "unified betting round should report persisted human folded state at phase entry");
     }

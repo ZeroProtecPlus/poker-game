@@ -185,7 +185,7 @@ public class PokerGame {
         }
     }
 
-    public AIBettingResult runAIBettingRound(int currentHighBet) {
+    public AIBettingResult runAIBettingRound(int currentHighBet, BettingRound.Phase phase) {
         List<String> log = new ArrayList<>();
 
         for (AIPlayer ai : aiPlayers) {
@@ -194,7 +194,7 @@ public class PokerGame {
             }
 
             int callAmount = Math.max(0, currentHighBet - ai.getCurrentBet());
-            BettingRound.Action action = ai.decide(callAmount, pot, communityCards, ai.getRole());
+            BettingRound.Action action = ai.decide(callAmount, pot, communityCards, ai.getRole(), phase);
 
             switch (action) {
                 case FOLD -> {
@@ -208,7 +208,7 @@ public class PokerGame {
                     log.add(ai.getName() + " iguala " + amount);
                 }
                 case BET, RAISE -> {
-                    int amount = ai.decideAmount(BIG_BLIND, pot, communityCards, ai.getRole());
+                    int amount = ai.decideAmount(BIG_BLIND, pot, communityCards, ai.getRole(), phase);
                     amount = ai.placeBet(amount);
                     pot += amount;
                     currentHighBet = Math.max(currentHighBet, ai.getCurrentBet());
@@ -221,7 +221,7 @@ public class PokerGame {
         return new AIBettingResult(log, currentHighBet);
     }
 
-    public AIBettingResult runUnifiedBettingRound(int currentHighBet, BettingRound.Action humanAction, int humanAmount) {
+    public AIBettingResult runUnifiedBettingRound(int currentHighBet, BettingRound.Action humanAction, int humanAmount, BettingRound.Phase phase) {
         List<String> log = new ArrayList<>();
 
         for (Player current : players) {
@@ -236,7 +236,7 @@ public class PokerGame {
 
             AIPlayer ai = (AIPlayer) current;
             int callAmount = Math.max(0, currentHighBet - ai.getCurrentBet());
-            BettingRound.Action action = ai.decide(callAmount, pot, communityCards, ai.getRole());
+            BettingRound.Action action = ai.decide(callAmount, pot, communityCards, ai.getRole(), phase);
 
             switch (action) {
                 case FOLD -> {
@@ -250,7 +250,7 @@ public class PokerGame {
                     log.add(ai.getName() + " iguala " + amount);
                 }
                 case BET, RAISE -> {
-                    int amount = ai.decideAmount(BIG_BLIND, pot, communityCards, ai.getRole());
+                    int amount = ai.decideAmount(BIG_BLIND, pot, communityCards, ai.getRole(), phase);
                     amount = ai.placeBet(amount);
                     pot += amount;
                     currentHighBet = Math.max(currentHighBet, ai.getCurrentBet());

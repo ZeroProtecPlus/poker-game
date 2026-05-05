@@ -26,6 +26,23 @@ public class AIPlayer implements Player {
     private Role role = Role.NONE;
     private final HandEvaluator handEvaluator = new HandEvaluator();
 
+    // ── Decision Constants (FR-05) ──────────────────────────────────────────
+    public static final double PREFLOP_CALL_MARGIN = 0.22;
+    public static final double POSTFLOP_CALL_MARGIN = 0.08;
+    public static final double SPR_COMMIT_THRESHOLD = 0.70;
+    public static final double SPR_FOLD_RATIO = 0.35;
+    public static final double PREFLOP_BLIND_BET_THRESHOLD = 0.50;
+    public static final double PREFLOP_BLIND_CALL_THRESHOLD = 0.30;
+    public static final double PREFLOP_BLIND_RAISE_THRESHOLD = 0.75;
+    public static final int MAX_CALLS_PER_PHASE = 2;
+    public static final int MAX_RAISES_PER_PHASE = 1;
+    public static final int PREFLOP_RAISE_MULTIPLIER = 3;
+    public static final int PREFLOP_RAISE_CAP_MULTIPLIER = 6;
+
+    // ── Action Counters (FR-03) ────────────────────────────────────────────
+    private int roundCallCount = 0;
+    private int roundRaiseCount = 0;
+
     private static final Random RNG = new Random();
 
     public AIPlayer(String name, int startingChips) {
@@ -42,51 +59,114 @@ public class AIPlayer implements Player {
     //  DECISIÓN DE IA
     // =========================================================================
 
-    /**
-     * La IA decide su acción basándose en la fuerza de su mano
-     * y las cartas comunitarias disponibles.
+/**
+     * La IA decide su acción basándose en la fuerza de su mano,
+     * las cartas comunitarias disponibles y la fase de apuesta.
      *
      * @param callAmount  cuánto necesita poner para igualar
      * @param pot         tamaño actual del bote
      * @param community   cartas comunitarias visibles
+     * @param role        rol del jugador (DEALER, SMALL_BLIND, BIG_BLIND, NONE)
+     * @param phase       fase de apuesta (PREFLOP, FLOP, TURN, RIVER)
      * @return acción elegida
      */
     public BettingRound.Action decide(
         int callAmount,
         int pot,
         ArrayList<Card> community,
-        Role role
+        Role role,
+        BettingRound.Phase phase
     ) {
         if (folded || allIn) return BettingRound.Action.CHECK;
 
         double strength = evaluateHandStrength(community);
         boolean isBlind = (role == Role.SMALL_BLIND || role == Role.BIG_BLIND);
+        boolean isPreflop = (phase == BettingRound.Phase.PREFLOP);
+
+        // FR-01: SPR Protection Gate — fold expensive calls with marginal hands
+        if (callAmount > chips * SPR_FOLD_RATIO && strength < SPR_COMMIT_THRESHOLD) {
+            return callAmount == 0 ? BettingRound.Action.CHECK : BettingRound.Action.FOLD;
+        }
+
+        // Phase-aware margins and thresholds
+        double callMargin = isPreflop ? PREFLOP_CALL_MARGIN : POSTFLOP_CALL_MARGIN;
+        double blindBetThresh = isPreflop ? PREFLOP_BLIND_BET_THRESHOLD : 0.25;
+        double blindCallThresh = isPreflop ? PREFLOP_BLIND_CALL_THRESHOLD : 0.15;
+        double blindRaiseThresh = isPreflop ? PREFLOP_BLIND_RAISE_THRESHOLD : 0.65;
 
         if (callAmount == 0) {
-            if (strength > 0.65) return BettingRound.Action.RAISE;
-            if (isBlind && strength > 0.25) return BettingRound.Action.BET; // proteger ciega
+            // No call to match — check, bet, or raise
+            if (strength > 0.65) {
+                // FR-03: Action cap — only one raise/bet per phase
+                if (roundRaiseCount >= MAX_RAISES_PER_PHASE && strength < SPR_COMMIT_THRESHOLD) {
+                    return BettingRound.Action.CHECK;
+                }
+                roundRaiseCount++;
+                return BettingRound.Action.RAISE;
+            }
+            if (isBlind && strength > blindBetThresh) {
+                if (roundRaiseCount >= MAX_RAISES_PER_PHASE && strength < SPR_COMMIT_THRESHOLD) {
+                    return BettingRound.Action.CHECK;
+                }
+                roundRaiseCount++;
+                return BettingRound.Action.BET;
+            }
             if (strength > 0.35) return BettingRound.Action.CHECK;
+            if (roundRaiseCount >= MAX_RAISES_PER_PHASE) {
+                return BettingRound.Action.CHECK;
+            }
             return RNG.nextDouble() < 0.15
                 ? BettingRound.Action.BET
                 : BettingRound.Action.CHECK;
         }
 
+        // Must call, raise, or fold
         double potOdds = callAmount / (double) (pot + callAmount);
-        double raiseThresh = isBlind ? 0.65 : 0.75;
-        double foldThresh = isBlind ? 0.15 : 0.20;
+        double raiseThresh = isPreflop ? blindRaiseThresh : (isBlind ? 0.65 : 0.75);
 
-        if (
-            strength > raiseThresh && chips > callAmount * 2
-        ) return BettingRound.Action.RAISE;
-        if (strength > potOdds + 0.08) return BettingRound.Action.CALL;
-        if (isBlind && strength > foldThresh) return BettingRound.Action.CALL; // defender ciega
-        if (
-            strength > 0.20 && RNG.nextDouble() < 0.20
-        ) return BettingRound.Action.CALL; // bluff ocasional
+        // FR-03: Action cap on raises
+        if (strength > raiseThresh && chips > callAmount * 2) {
+            if (roundRaiseCount >= MAX_RAISES_PER_PHASE && strength < SPR_COMMIT_THRESHOLD) {
+                // Can't raise again — fall through to call/fold
+            } else {
+                roundRaiseCount++;
+                return BettingRound.Action.RAISE;
+            }
+        }
+
+        // Call decision with phase-aware margin
+        if (strength > potOdds + callMargin) {
+            // FR-03: Action cap on calls
+            if (roundCallCount >= MAX_CALLS_PER_PHASE && strength < SPR_COMMIT_THRESHOLD) {
+                return BettingRound.Action.FOLD;
+            }
+            roundCallCount++;
+            return BettingRound.Action.CALL;
+        }
+
+        // Blind defense with phase-aware threshold
+        double blindFoldThresh = isPreflop ? blindCallThresh : 0.15;
+        if (isBlind && strength > blindFoldThresh) {
+            if (roundCallCount >= MAX_CALLS_PER_PHASE && strength < SPR_COMMIT_THRESHOLD) {
+                return BettingRound.Action.FOLD;
+            }
+            roundCallCount++;
+            return BettingRound.Action.CALL;
+        }
+
+        // Occasional bluff
+        if (strength > 0.20 && RNG.nextDouble() < 0.20) {
+            if (roundCallCount >= MAX_CALLS_PER_PHASE && strength < SPR_COMMIT_THRESHOLD) {
+                return BettingRound.Action.FOLD;
+            }
+            roundCallCount++;
+            return BettingRound.Action.CALL;
+        }
+
         return BettingRound.Action.FOLD;
-    }
+}
 
-private double evaluateHandStrength(ArrayList<Card> community) {
+    private double evaluateHandStrength(ArrayList<Card> community) {
         if (hand.isEmpty()) return 0.0;
 
         // Preflop: evaluate using only hole cards
@@ -162,16 +242,29 @@ private double evaluateHandStrength(ArrayList<Card> community) {
         int minBet,
         int currentPot,
         ArrayList<Card> community,
-        Role role
+        Role role,
+        BettingRound.Phase phase
     ) {
         double strength = evaluateHandStrength(community);
         boolean isBlind = (role == Role.SMALL_BLIND || role == Role.BIG_BLIND);
-        double mult = isBlind ? 1.5 : 1.0; // blinds apuestan más para proteger
-        int base = (int) (Math.max(minBet, currentPot / 4) * mult);
+        double mult = isBlind ? 1.5 : 1.0;
 
-        if (strength > 0.85) return Math.min(chips, base * 3);
-        if (strength > 0.60) return Math.min(chips, base * 2);
-        return Math.min(chips, base);
+        int base;
+        int cap;
+
+        if (phase == BettingRound.Phase.PREFLOP) {
+            // FR-04: Fixed preflop raise sizing — decouples from pot
+            base = (int) Math.max(minBet, minBet * PREFLOP_RAISE_MULTIPLIER * mult);
+            cap = minBet * PREFLOP_RAISE_CAP_MULTIPLIER;
+        } else {
+            // Postflop: keep current pot-relative formula
+            base = (int) Math.max(minBet, currentPot / 4 * mult);
+            cap = chips; // no artificial cap postflop
+        }
+
+        if (strength > 0.85) return Math.min(chips, Math.min(cap, (int)(base * 3)));
+        if (strength > 0.60) return Math.min(chips, Math.min(cap, (int)(base * 2)));
+        return Math.min(chips, Math.min(cap, base));
     }
 
     // =========================================================================
@@ -197,6 +290,8 @@ private double evaluateHandStrength(ArrayList<Card> community) {
     @Override
     public void resetRoundBet() {
         currentBet = 0;
+        roundCallCount = 0;
+        roundRaiseCount = 0;
     }
 
     // =========================================================================
@@ -287,6 +382,8 @@ private double evaluateHandStrength(ArrayList<Card> community) {
         folded = false;
         allIn = false;
         currentBet = 0;
+        roundCallCount = 0;
+        roundRaiseCount = 0;
     }
 
     public static PlayerRole toPlayerRole(Role role) {

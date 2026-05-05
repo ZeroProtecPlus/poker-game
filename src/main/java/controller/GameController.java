@@ -338,7 +338,7 @@ public class GameController {
                 }
             }
 
-            PokerGame.AIBettingResult result = pokerGame.runUnifiedBettingRound(round.getCurrentBet(), action, humanAmount);
+            PokerGame.AIBettingResult result = pokerGame.runUnifiedBettingRound(round.getCurrentBet(), action, humanAmount, phase);
             newGame.showAIActions(result.log);
             newGame.awaitLastAnimation(newGame.getUiSyncTimeoutMs());
 
