@@ -38,6 +38,7 @@ public abstract class BaseRepository {
      * Executes an action with a connection and returns the result.
      */
     protected <T> T withConnection(ConnectionAction<T> action) throws RepositoryException {
+        // Envoltorio único para traducir errores de JDBC a dominio de persistencia.
         try (Connection conn = connectionFactory.getConnection()) {
             return action.apply(conn);
         } catch (SQLException e) {
@@ -51,6 +52,7 @@ public abstract class BaseRepository {
      * Executes an action with a connection (no return value).
      */
     protected void doWithConnection(VoidConnectionAction action) throws RepositoryException {
+        // Variante void para operaciones sin resultado explícito.
         try (Connection conn = connectionFactory.getConnection()) {
             action.accept(conn);
         } catch (SQLException e) {
@@ -64,6 +66,7 @@ public abstract class BaseRepository {
      * Executes an action inside a transaction and returns the result.
      */
     protected <T> T withTransaction(ConnectionAction<T> action) throws RepositoryException {
+        // Maneja commit/rollback para garantizar atomicidad del repositorio.
         try (Connection conn = connectionFactory.getConnection()) {
             conn.setAutoCommit(false);
             try {
@@ -85,6 +88,7 @@ public abstract class BaseRepository {
      * Executes an action inside a transaction (no return value).
      */
     protected void doWithTransaction(VoidConnectionAction action) throws RepositoryException {
+        // Variante void de transacción, útil para inserciones y deletes.
         try (Connection conn = connectionFactory.getConnection()) {
             conn.setAutoCommit(false);
             try {

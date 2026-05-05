@@ -99,6 +99,7 @@ public class GameView {
     }
 
     private void buildFrame() {
+        // Construcción de UI en EDT para evitar violaciones de thread-safety de Swing.
         // Force cross-platform L&F — looks identical everywhere
         try {
             UIManager.setLookAndFeel(
@@ -121,6 +122,7 @@ public class GameView {
         repaintTimer = new javax.swing.Timer(16, e -> tablePanel.repaint());
         repaintTimer.start();
 
+        // Barrera de UI lista: habilita al hilo de juego a continuar.
         signalUiReady();
     }
 
@@ -129,6 +131,7 @@ public class GameView {
     }
 
     public boolean awaitUiReady(long timeoutMs) {
+        // Bloquea al hilo de juego hasta que el EDT haya construido la ventana.
         return awaitLatch(uiReadyLatch, timeoutMs, "ui-ready");
     }
 
@@ -138,6 +141,7 @@ public class GameView {
             return;
         }
 
+        // invokeAndWait con guardia anti-deadlock.
         try {
             SwingUtilities.invokeAndWait(task);
         } catch (Exception ex) {
@@ -154,6 +158,7 @@ public class GameView {
             }
         }
 
+        // Puente seguro hacia EDT y espera de resultado.
         FutureTask<T> futureTask = new FutureTask<>(task);
         try {
             SwingUtilities.invokeAndWait(futureTask);
@@ -174,6 +179,7 @@ public class GameView {
             String result = callOnEdtAndWait(this::showNameDialog);
             return result == null ? "Jugador" : result;
         } catch (RuntimeException ex) {
+            // Fallback defensivo si el EDT falla.
             return "Jugador";
         }
     }
@@ -245,6 +251,7 @@ public class GameView {
 
     /** Replaces showPlayerHand — animates cards from deck pile */
     public void showPlayerHand(ArrayList<Card> hand) {
+        // Arranca animación asíncrona y devuelve control al hilo de juego.
         CompletableFuture<Boolean> completion = new CompletableFuture<>();
         animationFuture = completion;
 
@@ -263,6 +270,7 @@ public class GameView {
         ArrayList<Card> playerHand,
         int newCardsCount
     ) {
+        // Mantiene la animación alineada con el número de cartas nuevas.
         CompletableFuture<Boolean> completion = new CompletableFuture<>();
         animationFuture = completion;
 
@@ -318,6 +326,7 @@ public class GameView {
         int playerCurrentBet,
         long timeoutMs
     ) {
+        // Espera bloqueante del hilo de juego sobre un futuro completado por EDT.
         CompletableFuture<BettingRound.Action> future =
             new CompletableFuture<>();
         pendingActionFuture = future;
@@ -345,6 +354,7 @@ public class GameView {
     }
 
     public void resolvePendingPlayerAction(BettingRound.Action action) {
+        // Resuelve manualmente una acción pendiente cuando hubo timeout.
         CompletableFuture<BettingRound.Action> future = pendingActionFuture;
         if (future == null) {
             return;
@@ -508,6 +518,7 @@ public class GameView {
             return;
         }
 
+        // Apaga timers y libera recursos de Swing sin bloquear el EDT.
         Runnable shutdownTask = () -> {
             if (repaintTimer != null && repaintTimer.isRunning()) {
                 repaintTimer.stop();
@@ -547,6 +558,7 @@ public class GameView {
             return;
         }
         try {
+            // Se usa invokeAndWait para asegurar limpieza antes de seguir la mano.
             SwingUtilities.invokeAndWait(() ->
                 tablePanel.clearRoundVisualState()
             );
@@ -578,6 +590,7 @@ public class GameView {
         CompletableFuture<Boolean> completion,
         long waitMs
     ) {
+        // Timer dedicado por animación: evita bloquear el EDT.
         animationFuture = completion;
         Timer timer = new Timer("ui-animation", true);
         timer.schedule(
@@ -594,6 +607,7 @@ public class GameView {
     }
 
     public boolean awaitLastAnimation(long timeoutMs) {
+        // Permite al hilo de juego esperar la última animación sin bloquear el EDT.
         CompletableFuture<Boolean> current = animationFuture;
         if (current == null) {
             return true;
@@ -606,6 +620,7 @@ public class GameView {
         long timeoutMs,
         String label
     ) {
+        // Timeout controlado para evitar deadlocks si el EDT no responde.
         try {
             return future.get(timeoutMs, TimeUnit.MILLISECONDS);
         } catch (TimeoutException ex) {
@@ -630,6 +645,7 @@ public class GameView {
         long timeoutMs,
         String label
     ) {
+        // Barrera con timeout para evitar bloqueos al iniciar la UI.
         try {
             boolean completed = latch.await(timeoutMs, TimeUnit.MILLISECONDS);
             if (!completed) {

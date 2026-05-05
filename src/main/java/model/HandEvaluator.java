@@ -105,6 +105,7 @@ public class HandEvaluator {
     }
 
     public HandRank evaluateBestRank(List<Card> holeCards, List<Card> communityCards) {
+        // Valida input antes de evaluar para evitar combinaciones inválidas.
         validateInput(holeCards, communityCards);
 
         ArrayList<Card> allCards = new ArrayList<>(holeCards);
@@ -113,6 +114,7 @@ public class HandEvaluator {
     }
 
     public HandStrength evaluateBestHandStrength(List<Card> cards) {
+        // Evalúa todas las combinaciones de 5 para elegir la mejor mano.
         validateAllCardsInput(cards);
 
         List<List<Card>> combos = combinations(new ArrayList<>(cards), 5);
@@ -156,6 +158,7 @@ public class HandEvaluator {
     }
 
     private HandStrength evaluateFiveStrength(List<Card> five) {
+        // Evalúa exactamente 5 cartas, generando rank + tie-breakers.
         List<Integer> valuesAscending = sortedValues(five);
         List<Integer> valuesDescending = new ArrayList<>(valuesAscending);
         Collections.reverse(valuesDescending);
@@ -218,6 +221,7 @@ public class HandEvaluator {
     }
 
     private int straightHigh(List<Integer> values) {
+        // Caso wheel: A2345, donde el As cuenta como bajo.
         if (values.equals(Arrays.asList(2, 3, 4, 5, 14))) {
             return 5;
         }
@@ -265,6 +269,7 @@ public class HandEvaluator {
     }
 
     private int highestExcluding(List<Integer> valuesDescending, List<Integer> excludedValues) {
+        // Busca kicker más alto que no esté en el set excluido.
         for (Integer value : valuesDescending) {
             if (!excludedValues.contains(value)) {
                 return value;
@@ -304,6 +309,7 @@ public class HandEvaluator {
     }
 
     private <T> List<List<T>> combinations(List<T> list, int k) {
+        // Genera combinaciones sin repetición para evaluar todas las manos posibles.
         List<List<T>> result = new ArrayList<>();
         combinationsHelper(list, k, 0, new ArrayList<>(), result);
         return result;

@@ -31,6 +31,7 @@ public class SqliteGameRepository extends BaseRepository implements GameReposito
 
     @Override
     public void save(GameStateDto state) throws RepositoryException {
+        // Persistencia compuesta: estado + jugadores en una sola transacción.
         doWithTransaction(conn -> {
             long stateId = upsertGameState(conn, state);
             replacePlayers(conn, stateId, state.getPlayers());
@@ -39,6 +40,7 @@ public class SqliteGameRepository extends BaseRepository implements GameReposito
 
     @Override
     public Optional<GameStateDto> findByGameId(String gameId) throws RepositoryException {
+        // Carga lazy del estado y luego sus jugadores para minimizar joins.
         return withConnection(conn -> {
             Optional<Long> stateIdOpt = findStateIdByGameId(conn, gameId);
             if (stateIdOpt.isEmpty()) {
@@ -53,6 +55,7 @@ public class SqliteGameRepository extends BaseRepository implements GameReposito
 
     @Override
     public Optional<GameStateDto> findLatest() throws RepositoryException {
+        // Recupera el último snapshot por timestamp.
         return withConnection(conn -> {
             Optional<Long> stateIdOpt = findLatestStateId(conn);
             if (stateIdOpt.isEmpty()) {
@@ -78,6 +81,7 @@ public class SqliteGameRepository extends BaseRepository implements GameReposito
 
     @Override
     public void saveByMachineId(String machineId, GameStateDto state) throws RepositoryException {
+        // Actualiza o inserta por machineId para mantener un único save por máquina.
         doWithTransaction(conn -> {
             long stateId = upsertGameStateByMachineId(conn, machineId, state);
             replacePlayers(conn, stateId, state.getPlayers());
@@ -86,6 +90,7 @@ public class SqliteGameRepository extends BaseRepository implements GameReposito
 
     @Override
     public Optional<GameStateDto> loadByMachineId(String machineId) throws RepositoryException {
+        // Carga por machineId, evitando dependencias en gameId.
         return withConnection(conn -> {
             Optional<Long> stateIdOpt = findStateIdByMachineId(conn, machineId);
             if (stateIdOpt.isEmpty()) {
@@ -115,6 +120,7 @@ public class SqliteGameRepository extends BaseRepository implements GameReposito
     // ------------------------------------------------------------------
 
     private long upsertGameState(Connection conn, GameStateDto state) throws SQLException {
+        // Estrategia update-then-insert para evitar duplicados.
         // Try update first
         try (PreparedStatement stmt = conn.prepareStatement(
                 "UPDATE game_state SET pot = ?, community_cards_json = ?, " +
@@ -200,6 +206,7 @@ public class SqliteGameRepository extends BaseRepository implements GameReposito
     }
 
     private long upsertGameStateByMachineId(Connection conn, String machineId, GameStateDto state) throws SQLException {
+        // Upsert por machineId para asegurar un único snapshot por equipo.
         // Try update first
         try (PreparedStatement stmt = conn.prepareStatement(
                 "UPDATE game_state SET pot = ?, community_cards_json = ?, " +
@@ -268,6 +275,7 @@ public class SqliteGameRepository extends BaseRepository implements GameReposito
     }
 
     private void replacePlayers(Connection conn, long stateId, List<PlayerStateDto> players) throws SQLException {
+        // Reemplazo total: simplifica consistencia de jugadores para el snapshot.
         // Delete existing players for this game state
         try (PreparedStatement stmt = conn.prepareStatement(
                 "DELETE FROM game_players WHERE game_state_id = ?")) {
@@ -297,6 +305,7 @@ public class SqliteGameRepository extends BaseRepository implements GameReposito
     }
 
     private GameStateDto loadGameState(Connection conn, long stateId) throws SQLException {
+        // Carga de snapshot con campos normalizados desde columnas JSON.
         try (PreparedStatement stmt = conn.prepareStatement(
                 "SELECT game_id, machine_id, human_chips, pot, community_cards_json, remaining_deck_json, " +
                 "dealer_index, current_phase, timestamp FROM game_state WHERE id = ?")) {
@@ -324,6 +333,7 @@ public class SqliteGameRepository extends BaseRepository implements GameReposito
     }
 
     private List<PlayerStateDto> loadPlayers(Connection conn, long stateId) throws SQLException {
+        // Reconstruye jugadores desde el estado persistido.
         List<PlayerStateDto> players = new ArrayList<>();
         try (PreparedStatement stmt = conn.prepareStatement(
                 "SELECT player_id, name, hand_json, chips, current_bet, folded, all_in, role, ai " +
@@ -349,6 +359,7 @@ public class SqliteGameRepository extends BaseRepository implements GameReposito
     }
 
     private List<Card> parseCards(String json) {
+        // Vacío o null se interpreta como mano/comunidad vacía.
         if (json == null || json.isEmpty() || json.equals("[]")) {
             return new ArrayList<>();
         }

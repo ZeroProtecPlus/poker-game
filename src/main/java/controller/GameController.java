@@ -62,6 +62,7 @@ public class GameController {
     }
 
     private static Repositories createDefaultRepositories() {
+        // Bootstrap del storage antes de construir repositorios para garantizar esquema listo.
         DatabaseBootstrapper bootstrapper = new DatabaseBootstrapper();
         try {
             bootstrapper.bootstrap();
@@ -77,6 +78,7 @@ public class GameController {
     public record Repositories(PlayerRepository playerRepository, GameRepository gameRepository) {}
 
     public void createNewPlayer() {
+        // Loop de admisión: valida nombre en host y evita arrancar sin sesión válida.
         while (true) {
             JoinDecision decision = requestJoinAdmission(newGame.getUserName());
             if (decision.isAccepted()) {
@@ -171,6 +173,7 @@ public class GameController {
     }
 
     private void offerResume() {
+        // Recupera estado persistido por máquina para permitir reanudar sin elegir perfil manual.
         try {
             String machineId = machineIdProvider.getMachineId();
             Optional<GameStateDto> savedGame = gameRepository.loadByMachineId(machineId);
@@ -196,6 +199,7 @@ public class GameController {
     private void saveGameState(BettingRound.Phase phase) {
         if (pokerGame == null) return;
         try {
+            // Persistimos snapshot atómico del estado para reanudar la partida.
             GameStateDto state = buildGameStateDto(phase);
             String machineId = machineIdProvider.getMachineId();
             gameRepository.saveByMachineId(machineId, state);
@@ -259,6 +263,7 @@ public class GameController {
     }
 
     private void playOneHand() {
+        // Mano completa: inicializa mesa, ejecuta fases y termina en showdown o fold.
         newGame.clearTableForNewHand();
         this.pokerGame = new PokerGame(newPlayer);
         pokerGame.startNewRound();
@@ -308,6 +313,7 @@ public class GameController {
     // =========================================================================
 
     private void runBettingPhase(BettingRound.Phase phase) {
+        // Fase de apuestas unificada: humano + IA sincronizados con el estado del bote.
         pokerGame.resetRoundBets();
         BettingRound round = pokerGame.createBettingRound(phase);
 
@@ -325,6 +331,7 @@ public class GameController {
             if (shouldWaitForHumanAction) {
                 action = newGame.waitForPlayerAction(round, pokerGame.getPlayerCurrentBet(), newGame.getUiSyncTimeoutMs());
                 if (action == null) {
+                    // Timeout UI: resolvemos una acción segura para evitar bloquear la ronda.
                     action = resolveTimeoutAction(round, pokerGame.getPlayerCurrentBet());
                     newGame.resolvePendingPlayerAction(action);
                 }
@@ -348,7 +355,7 @@ public class GameController {
                 newGame.showPlayerFolded();
             }
 
-            // Sincronizar BettingRound con la apuesta más alta que hizo la IA
+            // Sincronizar la ronda con el máximo de apuesta de IA para mantener coherencia.
             if (result.highBet > round.getCurrentBet()) {
                 round.forceCurrentBet(result.highBet);
             }
@@ -364,6 +371,7 @@ public class GameController {
                 break;
             }
 
+            // Fingerprint de estado para cortar loops sin progreso real.
             String currentPhaseFingerprint = buildPhaseFingerprint(phase, round.getCurrentBet());
             if (currentPhaseFingerprint.equals(lastPhaseFingerprint)) {
                 repeatedFingerprintCount++;

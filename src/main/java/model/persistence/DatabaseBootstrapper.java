@@ -70,6 +70,7 @@ public class DatabaseBootstrapper {
             createSchemaVersionTable(conn);
             int currentVersion = getCurrentVersion(conn);
             List<Migration> pending = loadPendingMigrations(currentVersion);
+            // Aplica migraciones en orden y dentro de una transacción.
             for (Migration migration : pending) {
                 applyMigration(conn, migration);
             }
@@ -120,6 +121,7 @@ public class DatabaseBootstrapper {
         for (String fileName : MIGRATION_FILES) {
             int version = extractVersion(fileName);
             if (version > currentVersion) {
+                // Solo carga migraciones nuevas, evita re-ejecutar versiones ya aplicadas.
                 String path = MIGRATION_PATH + fileName;
                 try (InputStream is = getClass().getClassLoader().getResourceAsStream(path)) {
                     if (is != null) {
@@ -144,6 +146,7 @@ public class DatabaseBootstrapper {
     }
 
     private void applyMigration(Connection conn, Migration migration) throws SQLException, IOException {
+        // Split de statements para ejecutar scripts SQL multi-sentencia.
         String sql = readResource(migration.resourcePath);
         String[] statements = sql.split(";\\s*");
         try (Statement stmt = conn.createStatement()) {

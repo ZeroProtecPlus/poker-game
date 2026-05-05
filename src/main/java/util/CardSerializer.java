@@ -38,6 +38,7 @@ public class CardSerializer {
         if (code == null || code.length() < 2) {
             throw new IllegalArgumentException("Invalid card code: " + code);
         }
+        // El último carácter representa el palo; el resto, el rango.
         String suit = code.substring(code.length() - 1);
         String rank = code.substring(0, code.length() - 1);
         validateRank(rank);
@@ -52,6 +53,7 @@ public class CardSerializer {
      * @return JSON array of card codes
      */
     public static String toJson(List<Card> cards) {
+        // Serializa en JSON compacto para persistencia en SQLite.
         JSONArray array = new JSONArray();
         for (Card card : cards) {
             array.put(toCode(card));
@@ -67,6 +69,7 @@ public class CardSerializer {
      * @throws IllegalArgumentException if JSON is malformed or contains invalid codes
      */
     public static List<Card> fromJson(String json) {
+        // Convierte JSON de códigos a objetos Card con validación estricta.
         JSONArray array = new JSONArray(json);
         List<Card> cards = new ArrayList<>(array.length());
         for (int i = 0; i < array.length(); i++) {

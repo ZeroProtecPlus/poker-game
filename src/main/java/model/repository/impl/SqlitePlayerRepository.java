@@ -25,6 +25,7 @@ public class SqlitePlayerRepository extends BaseRepository implements PlayerRepo
 
     @Override
     public User save(User player) throws RepositoryException {
+        // Upsert simple para evitar duplicados por id.
         return withTransaction(conn -> {
             Optional<User> existing = findByIdInternal(conn, player.getPlayerId());
             if (existing.isPresent()) {
@@ -43,6 +44,7 @@ public class SqlitePlayerRepository extends BaseRepository implements PlayerRepo
 
     @Override
     public Optional<User> findByName(String name) throws RepositoryException {
+        // Búsqueda por nombre para reusar perfiles locales.
         return withConnection(conn -> {
             try (PreparedStatement stmt = conn.prepareStatement(
                     "SELECT player_id, name, chips FROM players WHERE name = ?")) {
@@ -70,6 +72,7 @@ public class SqlitePlayerRepository extends BaseRepository implements PlayerRepo
 
     @Override
     public List<User> findAll() throws RepositoryException {
+        // Carga simple sin paginado, usada para pantallas de administración.
         return withConnection(conn -> {
             List<User> players = new ArrayList<>();
             try (PreparedStatement stmt = conn.prepareStatement(

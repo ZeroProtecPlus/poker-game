@@ -74,6 +74,7 @@ public class PokerGame {
     }
 
     public void startNewRound() {
+        // Reinicia estado interno antes de repartir para evitar fugas entre manos.
         deck = new Deck();
         communityCards.clear();
         pot = 0;
@@ -92,6 +93,7 @@ public class PokerGame {
             return;
         }
 
+        // Rotación por dealerIndex para mantener fairness entre manos.
         for (int i = 0; i < players.size(); i++) {
             PlayerRole role = switch (i) {
                 case 0 -> PlayerRole.DEALER;
@@ -120,6 +122,7 @@ public class PokerGame {
     }
 
     private void postBlinds() {
+        // Blinds se postean al inicio para construir el bote mínimo.
         for (Player current : players) {
             if (current.getPlayerRole() == PlayerRole.SMALL_BLIND) {
                 pot += current.placeBet(SMALL_BLIND);
@@ -146,6 +149,7 @@ public class PokerGame {
     }
 
     public BettingRound createBettingRound(BettingRound.Phase phase) {
+        // Deriva la apuesta más alta para inicializar la ronda con estado coherente.
         int highBet = 0;
         for (Player current : players) {
             if (!current.isFolded()) {
@@ -222,6 +226,7 @@ public class PokerGame {
     }
 
     public AIBettingResult runUnifiedBettingRound(int currentHighBet, BettingRound.Action humanAction, int humanAmount, BettingRound.Phase phase) {
+        // Ejecuta humano e IA en un único recorrido para evitar desfasajes de apuestas.
         List<String> log = new ArrayList<>();
 
         for (Player current : players) {
@@ -377,6 +382,7 @@ public class PokerGame {
             return;
         }
 
+        // Reparto del bote: partes iguales y el resto se asigna por posición.
         List<Player> winners = showdownResult.getWinners();
         int baseShare = pot / winners.size();
         int remainder = pot % winners.size();
@@ -408,6 +414,7 @@ public class PokerGame {
     }
 
     private List<Player> remainderAssignmentOrder(List<Player> winners) {
+        // Ordena ganadores según cercanía al dealer para repartir el resto de manera estable.
         int dealerSeat = -1;
         for (int i = 0; i < players.size(); i++) {
             if (players.get(i).getPlayerRole() == PlayerRole.DEALER) {
@@ -444,6 +451,7 @@ public class PokerGame {
     }
 
     public ShowdownResult determineShowdownResult() {
+        // Evalúa fuerza de mano de jugadores activos y resuelve empates.
         HandEvaluator.HandStrength bestStrength = null;
         List<Player> winners = new ArrayList<>();
 
@@ -482,6 +490,7 @@ public class PokerGame {
         cards.addAll(communityCards);
 
         if (cards.size() >= 5) {
+            // Con 5+ cartas, delega en evaluador exhaustivo para mejor combinación.
             return handEvaluator.evaluateBestHandStrength(cards);
         }
 
@@ -492,6 +501,7 @@ public class PokerGame {
                 tieBreak.add(value);
             }
         }
+        // Fallback para rondas incompletas: usa orden de valores altos.
         tieBreak.sort(Collections.reverseOrder());
         return new HandEvaluator.HandStrength(HandEvaluator.HandRank.HIGH_CARD, tieBreak);
     }

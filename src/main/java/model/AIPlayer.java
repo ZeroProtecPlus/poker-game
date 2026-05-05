@@ -83,6 +83,7 @@ public class AIPlayer implements Player {
         boolean isBlind = (role == Role.SMALL_BLIND || role == Role.BIG_BLIND);
         boolean isPreflop = (phase == BettingRound.Phase.PREFLOP);
 
+        // Protege stack: evita pagar caro con manos marginales.
         // FR-01: SPR Protection Gate — fold expensive calls with marginal hands
         if (callAmount > chips * SPR_FOLD_RATIO && strength < SPR_COMMIT_THRESHOLD) {
             return callAmount == 0 ? BettingRound.Action.CHECK : BettingRound.Action.FOLD;
@@ -115,6 +116,7 @@ public class AIPlayer implements Player {
             if (roundRaiseCount >= MAX_RAISES_PER_PHASE) {
                 return BettingRound.Action.CHECK;
             }
+            // Ruido controlado: evita un patrón 100% determinista.
             return RNG.nextDouble() < 0.15
                 ? BettingRound.Action.BET
                 : BettingRound.Action.CHECK;
@@ -154,6 +156,7 @@ public class AIPlayer implements Player {
             return BettingRound.Action.CALL;
         }
 
+        // Bluff ocasional para no hacer a la IA completamente predecible.
         // Occasional bluff
         if (strength > 0.20 && RNG.nextDouble() < 0.20) {
             if (roundCallCount >= MAX_CALLS_PER_PHASE && strength < SPR_COMMIT_THRESHOLD) {
@@ -171,6 +174,7 @@ public class AIPlayer implements Player {
 
         // Preflop: evaluate using only hole cards
         if (community == null || community.isEmpty()) {
+            // Preflop no tiene comunitarias, se usa un score heurístico.
             return evaluatePreflopStrength();
         }
 
@@ -180,6 +184,7 @@ public class AIPlayer implements Player {
         }
 
         HandEvaluator.HandRank rank = handEvaluator.evaluateBestRank(hand, community);
+        // Normaliza el rank a [0..1] para comparar decisiones en distintos spots.
         return rank.ordinal() / (double) (HandEvaluator.HandRank.values().length - 1);
     }
 
@@ -245,6 +250,7 @@ public class AIPlayer implements Player {
         Role role,
         BettingRound.Phase phase
     ) {
+        // Tamaño de apuesta: preflop fijo vs postflop pot-relative.
         double strength = evaluateHandStrength(community);
         boolean isBlind = (role == Role.SMALL_BLIND || role == Role.BIG_BLIND);
         double mult = isBlind ? 1.5 : 1.0;

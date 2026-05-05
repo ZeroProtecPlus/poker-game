@@ -52,12 +52,14 @@ public class FileMachineIdProvider implements MachineIdProvider {
             if (machineId != null) {
                 return machineId;
             }
+            // Lazy init: evita I/O hasta que realmente se necesita el ID.
             machineId = resolveMachineId();
             return machineId;
         }
     }
 
     private String resolveMachineId() {
+        // Reusa ID previo si es válido; si no, genera uno nuevo persistente.
         String existing = readFromFile();
         if (existing != null && isValidUuid(existing)) {
             return existing;
@@ -84,6 +86,7 @@ public class FileMachineIdProvider implements MachineIdProvider {
             if (!Files.exists(dir)) {
                 Files.createDirectories(dir);
             }
+            // Escribe una sola vez para asegurar estabilidad entre reinicios.
             Files.writeString(file, uuid);
         } catch (IOException e) {
             System.err.println("Warning: failed to write machine.id: " + e.getMessage());
