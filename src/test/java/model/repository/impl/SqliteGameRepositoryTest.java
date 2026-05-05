@@ -351,6 +351,53 @@ class SqliteGameRepositoryTest {
         assertTrue(found.isEmpty(), "game state should be deleted");
     }
 
+    @Test
+    void shouldClaimLegacyRowWithNullMachineIdOnUpsert() throws Exception {
+        // Simulate a V1-era row saved via the old save() method with NULL machine_id
+        GameStateDto legacyState = createSampleState("player_legacy");
+        legacyState.setMachineId(null);
+        legacyState.setHumanChips(2500);
+        repository.save(legacyState); // old save path — NULL machine_id
+
+        // Now saveByMachineId with the same game_id should claim (UPDATE) the legacy row
+        GameStateDto newState = createSampleState("player_legacy");
+        newState.setMachineId("machine-claim-001");
+        newState.setHumanChips(3000);
+        newState.setPot(500);
+        repository.saveByMachineId("machine-claim-001", newState);
+
+        // Should find it by machine_id now
+        Optional<GameStateDto> found = repository.loadByMachineId("machine-claim-001");
+        assertTrue(found.isPresent(), "should find state by machine_id after claiming legacy row");
+        assertEquals("machine-claim-001", found.get().getMachineId(),
+                "machine_id should be set on claimed row");
+        assertEquals(3000, found.get().getHumanChips(),
+                "human_chips should be updated on claimed row");
+        assertEquals(500, found.get().getPot(),
+                "pot should be updated on claimed row");
+
+        // Should NOT find a duplicate by game_id using the old save path
+        // (there should be only one row with game_id = "player_legacy")
+        Optional<GameStateDto> byGameId = repository.findByGameId("player_legacy");
+        assertTrue(byGameId.isPresent(), "should find exactly one row by game_id");
+        assertEquals("machine-claim-001", byGameId.get().getMachineId(),
+                "the row should have machine_id set, not NULL");
+    }
+
+    @Test
+    void shouldInsertNewRowWhenNoExistingRowMatches() throws Exception {
+        // No existing rows at all — upsert should INSERT
+        GameStateDto state = createSampleState("fresh-game");
+        state.setMachineId("machine-fresh-001");
+        state.setHumanChips(10000);
+        repository.saveByMachineId("machine-fresh-001", state);
+
+        Optional<GameStateDto> found = repository.loadByMachineId("machine-fresh-001");
+        assertTrue(found.isPresent(), "should find freshly inserted state");
+        assertEquals("machine-fresh-001", found.get().getMachineId());
+        assertEquals(10000, found.get().getHumanChips());
+    }
+
     // ------------------------------------------------------------------
     //  Helpers
     // ------------------------------------------------------------------

@@ -36,6 +36,7 @@ public class DatabaseBootstrapper {
     private static final String[] MIGRATION_FILES = {
         "V1__init.sql",
         "V2__add_machine_id.sql",
+        "V3__cleanup_stale_machine_id.sql",
     };
 
     private final ConnectionFactory connectionFactory;

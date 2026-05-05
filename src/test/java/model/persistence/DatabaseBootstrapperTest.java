@@ -28,7 +28,7 @@ class DatabaseBootstrapperTest {
 
         int version = bootstrapper.bootstrap();
 
-        assertEquals(2, version, "schema version should be 2 after bootstrap (V1 + V2)");
+        assertEquals(3, version, "schema version should be 3 after bootstrap (V1 + V2 + V3)");
     }
 
     @Test
@@ -54,8 +54,8 @@ class DatabaseBootstrapperTest {
         int first = bootstrapper.bootstrap();
         int second = bootstrapper.bootstrap();
 
-        assertEquals(2, first);
-        assertEquals(2, second, "re-bootstrapping should not change version");
+        assertEquals(3, first);
+        assertEquals(3, second, "re-bootstrapping should not change version");
     }
 
     @Test
@@ -66,7 +66,7 @@ class DatabaseBootstrapperTest {
 
         int version = bootstrapper.bootstrap();
 
-        assertEquals(2, version);
+        assertEquals(3, version);
         assertTrue(java.nio.file.Files.exists(dbFile), "database file should be created");
     }
 
@@ -81,7 +81,7 @@ class DatabaseBootstrapperTest {
 
         int version = bootstrapper.bootstrap();
 
-        assertEquals(2, version, "schema version should be 2 after V2 migration");
+        assertEquals(3, version, "schema version should be 2 then 3 after V2+V3 migration");
     }
 
     @Test
@@ -182,6 +182,61 @@ class DatabaseBootstrapperTest {
              ResultSet rs = stmt.executeQuery(
                  "SELECT name FROM sqlite_master WHERE type='index' AND name='idx_game_state_machine_id'")) {
             assertTrue(rs.next(), "idx_game_state_machine_id index should exist after V2");
+        }
+    }
+
+    // =========================================================================
+    // V3 Migration tests
+    // =========================================================================
+
+    @Test
+    void shouldReachVersion3AfterBootstrap() throws Exception {
+        ConnectionFactory factory = ConnectionFactory.forMemory();
+        DatabaseBootstrapper bootstrapper = new DatabaseBootstrapper(factory);
+
+        int version = bootstrapper.bootstrap();
+
+        assertEquals(3, version, "schema version should be 3 after V3 migration");
+    }
+
+    @Test
+    void shouldDeleteStaleNullMachineIdRowsAfterV3(@TempDir Path tempDir) throws Exception {
+        Path dbFile = tempDir.resolve("v3_cleanup.db");
+        ConnectionFactory factory = new ConnectionFactory(dbFile.toString());
+        DatabaseBootstrapper bootstrapper = new DatabaseBootstrapper(factory);
+
+        // Bootstrap: creates full schema at version 3
+        bootstrapper.bootstrap();
+
+        // Insert a stale V1-style row with NULL machine_id
+        try (Connection conn = factory.getConnection();
+             Statement stmt = conn.createStatement()) {
+            stmt.execute("INSERT INTO game_state (game_id, pot, machine_id, human_chips) VALUES ('stale_latest', 0, NULL, 0)");
+        }
+
+        // Verify the stale row was inserted
+        try (Connection conn = factory.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM game_state WHERE machine_id IS NULL")) {
+            assertTrue(rs.next());
+            assertEquals(1, rs.getInt(1), "stale row should exist before V3 cleanup");
+        }
+
+        // Simulate V2 state: downgrade schema version so V3 can re-run
+        try (Connection conn = factory.getConnection();
+             Statement stmt = conn.createStatement()) {
+            stmt.execute("DELETE FROM schema_version WHERE version = 3");
+        }
+
+        // Re-bootstrap: detects version 2, applies V3 migration which deletes stale rows
+        bootstrapper.bootstrap();
+
+        // Stale rows should be gone
+        try (Connection conn = factory.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM game_state WHERE machine_id IS NULL")) {
+            assertTrue(rs.next());
+            assertEquals(0, rs.getInt(1), "V3 should delete rows with NULL machine_id");
         }
     }
 }

@@ -221,7 +221,28 @@ public class SqliteGameRepository extends BaseRepository implements GameReposito
             }
         }
 
-        // Insert new
+        // Step 2: Fallback — claim legacy row with NULL machine_id by game_id
+        try (PreparedStatement stmt = conn.prepareStatement(
+                "UPDATE game_state SET machine_id = ?, pot = ?, community_cards_json = ?, " +
+                "remaining_deck_json = ?, dealer_index = ?, current_phase = ?, timestamp = ?, " +
+                "human_chips = ? WHERE game_id = ?")) {
+            stmt.setString(1, machineId);
+            stmt.setInt(2, state.getPot());
+            stmt.setString(3, CardSerializer.toJson(state.getCommunityCards()));
+            stmt.setString(4, CardSerializer.toJson(state.getRemainingDeck()));
+            stmt.setInt(5, state.getDealerIndex());
+            stmt.setString(6, state.getCurrentPhase().name());
+            stmt.setString(7, java.time.Instant.ofEpochMilli(state.getTimestamp()).toString());
+            stmt.setInt(8, state.getHumanChips());
+            stmt.setString(9, state.getGameId());
+            int fallbackUpdated = stmt.executeUpdate();
+            if (fallbackUpdated > 0) {
+                return findStateIdByGameId(conn, state.getGameId()).orElseThrow(
+                    () -> new SQLException("Failed to retrieve state id after fallback update"));
+            }
+        }
+
+        // Step 3: Insert new row
         try (PreparedStatement stmt = conn.prepareStatement(
                 "INSERT INTO game_state (game_id, machine_id, pot, community_cards_json, " +
                 "remaining_deck_json, dealer_index, current_phase, timestamp, human_chips) " +
