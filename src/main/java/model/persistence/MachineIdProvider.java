@@ -1,16 +1,14 @@
 package model.persistence;
 
 /**
- * Provides a persistent machine identity (UUID v4).
- * The same ID is returned across application restarts.
+ * Provee un ID persistente de máquina (UUID v4).
+ * El mismo ID debe sobrevivir reinicios de la app.
  */
 public interface MachineIdProvider {
 
     /**
-     * Returns the persistent machine UUID.
-     * Generates and persists on first call or if file is missing/corrupted.
-     *
-     * @return a valid UUID v4 string
+     * Devuelve el UUID persistente de la máquina.
+     * Si no existe o es inválido, genera y persiste uno nuevo.
      */
     String getMachineId();
 }

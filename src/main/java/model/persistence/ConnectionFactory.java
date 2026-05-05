@@ -5,35 +5,36 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 
 /**
- * Factory for obtaining SQLite database connections.
- * Supports both file-based and in-memory databases.
+ * Fábrica de conexiones SQLite.
+ * Centraliza la construcción del JDBC URL para que el resto del código
+ * no tenga que conocer si la DB es archivo o memoria.
  */
 public class ConnectionFactory {
 
     private final String jdbcUrl;
 
     /**
-     * Creates a factory for a file-based database at the given path.
+     * Crea una fábrica para una base de datos basada en archivo.
      *
-     * @param dbPath absolute path to the SQLite database file
+     * @param dbPath ruta absoluta al archivo SQLite
      */
     public ConnectionFactory(String dbPath) {
         this.jdbcUrl = "jdbc:sqlite:" + dbPath;
     }
 
     /**
-     * Creates a factory for an in-memory database (useful for testing).
-     * Uses a shared cache so multiple connections see the same data.
+     * Crea una fábrica para base de datos en memoria (útil en tests).
+     * Usa cache compartida para que múltiples conexiones vean los mismos datos.
      */
     public static ConnectionFactory forMemory() {
         return new ConnectionFactory("file::memory:?cache=shared");
     }
 
     /**
-     * Obtains a new JDBC connection to the database.
+     * Obtiene una conexión JDBC nueva.
      *
-     * @return open Connection
-     * @throws ConnectionException if the driver cannot connect
+     * @return conexión abierta
+     * @throws ConnectionException si el driver no puede conectar
      */
     public Connection getConnection() throws ConnectionException {
         try {

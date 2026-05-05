@@ -1,7 +1,7 @@
 package model.persistence;
 
 /**
- * Checked root exception for all persistence-related errors.
+ * Excepción base chequeada para errores de persistencia.
  */
 public class PersistenceException extends Exception {
 

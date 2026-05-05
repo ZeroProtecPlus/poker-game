@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Data Transfer Object representing a player's state at a point in time.
+ * DTO del estado de un jugador en un instante específico.
  */
 public class PlayerStateDto {
 

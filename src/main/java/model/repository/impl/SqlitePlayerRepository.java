@@ -15,7 +15,8 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * SQLite JDBC implementation of PlayerRepository.
+ * Implementación SQLite de PlayerRepository.
+ * Upsert por player_id para mantener unicidad.
  */
 public class SqlitePlayerRepository extends BaseRepository implements PlayerRepository {
 

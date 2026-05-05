@@ -17,11 +17,11 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Bootstraps the SQLite database:
- * 1. Ensures the parent directory exists.
- * 2. Creates the connection.
- * 3. Runs pending schema migrations from classpath resources.
- * 4. Tracks schema version.
+ * Bootstrap de la base SQLite:
+ * 1) crea el directorio si no existe
+ * 2) abre conexión
+ * 3) corre migraciones pendientes desde resources
+ * 4) registra versión aplicada
  */
 public class DatabaseBootstrapper {
 
@@ -30,8 +30,8 @@ public class DatabaseBootstrapper {
     private static final String MIGRATION_PATH = "db/migration/";
 
     /**
-     * Known migration filenames. Add new entries here when creating migrations.
-     * Files are applied in the order listed, filtered by version > currentVersion.
+     * Migraciones conocidas. El orden del array define el orden de ejecución.
+     * Se aplica solo si version > currentVersion (evita re-ejecutar).
      */
     private static final String[] MIGRATION_FILES = {
         "V1__init.sql",
@@ -42,7 +42,7 @@ public class DatabaseBootstrapper {
     private final ConnectionFactory connectionFactory;
 
     /**
-     * Bootstraps the default database at {@code user.home/.pokergame/poker.db}.
+     * Inicializa la DB por defecto en {@code user.home/.pokergame/poker.db}.
      */
     public DatabaseBootstrapper() {
         String home = System.getProperty("user.home");
@@ -52,17 +52,14 @@ public class DatabaseBootstrapper {
     }
 
     /**
-     * Bootstraps using an explicit connection factory (useful for testing).
+     * Inicializa usando una fábrica explícita (útil para testing).
      */
     public DatabaseBootstrapper(ConnectionFactory connectionFactory) {
         this.connectionFactory = connectionFactory;
     }
 
     /**
-     * Runs all pending migrations and returns the current schema version.
-     *
-     * @return current schema version after bootstrap
-     * @throws RepositoryException if migration fails
+     * Ejecuta migraciones pendientes y devuelve la versión actual.
      */
     public int bootstrap() throws RepositoryException {
         try (Connection conn = connectionFactory.getConnection()) {
@@ -82,7 +79,7 @@ public class DatabaseBootstrapper {
     }
 
     /**
-     * Returns the connection factory used by this bootstrapper.
+     * Devuelve la fábrica de conexiones utilizada por este bootstrapper.
      */
     public ConnectionFactory getConnectionFactory() {
         return connectionFactory;
@@ -135,7 +132,7 @@ public class DatabaseBootstrapper {
     }
 
     /**
-     * Extracts the version number from a migration filename like "V2__add_machine_id.sql".
+     * Extrae el número de versión desde un nombre tipo "V2__add_machine_id.sql".
      */
     private int extractVersion(String fileName) {
         int end = fileName.indexOf("__");
