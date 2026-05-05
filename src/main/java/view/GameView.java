@@ -695,6 +695,7 @@ public class GameView {
 
         void setPlayerInfo(String name, int ch) {
             this.playerName = name;
+            this.chips = ch;
             this.chipAnimFrom = displayChips;
             this.chipAnimTo = ch;
             this.chipAnimStart = System.currentTimeMillis();
