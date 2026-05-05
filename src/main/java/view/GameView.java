@@ -700,6 +700,7 @@ public class GameView {
             this.chipAnimTo = ch;
             this.chipAnimStart = System.currentTimeMillis();
             SoundFX.playChips();
+            repaint();
         }
 
         void setRoles(AIPlayer.Role humanRole, List<AIPlayer> ais) {
