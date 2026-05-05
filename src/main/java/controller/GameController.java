@@ -177,9 +177,7 @@ public class GameController {
                 boolean resume = newGame.askResumeGame(state.getHumanChips());
                 if (resume) {
                     newPlayer.setChips(state.getHumanChips());
-                    newGame.runOnEdtAndWait(() ->
-                        newGame.showUserChips(userNamePlayer, newPlayer.getNumbChips())
-                    );
+                    newGame.showUserChipsSync(userNamePlayer, newPlayer.getNumbChips());
                 } else {
                     gameRepository.deleteByMachineId(machineId);
                 }

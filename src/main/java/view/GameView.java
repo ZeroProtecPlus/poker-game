@@ -216,6 +216,24 @@ public class GameView {
         );
     }
 
+    /** Synchronous version of showUserChips — blocks until EDT updates the display */
+    public void showUserChipsSync(String userName, int chips) {
+        if (SwingUtilities.isEventDispatchThread()) {
+            tablePanel.setPlayerInfo(userName, chips);
+        } else {
+            try {
+                SwingUtilities.invokeAndWait(() ->
+                    tablePanel.setPlayerInfo(userName, chips)
+                );
+            } catch (Exception e) {
+                // Fallback to async if invokeAndWait fails
+                SwingUtilities.invokeLater(() ->
+                    tablePanel.setPlayerInfo(userName, chips)
+                );
+            }
+        }
+    }
+
     /** Replaces showPlayerHand — animates cards from deck pile */
     public void showPlayerHand(ArrayList<Card> hand) {
         CompletableFuture<Boolean> completion = new CompletableFuture<>();
