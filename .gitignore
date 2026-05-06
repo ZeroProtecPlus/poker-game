@@ -47,3 +47,6 @@ setup-and-run.bat
 run.bat
 lib/
 sdd/
+.sdd/
+PRESENTACION.txt
+dependency-reduced-pom.xml
