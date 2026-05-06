@@ -31,9 +31,10 @@ Se eliminó `Thread.sleep(300)` y todo `wait/notify` frágil.
 
 ---
 
-## 2. Distribución Incremental de Cartas Comunitarias (Flop, Turn, River)
+## 2. ✅ Distribución Incremental de Cartas Comunitarias (Flop, Turn, River) (SOLUCIONADO)
 **Prioridad:** 🟠 Alto  
 **Origen:** Main.java To-do #2
+**Estado:** ✅ Solucionado
 
 **Problema actual:** Cada vez que se muestra una fase (Flop→Turn→River), el método `dealCommunity()` hace `communitySprites.clear()` y redibuja TODAS las cartas desde cero. Esto causa:
 - Las cartas de fases anteriores se "re-dibujan" en lugar de mantenerse en la mesa
@@ -51,9 +52,10 @@ Se eliminó `Thread.sleep(300)` y todo `wait/notify` frágil.
 
 ---
 
-## 3. Base de Datos — Persistencia de Usuarios y Fichas
+## 3. ✅ Base de Datos — Persistencia de Usuarios y Fichas (SOLUCIONADO)
 **Prioridad:** 🟠 Alto  
 **Origen:** Main.java To-do #3
+**Estado:** ✅ Solucionado
 
 No existe ningún mecanismo de persistencia. Al cerrar la aplicación se pierden:
 - El nombre del jugador
@@ -64,9 +66,10 @@ Implementar una solución de persistencia (SQLite embebido u otras opciones) par
 
 ---
 
-### 3.1 Persistencia de Estado de Partida (Game State) — Preparación para LAN
+### 3.1 ✅ Persistencia de Estado de Partida (Game State) — Preparación para LAN (SOLUCIONADO)
 **Prioridad:** 🟠 Alto  
 **Origen:** Extensión de arquitectura
+**Estado:** ✅ Solucionado
 
 Además de la persistencia básica de usuario, se requiere almacenar el estado completo de la partida para permitir reanudación y soporte futuro de multijugador en red local (LAN).
 
@@ -139,9 +142,10 @@ Los clientes no almacenan estado persistente; únicamente envían acciones y rec
 
 ---
 
-### 3.2 Empaquetado de Base de Datos SQLite para Distribución (.exe)
+### 3.2 ✅ Empaquetado de Base de Datos SQLite para Distribución (.exe) (SOLUCIONADO)
 **Prioridad:** 🟠 Alto  
 **Origen:** Decisión de empaquetado
+**Estado:** ✅ Solucionado
 
 Al compilar el proyecto a un `.exe` (mediante `jpackage`, Launch4j o similar), la base de datos SQLite debe inicializarse correctamente en el entorno del usuario final.
 
@@ -633,6 +637,8 @@ El fondo de la mesa de poker y los iconos/sprites actuales son de baja calidad o
 | 4 | ✅ Testing funcional (solucionado) | ✅ Completado |
 | 2 | ✅ Distribución incremental de cartas comunitarias (solucionado) | ✅ Completado |
 | 3 | ✅ Base de datos / Persistencia (solucionado) | ✅ Completado |
+| 3.1 | ✅ Persistencia de estado de partida (solucionado) | ✅ Completado |
+| 3.2 | ✅ Empaquetado DB SQLite para distribución (solucionado) | ✅ Completado |
 | 7 | ✅ Refactor — Extraer HandEvaluator (solucionado) | ✅ Completado |
 | 9 | ✅ Split Pot en empates | ✅ Completado |
 | 5 | Modal "¿Continuar?" custom | 🟡 Medio |
