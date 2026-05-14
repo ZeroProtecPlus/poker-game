@@ -39,9 +39,25 @@ public class AIPlayer implements Player {
     public static final int PREFLOP_RAISE_MULTIPLIER = 3;
     public static final int PREFLOP_RAISE_CAP_MULTIPLIER = 6;
 
+    // ── Delta-Strength Constants ────────────────────────────────────────────
+    /** Modulation factor applied to decision thresholds (callMargin, raiseThresh). */
+    public static final double DELTA_MODULATION_FACTOR = 0.08;
+    /** Maximum absolute delta value (clamp boundary ±0.30). */
+    public static final double DELTA_CLAMP = 0.30;
+    /** Maximum multiplier for positive-delta bet sizing. */
+    public static final double DELTA_SIZING_CAP = 2.0;
+    /** Minimum multiplier for negative-delta bet sizing. */
+    public static final double DELTA_SIZING_FLOOR = 0.5;
+
     // ── Action Counters (FR-03) ────────────────────────────────────────────
     private int roundCallCount = 0;
     private int roundRaiseCount = 0;
+
+    // ── Delta-Strength Fields ──────────────────────────────────────────────
+    /** Hand strength from the previous betting phase (0.0 = unset/flop). */
+    private double previousPhaseStrength = 0.0;
+    /** Computed delta: clamp(strength_current − previousPhaseStrength, ±0.30). */
+    private double deltaStrength = 0.0;
 
     private static final Random RNG = new Random();
 
@@ -83,6 +99,15 @@ public class AIPlayer implements Player {
         boolean isBlind = (role == Role.SMALL_BLIND || role == Role.BIG_BLIND);
         boolean isPreflop = (phase == BettingRound.Phase.PREFLOP);
 
+        // ── R1: Delta-strength computation ──────────────────────────────
+        if (isPreflop) {
+            deltaStrength = 0.0;
+        } else {
+            double raw = strength - previousPhaseStrength;
+            deltaStrength = Math.max(-DELTA_CLAMP, Math.min(DELTA_CLAMP, raw));
+        }
+        previousPhaseStrength = strength; // save for next phase
+
         // Protege stack: evita pagar caro con manos marginales.
         // FR-01: SPR Protection Gate — fold expensive calls with marginal hands
         if (callAmount > chips * SPR_FOLD_RATIO && strength < SPR_COMMIT_THRESHOLD) {
@@ -95,9 +120,24 @@ public class AIPlayer implements Player {
         double blindCallThresh = isPreflop ? PREFLOP_BLIND_CALL_THRESHOLD : 0.15;
         double blindRaiseThresh = isPreflop ? PREFLOP_BLIND_RAISE_THRESHOLD : 0.65;
 
+        // ── R2: Threshold modulation ──────────────────────────────────
+        double modulation = Math.abs(deltaStrength) * DELTA_MODULATION_FACTOR;
+        if (deltaStrength > 0) {
+            callMargin -= modulation;
+        } else if (deltaStrength < 0) {
+            callMargin += modulation;
+        }
+        // Note: SPR gate, bluff RNG, and action counters remain unmodified
+
         if (callAmount == 0) {
             // No call to match — check, bet, or raise
-            if (strength > 0.65) {
+            double freeRaiseThresh = 0.65;
+            if (deltaStrength > 0) {
+                freeRaiseThresh -= modulation;
+            } else if (deltaStrength < 0) {
+                freeRaiseThresh += modulation;
+            }
+            if (strength > freeRaiseThresh) {
                 // FR-03: Action cap — only one raise/bet per phase
                 if (roundRaiseCount >= MAX_RAISES_PER_PHASE && strength < SPR_COMMIT_THRESHOLD) {
                     return BettingRound.Action.CHECK;
@@ -125,6 +165,12 @@ public class AIPlayer implements Player {
         // Must call, raise, or fold
         double potOdds = callAmount / (double) (pot + callAmount);
         double raiseThresh = isPreflop ? blindRaiseThresh : (isBlind ? 0.65 : 0.75);
+        // Delta modulation on raiseThresh
+        if (deltaStrength > 0) {
+            raiseThresh -= modulation;
+        } else if (deltaStrength < 0) {
+            raiseThresh += modulation;
+        }
 
         // FR-03: Action cap on raises
         if (strength > raiseThresh && chips > callAmount * 2) {
@@ -268,9 +314,22 @@ public class AIPlayer implements Player {
             cap = chips; // no artificial cap postflop
         }
 
-        if (strength > 0.85) return Math.min(chips, Math.min(cap, (int)(base * 3)));
-        if (strength > 0.60) return Math.min(chips, Math.min(cap, (int)(base * 2)));
-        return Math.min(chips, Math.min(cap, base));
+        int amount;
+        if (strength > 0.85) amount = (int)(base * 3);
+        else if (strength > 0.60) amount = (int)(base * 2);
+        else amount = base;
+
+        // ── R3: Delta sizing modulation ──────────────────────────────
+        if (deltaStrength > 0) {
+            double sizingMultiplier = Math.min(DELTA_SIZING_CAP, 1.0 + Math.abs(deltaStrength));
+            amount = (int)(amount * sizingMultiplier);
+        } else if (deltaStrength < 0) {
+            double sizingMultiplier = Math.max(DELTA_SIZING_FLOOR, 1.0 - Math.abs(deltaStrength));
+            amount = (int)(amount * sizingMultiplier);
+        }
+        // Δ=0: no modification
+
+        return Math.min(chips, Math.min(cap, amount));
     }
 
     // =========================================================================
@@ -390,6 +449,7 @@ public class AIPlayer implements Player {
         currentBet = 0;
         roundCallCount = 0;
         roundRaiseCount = 0;
+        previousPhaseStrength = 0.0;
     }
 
     public static PlayerRole toPlayerRole(Role role) {

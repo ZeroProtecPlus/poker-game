@@ -144,6 +144,317 @@ class AIPlayerTest {
         void preflopRaiseCapMultiplier() {
             assertEquals(6, AIPlayer.PREFLOP_RAISE_CAP_MULTIPLIER);
         }
+
+        @Test
+        @DisplayName("DELTA_MODULATION_FACTOR should be 0.08")
+        void deltaModulationFactor() {
+            assertEquals(0.08, AIPlayer.DELTA_MODULATION_FACTOR, 0.001);
+        }
+
+        @Test
+        @DisplayName("DELTA_CLAMP should be 0.30")
+        void deltaClamp() {
+            assertEquals(0.30, AIPlayer.DELTA_CLAMP, 0.001);
+        }
+
+        @Test
+        @DisplayName("DELTA_SIZING_CAP should be 2.0")
+        void deltaSizingCap() {
+            assertEquals(2.0, AIPlayer.DELTA_SIZING_CAP, 0.001);
+        }
+
+        @Test
+        @DisplayName("DELTA_SIZING_FLOOR should be 0.5")
+        void deltaSizingFloor() {
+            assertEquals(0.5, AIPlayer.DELTA_SIZING_FLOOR, 0.001);
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    //  Δ-strength AI Decision Modulation
+    // ═══════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("Delta Strength (Δ-strength)")
+    class DeltaStrengthTests {
+
+        // ── R1: Delta Computation ───────────────────────────────────────
+
+        @Test
+        @DisplayName("Preflop: delta is zero regardless of hole card strength")
+        void preflopDeltaIsZero() {
+            setPremiumHand(); // strength ≈ 0.96
+            ai.decide(0, 100, noCommunity(), AIPlayer.Role.NONE, BettingRound.Phase.PREFLOP);
+            assertEquals(0.0, getDeltaStrength(ai), 0.001,
+                "Preflop delta must be 0 regardless of hand strength");
+        }
+
+        @Test
+        @DisplayName("Positive delta on flop: hand improves → Δ > 0")
+        void positiveDeltaOnImprovement() {
+            setWeakHand();
+            ai.decide(0, 20, noCommunity(), AIPlayer.Role.NONE, BettingRound.Phase.PREFLOP);
+            double preStrength = getPreviousPhaseStrength(ai);
+            assertTrue(preStrength > 0.0, "Preflop strength should be recorded");
+
+            ArrayList<Card> comm = community(
+                c("10", "S"), c("J", "C"), c("Q", "S"), c("2", "D"), c("K", "C"));
+            ai.clearHand();
+            setHoleCards("8", "H", "9", "H");
+            setPreviousPhaseStrength(ai, preStrength);
+
+            ai.decide(0, 100, comm, AIPlayer.Role.NONE, BettingRound.Phase.FLOP);
+            double delta = getDeltaStrength(ai);
+            assertTrue(delta > 0.0,
+                "Delta should be positive when flop improves hand (got: " + delta + ")");
+        }
+
+        @Test
+        @DisplayName("Negative delta on flop: hand worsens → Δ < 0")
+        void negativeDeltaOnWorsening() {
+            setPremiumHand();
+            ai.decide(0, 20, noCommunity(), AIPlayer.Role.NONE, BettingRound.Phase.PREFLOP);
+            double preStrength = getPreviousPhaseStrength(ai);
+
+            ArrayList<Card> comm = community(c("7", "S"), c("8", "S"), c("9", "S"));
+            ai.clearHand();
+            setHoleCards("A", "S", "A", "H");
+            setPreviousPhaseStrength(ai, preStrength);
+
+            ai.decide(0, 100, comm, AIPlayer.Role.NONE, BettingRound.Phase.FLOP);
+            double delta = getDeltaStrength(ai);
+            assertTrue(delta < 0.0,
+                "Delta should be negative when flop worsens hand (got: " + delta + ")");
+        }
+
+        @Test
+        @DisplayName("Delta clamped to ±0.30: raw Δ > 0.30 → clamped to 0.30")
+        void deltaClampedToMax() {
+            setWeakHand();
+            ai.decide(0, 20, noCommunity(), AIPlayer.Role.NONE, BettingRound.Phase.PREFLOP);
+            setPreviousPhaseStrength(ai, 0.0);
+
+            ArrayList<Card> comm = community(
+                c("A", "S"), c("K", "S"), c("Q", "S"), c("J", "S"), c("10", "S"));
+            ai.clearHand();
+            setHoleCards("7", "S", "2", "H");
+            setPreviousPhaseStrength(ai, 0.0);
+
+            ai.decide(0, 100, comm, AIPlayer.Role.NONE, BettingRound.Phase.FLOP);
+            double delta = getDeltaStrength(ai);
+            assertTrue(delta <= 0.30 + 0.001,
+                "Delta must be clamped to ≤ 0.30, got: " + delta);
+        }
+
+        @Test
+        @DisplayName("Delta zero when strength doesn't change between phases")
+        void deltaZeroOnNoChange() {
+            // setPreviousPhaseStrength AFTER setHoleCards because clearHand() resets it
+            setHoleCards("5", "H", "5", "D");
+            setPreviousPhaseStrength(ai, 3.0 / 9.0);
+            ArrayList<Card> comm = community(c("5", "S"), c("K", "C"), c("2", "H"), c("7", "D"), c("9", "C"));
+
+            ai.decide(0, 100, comm, AIPlayer.Role.NONE, BettingRound.Phase.FLOP);
+            double delta = getDeltaStrength(ai);
+            assertEquals(0.0, delta, 0.001,
+                "Delta should be 0 when current strength equals previous phase strength");
+        }
+
+        // ── R2: Threshold Modulation ────────────────────────────────────
+
+        @Test
+        @DisplayName("Positive delta lowers callMargin → triggers CALL that would otherwise FOLD")
+        void positiveDeltaLowersCallMargin() {
+            // ONE_PAIR of Ks (ordinal 1, strength 1/8 = 0.125, ≤ 0.20 → no bluff RNG)
+            setHoleCards("A", "S", "K", "H");
+            ArrayList<Card> comm = community(c("K", "D"), c("2", "C"), c("7", "H"));
+            // Force Δ = +0.30: set prev so strength − prev = +0.30 → prev = −0.175
+            setPreviousPhaseStrength(ai, -0.175);
+
+            // callAmount=10, pot=190 → potOdds = 10/200 = 0.05
+            // Without modulation: call if strength > 0.05 + 0.08 = 0.13 → 0.125 < 0.13 → FOLD
+            // With modulation: callMargin lowered to 0.08 − 0.024 = 0.056
+            //   call if strength > 0.05 + 0.056 = 0.106 → 0.125 > 0.106 → CALL
+            BettingRound.Action action = ai.decide(10, 190, comm, AIPlayer.Role.NONE, BettingRound.Phase.FLOP);
+            assertEquals(BettingRound.Action.CALL, action,
+                "With Δ=+0.30, callMargin=0.056 should allow CALL at potOdds=0.05 where 0.08 would FOLD");
+        }
+
+        @Test
+        @DisplayName("Negative delta raises callMargin → triggers FOLD that would otherwise CALL")
+        void negativeDeltaRaisesCallMargin() {
+            // ONE_PAIR of Ks (ordinal 1, strength 1/8 = 0.125, ≤ 0.20 → no bluff RNG)
+            setHoleCards("A", "S", "K", "H");
+            ArrayList<Card> comm = community(c("K", "D"), c("2", "C"), c("7", "H"));
+            // Force Δ = -0.30: set prev so strength − prev = −0.30 → prev = 0.425
+            setPreviousPhaseStrength(ai, 0.425);
+
+            // callAmount=3, pot=97 → potOdds = 3/100 = 0.03
+            // Without modulation: call if strength > 0.03 + 0.08 = 0.11 → 0.125 > 0.11 → CALL
+            // With modulation: callMargin raised to 0.08 + 0.024 = 0.104
+            //   call if strength > 0.03 + 0.104 = 0.134 → 0.125 < 0.134 → FOLD
+            BettingRound.Action action = ai.decide(3, 97, comm, AIPlayer.Role.NONE, BettingRound.Phase.FLOP);
+            assertEquals(BettingRound.Action.FOLD, action,
+                "With Δ=-0.30, callMargin=0.104 should force FOLD at potOdds=0.03 where 0.08 would CALL");
+        }
+
+        @Test
+        @DisplayName("Positive delta lowers raiseThresh → triggers RAISE on marginal hand")
+        void positiveDeltaLowersRaiseThresh() {
+            // Pair of 4s: preflop strength = 0.56 + (2/12)*0.40 ≈ 0.6267
+            // FLOP phase with no community → uses evaluatePreflopStrength() → continuous values
+            setHoleCards("4", "S", "4", "H");
+            // Force Δ = +0.30: prev = strength − 0.30 ≈ 0.3267
+            setPreviousPhaseStrength(ai, 0.3267);
+
+            // callAmount=0 → enters callAmount==0 path with hardcoded 0.65 threshold
+            // Without modulation: freeRaiseThresh=0.65, 0.6267 < 0.65 → CHECK
+            // With Δ=+0.30: freeRaiseThresh = 0.65 − 0.024 = 0.626, 0.6267 > 0.626 → RAISE
+            BettingRound.Action action = ai.decide(0, 100, noCommunity(), AIPlayer.Role.NONE, BettingRound.Phase.FLOP);
+            assertEquals(BettingRound.Action.RAISE, action,
+                "With Δ=+0.30, lowered freeRaiseThresh=0.626 should allow pair of 4s (0.627) to RAISE");
+        }
+
+        @Test
+        @DisplayName("Negative delta raises raiseThresh → prevents RAISE on marginal hand")
+        void negativeDeltaPreventsRaise() {
+            // FULL_HOUSE: K♠K♥ + K♦2♣2♥ → three Ks + pair of 2s (ordinal 6, strength 6/9 ≈ 0.667)
+            setHoleCards("K", "S", "K", "H");
+            ArrayList<Card> comm = community(c("K", "D"), c("2", "C"), c("2", "H"), c("7", "D"), c("9", "C"));
+            // Force Δ = -0.30 via previousPhaseStrength (delta gets recomputed in decide())
+            setPreviousPhaseStrength(ai, 0.667 + 0.30);
+
+            // Use Role.NONE to avoid the blindBetThresh (0.25) fallthrough path
+            // callAmount=0 → check/bet/raise decision
+            // Without modulation: freeRaiseThresh = 0.65 → 0.667 > 0.65 → RAISE
+            // With Δ=-0.30: freeRaiseThresh = 0.65 + 0.024 = 0.674 → 0.667 < 0.674 → falls through → CHECK
+            BettingRound.Action action = ai.decide(0, 100, comm, AIPlayer.Role.NONE, BettingRound.Phase.FLOP);
+            assertEquals(BettingRound.Action.CHECK, action,
+                "With Δ=-0.30, raiseThresh=0.674 should prevent RAISE on FULL_HOUSE (0.667)");
+        }
+
+        @Test
+        @DisplayName("SPR gate and bluff RNG are unaffected by delta modulation")
+        void sprGateUnaffectedByDelta() {
+            // SPR gate: expensive call with marginal hand → FOLD regardless of delta
+            setMarginalHand(); // pair of 5s ≈ 0.66
+            setDeltaStrength(ai, 0.30); // force positive delta
+            // callAmount = 4000 > 10000 * 0.35 = 3500, strength 0.66 < 0.70 → SPR forces FOLD
+            BettingRound.Action action = ai.decide(4000, 200, noCommunity(), AIPlayer.Role.NONE, BettingRound.Phase.PREFLOP);
+            assertEquals(BettingRound.Action.FOLD, action,
+                "SPR gate should fold regardless of delta");
+        }
+
+        // ── State Reset ───────────────────────────────────────────────
+
+        @Test
+        @DisplayName("clearHand resets previousPhaseStrength to 0.0")
+        void clearHandResetsPreviousPhaseStrength() {
+            setPreviousPhaseStrength(ai, 0.5);
+            ai.clearHand();
+            assertEquals(0.0, getPreviousPhaseStrength(ai), 0.001,
+                "clearHand should reset previousPhaseStrength to 0.0");
+        }
+
+        // ── R3: Delta Sizing Modulation ──────────────────────────────
+
+        @Test
+        @DisplayName("R3 sizing: positive delta increases bet amount")
+        void positiveDeltaIncreasesBet() {
+            setPremiumHand(); // AA, preflop strength ≈ 0.96
+            setDeltaStrength(ai, 0.20);
+            // FLOP phase with no community uses preflop strength
+            // base = max(100, 100/4) = 100, strength > 0.85 → 100*3 = 300
+            // delta +0.20: multiplier = min(2.0, 1.20) = 1.20 → 360
+            int amount = ai.decideAmount(100, 100, noCommunity(), AIPlayer.Role.NONE, BettingRound.Phase.FLOP);
+            assertTrue(amount > 100,
+                "With Δ=+0.20, bet should exceed base of 100 (multiplier 1.20, got: " + amount + ")");
+        }
+
+        @Test
+        @DisplayName("R3 sizing: negative delta reduces bet amount")
+        void negativeDeltaReducesBet() {
+            // Pair of 2s: preflop strength ≈ 0.56 (≤ 0.60, base multiplier = 1)
+            setHoleCards("2", "S", "2", "H");
+            setDeltaStrength(ai, -0.25);
+            // FLOP phase (no community, uses preflop strength ≈ 0.56)
+            // base = max(200, 200/4) = 200, strength ≤ 0.60 → amount = 200
+            // delta -0.25: multiplier = max(0.5, 0.75) = 0.75 → (int)(200*0.75) = 150
+            int amount = ai.decideAmount(200, 200, noCommunity(), AIPlayer.Role.NONE, BettingRound.Phase.FLOP);
+            assertTrue(amount < 200,
+                "With Δ=-0.25, bet should be < base 200 (multiplier 0.75, got: " + amount + ")");
+            assertTrue(amount >= 100,
+                "With Δ=-0.25, bet should be ≥ 100 floor (got: " + amount + ")");
+        }
+
+        @Test
+        @DisplayName("R3 sizing: delta multiplier verified within 2.0x cap")
+        void deltaSizingWithinCap() {
+            // Pair of 2s: preflop strength ≈ 0.56 (≤ 0.60, base multiplier = 1)
+            setHoleCards("2", "S", "2", "H");
+            setDeltaStrength(ai, 0.30);
+            // max delta (+0.30), minBet=100, currentPot=100, FLOP
+            // base = max(100, 100/4) = 100
+            // strength ≤ 0.60 → amount = 100
+            // delta +0.30: multiplier = min(2.0, 1.30) = 1.30 → (int)(100*1.30) = 130
+            int amount = ai.decideAmount(100, 100, noCommunity(), AIPlayer.Role.NONE, BettingRound.Phase.FLOP);
+            assertTrue(amount <= 200,
+                "With Δ=+0.30 (max) and base=100, multiplier 1.30 must not exceed 2.0x cap (got: " + amount + ")");
+        }
+
+        // ── Helper reflection methods for testing internal state ─────────
+
+        /**
+         * Sets the private deltaStrength field via reflection.
+         */
+        static void setDeltaStrength(AIPlayer ai, double value) {
+            try {
+                java.lang.reflect.Field f = AIPlayer.class.getDeclaredField("deltaStrength");
+                f.setAccessible(true);
+                f.set(ai, value);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        /**
+         * Reads the private deltaStrength field via reflection.
+         */
+        static double getDeltaStrength(AIPlayer ai) {
+            try {
+                java.lang.reflect.Field f = AIPlayer.class.getDeclaredField("deltaStrength");
+                f.setAccessible(true);
+                return (double) f.get(ai);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        /**
+         * Reads the private previousPhaseStrength field via reflection.
+         */
+        static double getPreviousPhaseStrength(AIPlayer ai) {
+            try {
+                java.lang.reflect.Field f = AIPlayer.class.getDeclaredField("previousPhaseStrength");
+                f.setAccessible(true);
+                return (double) f.get(ai);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        /**
+         * Sets the private previousPhaseStrength field via reflection.
+         */
+        static void setPreviousPhaseStrength(AIPlayer ai, double value) {
+            try {
+                java.lang.reflect.Field f = AIPlayer.class.getDeclaredField("previousPhaseStrength");
+                f.setAccessible(true);
+                f.set(ai, value);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════════════
