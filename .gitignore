@@ -48,5 +48,6 @@ run.bat
 lib/
 sdd/
 .sdd/
+docs/
 PRESENTACION.txt
 dependency-reduced-pom.xml

@@ -658,6 +658,7 @@ El fondo de la mesa de poker y los iconos/sprites actuales son de baja calidad o
 | 21 | ✅ Modal "Continuar?" no cierra el juego al responder "No" (solucionado) | ✅ Completado |
 | 22 | Mejora de gráficos y sprites de la mesa | 🟡 Medio |
 | 23 | Deuda técnica — Persistencia (warnings) | 🔵 Bajo |
+| 24 | Δ-Strength — IA con conciencia de tendencia | 🟡 Medio |
 
 ---
 
@@ -700,6 +701,37 @@ Items identificados durante la verificación del cambio #3 que no bloquean funci
 - [ ] Documentación actualizada
 
 ---
+
+---
+
+## 24. Δ-Strength — IA con Conciencia de Tendencia entre Fases
+**Prioridad:** 🟡 Medio  
+**Origen:** Aplicación de cálculo diferencial al motor de IA
+
+La IA actual decide basándose solo en la fuerza estática de su mano en la fase actual. No sabe si su mano **mejoró** o **empeoró** respecto a la fase anterior (preflop→flop→turn→river). Esto la hace predecible y estratégicamente plana.
+
+**Solución:** Se implementó **Δ-strength** — la derivada discreta de la fuerza de mano entre fases consecutivas:
+
+```
+Δ = strength_actual − strength_anterior (clamp ±0.30)
+```
+
+- **Δ > 0** → la mano mejoró → IA más agresiva (baja thresholds de call/raise, sube sizing de apuesta)
+- **Δ < 0** → la mano empeoró → IA más cautelosa (sube thresholds, baja sizing)
+- **Δ = 0** en preflop (sin historial) y se resetea con `clearHand()`
+
+**Conceptos de cálculo aplicados:**
+- **Derivada discreta:** Δ como tasa de cambio entre dos puntos
+- **Pendiente/Crecimiento:** Δ > 0 = crecimiento, Δ < 0 = decrecimiento
+- **Límite / Clamping:** Δ acotado a ±0.30 para evitar sobre-reacción
+- **Modulación lineal:** factor 0.08 sobre thresholds, (1±|Δ|) sobre sizing
+
+**Archivos modificados:**
+| Archivo | Cambio |
+|---|---|
+| `AIPlayer.java` | Constantes, campos, delta en `decide()`, modulación thresholds/sizing, reset en `clearHand()` |
+| `AIPlayerTest.java` | Tests de delta, thresholds, sizing, regresión |
+| `docs/delta-strength-explained.txt` | Documento educativo sobre derivada discreta para slides |
 
 ## Futuras Features (Backlog)
 
