@@ -8,8 +8,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 
 /**
- * Base de repositorio con helpers de conexión y transacciones.
- * Estandariza manejo de errores y atomicidad.
+ * Base repository providing connection and transaction helpers.
  */
 public abstract class BaseRepository {
 

@@ -21,8 +21,7 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Implementación SQLite de GameRepository.
- * Mantiene el snapshot de juego y sus jugadores en una única transacción.
+ * SQLite JDBC implementation of GameRepository.
  */
 public class SqliteGameRepository extends BaseRepository implements GameRepository {
 

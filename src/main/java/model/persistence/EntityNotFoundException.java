@@ -1,7 +1,7 @@
 package model.persistence;
 
 /**
- * Excepción cuando no se encuentra una entidad esperada en DB.
+ * Exception thrown when an expected entity is not found in the database.
  */
 public class EntityNotFoundException extends PersistenceException {
 

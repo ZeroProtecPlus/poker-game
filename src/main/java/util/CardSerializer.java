@@ -7,25 +7,32 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Utilidad para serializar/deserializar cartas en formatos compactos y JSON.
+ * Utility for serializing and deserializing Card objects to/from compact codes and JSON.
  *
- * Formato de código: rank + suit (ej: "AS", "10H", "2D", "KC").
+ * Code format: rank + suit (e.g., "AS", "10H", "2D", "KC").
  */
 public class CardSerializer {
 
     private CardSerializer() {
-        // Clase utilitaria: no se instancia.
+        // utility class
     }
 
     /**
-     * Convierte una carta a un código compacto.
+     * Converts a card to a compact two-character code.
+     *
+     * @param card the card to encode
+     * @return code such as "AS", "10H", "2D"
      */
     public static String toCode(Card card) {
         return card.getRank() + card.getSuit();
     }
 
     /**
-     * Parsea un código compacto a Card.
+     * Parses a compact code into a Card.
+     *
+     * @param code the code to parse
+     * @return the corresponding Card
+     * @throws IllegalArgumentException if the code is malformed or unsupported
      */
     public static Card fromCode(String code) {
         if (code == null || code.length() < 2) {
@@ -40,7 +47,10 @@ public class CardSerializer {
     }
 
     /**
-     * Serializa una lista de cartas a JSON.
+     * Serializes a list of cards to a JSON array string.
+     *
+     * @param cards list of cards
+     * @return JSON array of card codes
      */
     public static String toJson(List<Card> cards) {
         // Serializa en JSON compacto para persistencia en SQLite.
@@ -52,7 +62,11 @@ public class CardSerializer {
     }
 
     /**
-     * Deserializa JSON a lista de cartas.
+     * Deserializes a JSON array string into a list of cards.
+     *
+     * @param json JSON array of card codes
+     * @return list of parsed cards
+     * @throws IllegalArgumentException if JSON is malformed or contains invalid codes
      */
     public static List<Card> fromJson(String json) {
         // Convierte JSON de códigos a objetos Card con validación estricta.

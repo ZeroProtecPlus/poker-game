@@ -1,7 +1,7 @@
 package model.persistence;
 
 /**
- * Excepción cuando no se puede abrir una conexión a la base.
+ * Exception thrown when a database connection cannot be established or is lost.
  */
 public class ConnectionException extends PersistenceException {
 

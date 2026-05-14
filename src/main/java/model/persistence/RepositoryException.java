@@ -1,7 +1,7 @@
 package model.persistence;
 
 /**
- * Excepción cuando falla una operación del repositorio (CRUD).
+ * Exception thrown when a repository operation fails (query, insert, update, delete).
  */
 public class RepositoryException extends PersistenceException {
 

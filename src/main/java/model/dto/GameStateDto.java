@@ -7,8 +7,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * DTO de snapshot de juego para persistencia.
- * Contiene lo mínimo necesario para reanudar una mano desde cualquier fase.
+ * Data Transfer Object representing a snapshot of the game state for persistence.
+ * Captures everything needed to resume a hand from any phase.
  */
 public class GameStateDto {
 
@@ -108,8 +108,9 @@ public class GameStateDto {
     }
 
     /**
-     * Devuelve el jugador humano (no IA) dentro del snapshot.
-     * Se usa como heurística porque el snapshot guarda jugadores planos.
+     * Finds the human player (non-AI) in the player list.
+     * Heuristic: the first player whose id does not start with a known AI prefix,
+     * or simply the first player if no heuristic matches.
      */
     public PlayerStateDto findHumanPlayer() {
         for (PlayerStateDto p : players) {

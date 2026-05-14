@@ -7,18 +7,18 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 
 /**
- * Implementación basada en archivo de {@link MachineIdProvider}.
- * Persiste un UUID v4 en {@code <dir>/machine.id}.
- * Usa inicialización lazy con doble chequeo para ser thread-safe.
+ * File-based implementation of {@link MachineIdProvider}.
+ * Persists a UUID v4 to {@code <dir>/machine.id}.
+ * Uses lazy initialization with double-checked locking for thread safety.
  * <p>
- * Permite path custom para tests (en prod usa {@code ~/.pokergame}).
+ * Supports a custom directory path for testing (production uses {@code ~/.pokergame}).
  */
 public class FileMachineIdProvider implements MachineIdProvider {
 
     private static final Pattern UUID_V4 = Pattern.compile(
         "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$");
 
-    /** Singleton de producción. */
+    /** Production singleton instance. */
     public static final FileMachineIdProvider INSTANCE = new FileMachineIdProvider();
 
     private volatile String machineId;
@@ -26,7 +26,7 @@ public class FileMachineIdProvider implements MachineIdProvider {
     private final Path file;
 
     /**
-     * Constructor de producción: usa {@code ~/.pokergame/machine.id}.
+     * Production constructor: uses {@code ~/.pokergame/machine.id}.
      */
     private FileMachineIdProvider() {
         this.dir = Path.of(System.getProperty("user.home"), ".pokergame");
@@ -34,7 +34,9 @@ public class FileMachineIdProvider implements MachineIdProvider {
     }
 
     /**
-     * Constructor de testing: permite sobreescribir el directorio.
+     * Test constructor: allows overriding the directory path.
+     *
+     * @param dir the directory to store machine.id in
      */
     FileMachineIdProvider(Path dir) {
         this.dir = dir;

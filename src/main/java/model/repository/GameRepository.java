@@ -6,56 +6,73 @@ import model.persistence.RepositoryException;
 import java.util.Optional;
 
 /**
- * Repositorio para snapshots de estado de juego.
+ * Repository for game state persistence.
  */
 public interface GameRepository {
 
     /**
-     * Guarda o actualiza un snapshot de juego.
+     * Saves or updates a game state snapshot.
      *
-     * @param state estado a persistir
-     * @deprecated usar saveByMachineId
+     * @param state the game state to save
+     * @throws RepositoryException if the operation fails
+     * @deprecated use saveByMachineId instead
      */
     @Deprecated
     void save(GameStateDto state) throws RepositoryException;
 
     /**
-     * Busca un snapshot por gameId de negocio.
+     * Finds a game state by its business gameId.
      *
-     * @param gameId identificador del juego
-     * @return optional con el estado si existe
+     * @param gameId the game's identifier
+     * @return optional containing the game state if found
+     * @throws RepositoryException if the operation fails
      */
     Optional<GameStateDto> findByGameId(String gameId) throws RepositoryException;
 
     /**
-     * Devuelve el último snapshot guardado (por timestamp).
+     * Finds the most recently saved game state.
      *
-     * @deprecated usar loadByMachineId
+     * @return optional containing the latest game state
+     * @throws RepositoryException if the operation fails
+     * @deprecated use loadByMachineId instead
      */
     @Deprecated
     Optional<GameStateDto> findLatest() throws RepositoryException;
 
     /**
-     * Guarda/actualiza estado asociado a una máquina (machineId).
+     * Saves or updates game state scoped to machine ID.
+     *
+     * @param machineId the machine identifier
+     * @param state     the game state to save
+     * @throws RepositoryException if the operation fails
      */
     void saveByMachineId(String machineId, GameStateDto state) throws RepositoryException;
 
     /**
-     * Carga estado por machineId. Devuelve empty si no hay save.
+     * Loads game state by machine ID. Returns empty if none saved.
+     *
+     * @param machineId the machine identifier
+     * @return optional containing the game state if found
+     * @throws RepositoryException if the operation fails
      */
     Optional<GameStateDto> loadByMachineId(String machineId) throws RepositoryException;
 
     /**
-     * Borra estado y jugadores asociados por machineId.
+     * Deletes game state and associated players by machine ID.
      *
-     * @return true si se borró algo
+     * @param machineId the machine identifier
+     * @return true if a game state was deleted
+     * @throws RepositoryException if the operation fails
      */
     boolean deleteByMachineId(String machineId) throws RepositoryException;
 
     /**
-     * Borra un snapshot por gameId.
+     * Deletes a game state and all associated player states / actions.
      *
-     * @deprecated usar deleteByMachineId
+     * @param gameId the game's identifier
+     * @return true if a game state was deleted
+     * @throws RepositoryException if the operation fails
+     * @deprecated use deleteByMachineId instead
      */
     @Deprecated
     boolean delete(String gameId) throws RepositoryException;
