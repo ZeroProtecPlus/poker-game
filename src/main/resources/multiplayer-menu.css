@@ -1,0 +1,64 @@
+/* ============================================================
+   Multiplayer Menu — Royal Poker
+   Layers: canvas > panel > title > buttons
+   Hierarchy: .multiplayer-* namespace
+   ============================================================ */
+
+/* ---- Canvas ---- */
+.multiplayer-menu-canvas {
+    -fx-background-color: transparent;
+}
+
+/* ---- Title ---- */
+.multiplayer-title {
+    -fx-font-family: -fx-font-heading;
+    -fx-font-size: 42px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #e8c96a;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.7), 6, 0.4, 2, 2);
+    -fx-padding: 0 0 18 0;
+}
+
+/* ---- Buttons (base) ---- */
+.multiplayer-btn {
+    -fx-font-family: -fx-font-heading;
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #f5edd8;
+    -fx-background-color: rgba(11, 50, 32, 0.92);
+    -fx-background-radius: 8;
+    -fx-border-color: #c9a84c;
+    -fx-border-width: 2;
+    -fx-border-radius: 8;
+    -fx-padding: 14 36 14 36;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.5), 8, 0.3, 2, 3);
+    -fx-min-width: 340;
+}
+
+/* ---- Buttons (hover) ---- */
+.multiplayer-btn:hover {
+    -fx-background-color: rgba(26, 107, 66, 0.95);
+    -fx-border-color: #f0d88a;
+    -fx-effect: dropshadow(gaussian, rgba(201,168,76,0.35), 12, 0.4, 2, 4);
+}
+
+/* ---- Buttons (pressed) ---- */
+.multiplayer-btn:pressed {
+    -fx-background-color: rgba(6, 30, 18, 0.95);
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 4, 0.3, 1, 1);
+}
+
+/* ---- Back button (variant) ---- */
+.multiplayer-btn-back {
+    -fx-font-size: 16px;
+    -fx-background-color: rgba(30, 10, 10, 0.85);
+    -fx-border-color: #8b4513;
+    -fx-text-fill: #d4c5a0;
+    -fx-min-width: 240;
+}
+
+.multiplayer-btn-back:hover {
+    -fx-background-color: rgba(50, 15, 15, 0.92);
+    -fx-border-color: #cd853f;
+}
