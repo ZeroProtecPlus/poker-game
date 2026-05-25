@@ -413,7 +413,7 @@ public final class GameTable {
         // ── Betting panel (bottom-center, hidden by default) ──────────────
         bettingPanel = new HBox();
         bettingPanel.getStyleClass().add("betting-panel");
-        applyRoundedClip(bettingPanel, 28);
+        bettingPanel.setPickOnBounds(false); // don't let parent clip block child hit-testing
         bettingPanel.setVisible(false);
         AnchorPane.setLeftAnchor(bettingPanel, DISPLAY_W / 2 - 420.0);
         AnchorPane.setTopAnchor(bettingPanel, DISPLAY_H - 200.0);
@@ -472,6 +472,7 @@ public final class GameTable {
         HBox resultWrapper = new HBox(resultLabel);
         resultWrapper.setAlignment(Pos.CENTER);
         resultWrapper.setPrefWidth(DISPLAY_W);
+        resultWrapper.setMouseTransparent(true); // don't steal clicks from betting panel below
         AnchorPane.setLeftAnchor(resultWrapper, 0.0);
         AnchorPane.setTopAnchor(resultWrapper, DISPLAY_H - 180.0);
         canvas.getChildren().add(resultWrapper);
@@ -1721,6 +1722,27 @@ public final class GameTable {
             hideBettingButtons();
             return null;
         }
+    }
+
+    /**
+     * Shows the fold indicator on the player badge.
+     * Thread-safe.
+     */
+    public void showPlayerFolded() {
+        if (Platform.isFxApplicationThread()) {
+            showPlayerFoldedInternal();
+        } else {
+            Platform.runLater(this::showPlayerFoldedInternal);
+        }
+    }
+
+    private void showPlayerFoldedInternal() {
+        playerFolded = true;
+        foldIndicator.setVisible(true);
+        if (!playerBadge.getStyleClass().contains("player-badge-folded")) {
+            playerBadge.getStyleClass().add("player-badge-folded");
+        }
+        playerBadge.getStyleClass().remove("player-badge");
     }
 
     /**
