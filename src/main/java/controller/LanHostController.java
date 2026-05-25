@@ -142,6 +142,14 @@ public class LanHostController {
                 lobby.setPotMessage("Jugadores: " + currentCount + "/" + LanConstants.MAX_HUMAN_PLAYERS);
             });
 
+            // Broadcast updated lobby state to all connected clients
+            // so they see the current player list in their GameTable seats.
+            try {
+                session.broadcastLobby();
+            } catch (IOException broadcastEx) {
+                System.err.println("Failed to broadcast lobby state: " + broadcastEx.getMessage());
+            }
+
             try {
                 Thread.sleep(300);
             } catch (InterruptedException e) {
