@@ -84,15 +84,19 @@ public class LanHostController {
     }
 
     public void run() {
-        // Create the JavaFX GameTable first — it serves both lobby and game rendering.
+        // Create the JavaFX GameTable first — it serves both lobby and game rendering,
+        // but keep it hidden until the host registers their name (Bug 4 fix).
         table = GameTable.create();
         table.awaitUiReady(5000);
-        table.show();
         table.setOnExitConfirmed(() -> exitRequested = true);
+
+        registerHost();
+
+        // NOW show the table — name registration is complete
+        table.show();
         table.setStatusConnected(true);
         table.setStatusPhase("Lobby");
 
-        registerHost();
         runLobby();
         try {
             session.markGameStarted();
@@ -277,6 +281,10 @@ public class LanHostController {
         String lastFingerprint = "";
         int repeated = 0;
 
+        // Accumulated action log — keep entries across loop iterations so the
+        // player sees the full betting sequence, not just the last batch.
+        List<String> accumulatedLog = new ArrayList<>();
+
         while (true) {
             Map<String, PokerGame.HumanActionEntry> actions = collectHumanActions(round, phase);
 
@@ -285,7 +293,8 @@ public class LanHostController {
                 phase,
                 actions
             );
-            table.setActionLog(result.log);
+            accumulatedLog.addAll(result.log);
+            table.setActionLog(accumulatedLog);
             table.awaitLastAnimation(table.getUiSyncTimeoutMs());
 
             if (result.highBet > round.getCurrentBet()) {

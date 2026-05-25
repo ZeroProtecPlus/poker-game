@@ -18,7 +18,11 @@ import network.host.HostJoinHandler;
 import network.session.SessionNameRegistry;
 import network.validation.NameValidator;
 import util.CardSerializer;
-import view.GameView;
+import view.LanDialogs;
+import view.fx.GameTable;
+import view.fx.JavaFxBootstrap;
+import view.fx.PlayerNameDialog;
+import view.fx.ResumeGameDialog;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -30,35 +34,25 @@ public class GameController {
     private String playerId;
     private String userNamePlayer;
     private User newPlayer;
-    private final GameView newGame;
+    private GameTable table;
     private final HostJoinHandler hostJoinHandler;
     private final PlayerRepository playerRepository;
     private final GameRepository gameRepository;
     private final MachineIdProvider machineIdProvider;
 
     public GameController() {
-        this(new GameView(), createDefaultHostJoinHandler(), createDefaultRepositories());
+        this(createDefaultHostJoinHandler(), createDefaultRepositories());
     }
 
-    protected GameController(GameView gameView) {
-        this(gameView, createDefaultHostJoinHandler(), createDefaultRepositories());
+    protected GameController(HostJoinHandler hostJoinHandler, Repositories repositories) {
+        this(hostJoinHandler, repositories, FileMachineIdProvider.INSTANCE);
     }
 
-    protected GameController(GameView gameView, HostJoinHandler hostJoinHandler) {
-        this(gameView, hostJoinHandler, createDefaultRepositories());
-    }
-
-    protected GameController(GameView gameView, HostJoinHandler hostJoinHandler, Repositories repositories) {
-        this(gameView, hostJoinHandler, repositories, FileMachineIdProvider.INSTANCE);
-    }
-
-    protected GameController(GameView gameView, HostJoinHandler hostJoinHandler, Repositories repositories, MachineIdProvider machineIdProvider) {
-        this.newGame = gameView;
+    protected GameController(HostJoinHandler hostJoinHandler, Repositories repositories, MachineIdProvider machineIdProvider) {
         this.hostJoinHandler = hostJoinHandler;
         this.playerRepository = repositories.playerRepository();
         this.gameRepository = repositories.gameRepository();
         this.machineIdProvider = machineIdProvider;
-        this.newGame.awaitUiReady(this.newGame.getUiSyncTimeoutMs());
     }
 
     private static Repositories createDefaultRepositories() {
@@ -77,18 +71,36 @@ public class GameController {
 
     public record Repositories(PlayerRepository playerRepository, GameRepository gameRepository) {}
 
+    // ── BUG 4 FIX: GameTable only shown AFTER name is accepted ────────────────
+
     public void createNewPlayer() {
+        // Create GameTable but do NOT show it yet — the empty table should not
+        // render behind the PlayerNameDialog.  The stage is built (awaitUiReady
+        // ensures the FX scene graph exists) but remains hidden until the name
+        // is accepted.
+        JavaFxBootstrap.ensureStarted();
+        table = GameTable.create();
+        table.awaitUiReady(5000);
+        // table.show() moved AFTER name acceptance below
+
         // Loop de admisión: valida nombre en host y evita arrancar sin sesión válida.
         while (true) {
-            JoinDecision decision = requestJoinAdmission(newGame.getUserName());
+            String name = PlayerNameDialog.showAndWaitBlocking();
+            if (name == null || name.trim().isEmpty()) {
+                throw new IllegalStateException("Ingreso cancelado");
+            }
+            JoinDecision decision = requestJoinAdmission(name.trim());
             if (decision.isAccepted()) {
                 applyAcceptedJoinDecision(decision);
                 loadOrCreatePlayerProfile();
+                // NOW show the table — name and profile are confirmed
+                table.show();
+                table.showUserChips(userNamePlayer, newPlayer.getNumbChips());
                 return;
             }
 
-            newGame.showJoinRejectionMessage(toJoinRejectionMessage(decision));
-            if (!newGame.askRetryJoin()) {
+            LanDialogs.showJoinRejection(decision);
+            if (!LanDialogs.askRetryJoin()) {
                 throw new IllegalStateException("Ingreso a la sesion cancelado");
             }
         }
@@ -109,12 +121,16 @@ public class GameController {
             Optional<User> existing = playerRepository.findByName(userNamePlayer);
             if (existing.isPresent()) {
                 User profile = existing.get();
+                // Reutilizar el player_id persistido: cada sesión genera un UUID nuevo en join,
+                // pero la tabla players tiene UNIQUE(name); insertar con id distinto falla.
+                this.playerId = profile.getPlayerId();
+                this.newPlayer = new User(profile.getPlayerId(), profile.getName());
                 newPlayer.setChips(profile.getChips());
             } else {
                 playerRepository.save(newPlayer);
             }
         } catch (RepositoryException e) {
-            System.err.println("Warning: failed to load player profile: " + e.getMessage());
+            System.err.println("Warning: failed to load player profile: " + rootCauseMessage(e));
         }
     }
 
@@ -122,19 +138,13 @@ public class GameController {
         try {
             playerRepository.save(newPlayer);
         } catch (RepositoryException e) {
-            System.err.println("Warning: failed to save player profile: " + e.getMessage());
+            System.err.println("Warning: failed to save player profile: " + rootCauseMessage(e));
         }
     }
 
-    private String toJoinRejectionMessage(JoinDecision decision) {
-        RejectReason reasonCode = decision.getReasonCode();
-        if (reasonCode == RejectReason.NAME_TAKEN) {
-            return "Ese nombre ya esta en uso en la sesion. Proba con otro.";
-        }
-        if (reasonCode == RejectReason.INVALID_FORMAT) {
-            return "Nombre invalido. Usa solo letras (3 a 16 caracteres).";
-        }
-        return "No se pudo unir a la sesion por un error interno. Intenta nuevamente.";
+    private static String rootCauseMessage(RepositoryException e) {
+        Throwable cause = e.getCause();
+        return cause != null && cause.getMessage() != null ? cause.getMessage() : e.getMessage();
     }
 
     private static HostJoinHandler createDefaultHostJoinHandler() {
@@ -142,7 +152,7 @@ public class GameController {
     }
 
     public void viewUserChips() {
-        newGame.showUserChips(userNamePlayer, newPlayer.getNumbChips());
+        table.showUserChips(userNamePlayer, newPlayer.getNumbChips());
     }
 
     public String getPlayerId() {
@@ -154,22 +164,23 @@ public class GameController {
     // =========================================================================
 
     public void createNewGame() {
-        newGame.setGameActive(true);
+        // GameTable is already showing (shown in createNewPlayer after name accepted).
+        table.setGameActive(true);
         offerResume();
 
         while (newPlayer.getNumbChips() > 0) {
             playOneHand();
 
             // Preguntar si quiere seguir jugando
-            boolean continuar = newGame.askPlayAgain(newPlayer.getNumbChips());
+            boolean continuar = table.askPlayAgain(newPlayer.getNumbChips());
             if (!continuar) {
                 saveHandEnd();
-                newGame.requestGracefulShutdown();
+                table.requestGracefulShutdown();
                 return;
             }
         }
         tryDeleteGameState();
-        newGame.showGameOver(newPlayer.getNumbChips());
+        table.showGameOver(newPlayer.getNumbChips());
     }
 
     private void offerResume() {
@@ -179,20 +190,20 @@ public class GameController {
             Optional<GameStateDto> savedGame = gameRepository.loadByMachineId(machineId);
             if (savedGame.isPresent()) {
                 GameStateDto state = savedGame.get();
-                boolean resume = newGame.askResumeGame(state.getHumanChips());
+                boolean resume = ResumeGameDialog.showAndWaitBlocking(state.getHumanChips()).join();
                 if (resume) {
                     newPlayer.setChips(state.getHumanChips());
-                    newGame.showUserChipsSync(userNamePlayer, newPlayer.getNumbChips(), true);
+                    table.showUserChipsSync(userNamePlayer, newPlayer.getNumbChips(), true);
                     return;
                 } else {
                     gameRepository.deleteByMachineId(machineId);
                 }
             }
             // No save or declined resume — show chips with animation
-            newGame.showUserChipsSync(userNamePlayer, newPlayer.getNumbChips(), false);
+            table.showUserChipsSync(userNamePlayer, newPlayer.getNumbChips(), false);
         } catch (RepositoryException e) {
             System.err.println("Warning: failed to check for saved game: " + e.getMessage());
-            newGame.showUserChipsSync(userNamePlayer, newPlayer.getNumbChips(), false);
+            table.showUserChipsSync(userNamePlayer, newPlayer.getNumbChips(), false);
         }
     }
 
@@ -262,40 +273,46 @@ public class GameController {
         return list;
     }
 
+    // ── BUG 3c FIX: add setStatusPhase before each betting phase ──────────────
+
     private void playOneHand() {
         // Mano completa: inicializa mesa, ejecuta fases y termina en showdown o fold.
-        newGame.clearTableForNewHand();
+        table.clearTable();
         this.pokerGame = new PokerGame(newPlayer);
         pokerGame.startNewRound();
 
         ArrayList<Card> manoJugador = pokerGame.getPlayerHand();
-        newGame.showPlayerHand(manoJugador);
-        newGame.awaitLastAnimation(newGame.getUiSyncTimeoutMs());
-        newGame.showRoles(pokerGame.getHumanRole(), pokerGame.getAIPlayers());
-        newGame.showPot(pokerGame.getPot());
+        table.showPlayerHand(manoJugador);
+        table.awaitLastAnimation(table.getUiSyncTimeoutMs());
+        table.showRoles(pokerGame.getHumanRole(), pokerGame.getAIPlayers());
+        table.updatePot(pokerGame.getPot());
 
 // ── PREFLOP ──────────────────────────────────────────────────────────
+        table.setStatusPhase("PREFLOP");
         runBettingPhase(BettingRound.Phase.PREFLOP);
         if (allFolded()) { saveHandEnd(); return; }
 
 // ── FLOP ─────────────────────────────────────────────────────────────
         pokerGame.dealFlop();
-        newGame.showCommunityCards(pokerGame.getCommunityCards(), manoJugador, 3);
-        newGame.awaitLastAnimation(newGame.getUiSyncTimeoutMs());
+        table.showCommunityCards(pokerGame.getCommunityCards(), manoJugador, 3);
+        table.awaitLastAnimation(table.getUiSyncTimeoutMs());
+        table.setStatusPhase("FLOP");
         runBettingPhase(BettingRound.Phase.FLOP);
         if (allFolded()) { saveHandEnd(); return; }
 
 // ── TURN ─────────────────────────────────────────────────────────────
         pokerGame.dealTurnOrRiver();
-        newGame.showCommunityCards(pokerGame.getCommunityCards(), manoJugador, 1);
-        newGame.awaitLastAnimation(newGame.getUiSyncTimeoutMs());
+        table.showCommunityCards(pokerGame.getCommunityCards(), manoJugador, 1);
+        table.awaitLastAnimation(table.getUiSyncTimeoutMs());
+        table.setStatusPhase("TURN");
         runBettingPhase(BettingRound.Phase.TURN);
         if (allFolded()) { saveHandEnd(); return; }
 
 // ── RIVER ────────────────────────────────────────────────────────────
         pokerGame.dealTurnOrRiver();
-        newGame.showCommunityCards(pokerGame.getCommunityCards(), manoJugador, 1);
-        newGame.awaitLastAnimation(newGame.getUiSyncTimeoutMs());
+        table.showCommunityCards(pokerGame.getCommunityCards(), manoJugador, 1);
+        table.awaitLastAnimation(table.getUiSyncTimeoutMs());
+        table.setStatusPhase("RIVER");
         runBettingPhase(BettingRound.Phase.RIVER);
 
         // ── SHOWDOWN ─────────────────────────────────────────────────────────
@@ -312,6 +329,9 @@ public class GameController {
     //  RONDA DE APUESTAS
     // =========================================================================
 
+    // ── BUG 3a FIX: accumulate action log across loop iterations ──────────────
+    // ── BUG 3c FIX: show "Tu turno" before waiting for human action ──────────
+
     private void runBettingPhase(BettingRound.Phase phase) {
         // Fase de apuestas unificada: humano + IA sincronizados con el estado del bote.
         pokerGame.resetRoundBets();
@@ -321,6 +341,10 @@ public class GameController {
         String lastPhaseFingerprint = "";
         int repeatedFingerprintCount = 0;
 
+        // Accumulated action log — keep entries across loop iterations so the
+        // player sees the full betting sequence, not just the last batch.
+        List<String> accumulatedLog = new ArrayList<>();
+
         while (true) {
             humanFolded = newPlayer.isFolded();
 
@@ -329,30 +353,33 @@ public class GameController {
 
             boolean shouldWaitForHumanAction = !pokerGame.isPlayerAllIn() && !humanFolded;
             if (shouldWaitForHumanAction) {
-                action = newGame.waitForPlayerAction(round, pokerGame.getPlayerCurrentBet(), newGame.getUiSyncTimeoutMs());
+                table.setStatusTurn("Tu turno");
+                action = table.awaitPlayerAction(round, pokerGame.getPlayerCurrentBet(), table.getUiSyncTimeoutMs());
+                table.setStatusTurn("");
                 if (action == null) {
                     // Timeout UI: resolvemos una acción segura para evitar bloquear la ronda.
                     action = resolveTimeoutAction(round, pokerGame.getPlayerCurrentBet());
-                    newGame.resolvePendingPlayerAction(action);
+                    table.resolvePendingPlayerAction(action);
                 }
                 if (action == BettingRound.Action.BET) {
-                    humanAmount = newGame.getPlayerBetAmount(round.getBigBlind(), newPlayer.getNumbChips());
+                    humanAmount = table.getPlayerBetAmount(round.getBigBlind(), newPlayer.getNumbChips());
                 } else if (action == BettingRound.Action.CALL) {
                     humanAmount = round.callAmount(pokerGame.getPlayerCurrentBet());
                 } else if (action == BettingRound.Action.RAISE) {
                     int minRaise = round.minRaiseAmount();
-                    humanAmount = newGame.getPlayerBetAmount(minRaise, newPlayer.getNumbChips());
+                    humanAmount = table.getPlayerBetAmount(minRaise, newPlayer.getNumbChips());
                 }
             }
 
             PokerGame.AIBettingResult result = pokerGame.runUnifiedBettingRound(round.getCurrentBet(), action, humanAmount, phase);
-            newGame.showAIActions(result.log);
-            newGame.awaitLastAnimation(newGame.getUiSyncTimeoutMs());
+            accumulatedLog.addAll(result.log);
+            table.setActionLog(accumulatedLog);
+            table.awaitLastAnimation(table.getUiSyncTimeoutMs());
 
             boolean wasHumanFolded = humanFolded;
             humanFolded = result.humanFolded;
             if (humanFolded && !wasHumanFolded) {
-                newGame.showPlayerFolded();
+                table.showPlayerFolded();
             }
 
             // Sincronizar la ronda con el máximo de apuesta de IA para mantener coherencia.
@@ -360,8 +387,8 @@ public class GameController {
                 round.forceCurrentBet(result.highBet);
             }
 
-            newGame.showPot(pokerGame.getPot());
-            newGame.showUserChips(userNamePlayer, newPlayer.getNumbChips());
+            table.updatePot(pokerGame.getPot());
+            table.showUserChips(userNamePlayer, newPlayer.getNumbChips());
 
             if (hasSingleActivePlayer()) {
                 break;
@@ -386,7 +413,7 @@ public class GameController {
             }
         }
 
-        newGame.showUserChips(userNamePlayer, newPlayer.getNumbChips());
+        table.showUserChips(userNamePlayer, newPlayer.getNumbChips());
     }
 
     private BettingRound.Action resolveTimeoutAction(BettingRound round, int playerCurrentBet) {
@@ -402,7 +429,7 @@ public class GameController {
         switch (action) {
             case CHECK  -> pokerGame.humanCheck();
             case BET    -> {
-                int amount = newGame.getPlayerBetAmount(round.getBigBlind(), newPlayer.getNumbChips());
+                int amount = table.getPlayerBetAmount(round.getBigBlind(), newPlayer.getNumbChips());
                 pokerGame.humanBet(amount);
                 round.playerBets(pokerGame.getPlayerCurrentBet());
             }
@@ -412,14 +439,14 @@ public class GameController {
             }
             case RAISE  -> {
                 int minRaise = round.minRaiseAmount();
-                int amount   = newGame.getPlayerBetAmount(minRaise, newPlayer.getNumbChips());
+                int amount   = table.getPlayerBetAmount(minRaise, newPlayer.getNumbChips());
                 pokerGame.humanRaise(amount);
                 round.playerBets(pokerGame.getPlayerCurrentBet());
             }
             case ALL_IN -> pokerGame.humanAllIn();
             default     -> {}
         }
-        newGame.showUserChips(userNamePlayer, newPlayer.getNumbChips());
+        table.showUserChips(userNamePlayer, newPlayer.getNumbChips());
     }
 
     /** True when only one non-folded player remains. */
@@ -477,14 +504,35 @@ public class GameController {
 
         pokerGame.awardPot(showdownResult);
 
-        newGame.showResult(
-            pokerGame.getCommunityCards(),
-            pokerGame.getPlayerHand(),
-            showdownResult,
-            pot
-        );
+        // Build result text matching the old Swing TablePanel format
+        String resultText;
+        boolean isWin;
+        if (showdownResult == null || showdownResult.getWinners().isEmpty()) {
+            resultText = "Sin ganador definido";
+            isWin = false;
+        } else if (showdownResult.isTie()) {
+            String names = showdownResult.getWinners().stream()
+                .map(Player::getName)
+                .reduce((a, b) -> a + ", " + b)
+                .orElse("");
+            resultText = "Empate: " + names + " dividen " + String.format("%,d", pot)
+                + "  |  " + showdownResult.getBestRank().spanishName;
+            isWin = false;
+        } else {
+            Player winner = showdownResult.getWinners().get(0);
+            if (winner instanceof User) {
+                resultText = "¡Ganaste! +" + String.format("%,d", pot)
+                    + "  |  " + showdownResult.getBestRank().spanishName;
+                isWin = true;
+            } else {
+                resultText = winner.getName() + " gana el bote de " + String.format("%,d", pot)
+                    + "  |  Tu mano: " + showdownResult.getBestRank().spanishName;
+                isWin = false;
+            }
+        }
 
-        newGame.showUserChips(userNamePlayer, newPlayer.getNumbChips());
+        table.showResult(resultText, isWin);
+        table.showUserChips(userNamePlayer, newPlayer.getNumbChips());
     }
 
     /** Si todas las IAs se retiraron, el humano gana el bote inmediatamente. */
@@ -492,8 +540,8 @@ public class GameController {
         long active = pokerGame.getAIPlayers().stream().filter(ai -> !ai.isFolded()).count();
         if (active == 0) {
             pokerGame.awardPotToPlayer();
-            newGame.showUserChips(userNamePlayer, newPlayer.getNumbChips());
-            newGame.showPot(0);
+            table.showUserChips(userNamePlayer, newPlayer.getNumbChips());
+            table.updatePot(0);
             return true;
         }
         return false;
