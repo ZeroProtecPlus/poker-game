@@ -1,0 +1,52 @@
+/* ============================================================
+   Player Name Dialog — Royal Poker
+   Layers: canvas > sprite overlays > hit targets
+   Hierarchy: .player-name-* namespace
+
+   Design: Transparent TextField and Button are positioned over
+   sprite overlays (menu_input.png, menu_btn_entrar.png) via
+   absolute coordinates in PlayerNameDialog.java.
+   Display: 1672×941 (scaled from 2752×1536 native sprites).
+   ============================================================ */
+
+/* ---- Canvas ---- */
+.player-name-canvas {
+    -fx-background-color: transparent;
+}
+
+/* ---- Name input field ---------------------------------------------------
+   Transparent background — the menu_input.png sprite overlay
+   provides the visual input field frame.
+   Text color matches the brand palette (#f5edd8 cream on dark BG).
+   ---------------------------------------------------------------------- */
+.player-name-field {
+    -fx-font-family: -fx-font-mono;
+    -fx-font-size: 18px;
+    -fx-text-fill: #f5edd8;
+    -fx-prompt-text-fill: rgba(245, 237, 216, 0.50);
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-padding: 0 8;
+    -fx-focus-color: transparent;
+    -fx-faint-focus-color: transparent;
+}
+
+/* ---- Empty-name / invalid error state ---- */
+.player-name-field-error {
+    -fx-text-fill: #e74c3c;
+    -fx-border-color: #c0392b;
+    -fx-border-width: 1;
+}
+
+/* ---- Enter button (transparent hit target) ------------------------------
+   Fully transparent — the menu_btn_entrar.png sprite overlay
+   provides the visual button including the "ENTRAR" text.
+   This component is a clickable hit target, not a visible button.
+   ---------------------------------------------------------------------- */
+.player-name-enter-btn {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-padding: 0;
+    -fx-text-fill: transparent;
+    -fx-cursor: hand;
+}

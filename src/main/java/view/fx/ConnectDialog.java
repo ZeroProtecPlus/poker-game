@@ -17,13 +17,13 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import network.protocol.LanConstants;
-import view.LanDialogs.ConnectParams;
 
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Unified LAN connection dialog — single casino-styled form replacing the
- * old 3-sequential-popup flow (IP → port → name).
+ * LAN connection dialog — IP + port only.
+ * The player name is collected separately via {@link PlayerNameDialog}
+ * after this dialog returns, keeping concerns separated.
  *
  * Layout:
  *   UNDECORATED Stage + APPLICATION_MODAL
@@ -31,12 +31,14 @@ import java.util.concurrent.CompletableFuture;
  *   FxMenuChrome title bar "Unirse a partida"
  *   Centered .modal-card panel containing:
  *     - .modal-title "CONECTAR A PARTIDA LAN"
- *     - 3 TextFields: IP (default 127.0.0.1), Puerto (default 9876), Nombre
+ *     - 2 TextFields: IP (default 127.0.0.1), Puerto (default 9876)
  *     - .lan-error-label for inline validation errors
  *     - "CONECTAR" / "VOLVER" buttons
  *   CSS: fonts.css + modal.css + menu-chrome.css
  */
 public final class ConnectDialog {
+
+    public record ConnectInfo(String host, int port) {}
 
     private static final String BG_PATH = "/menu-bg.png";
     private static final String FONTS_CSS_PATH = "/fonts.css";
@@ -51,11 +53,11 @@ public final class ConnectDialog {
     /**
      * Shows the connect dialog and blocks until the user submits or cancels.
      *
-     * @return ConnectParams with host, port, playerName, or null if cancelled
+     * @return ConnectInfo with host and port, or null if cancelled
      */
-    public static ConnectParams showAndWaitBlocking() {
+    public static ConnectInfo showAndWaitBlocking() {
         return JavaFxBootstrap.runOnFxAndWait(() -> {
-            CompletableFuture<ConnectParams> future = new CompletableFuture<>();
+            CompletableFuture<ConnectInfo> future = new CompletableFuture<>();
             Stage stage = buildStage(future);
             stage.showAndWait();
             return future.getNow(null);
@@ -64,7 +66,7 @@ public final class ConnectDialog {
 
     // ── Stage construction ─────────────────────────────────────────────────
 
-    static Stage buildStage(CompletableFuture<ConnectParams> future) {
+    static Stage buildStage(CompletableFuture<ConnectInfo> future) {
         Stage stage = new Stage(StageStyle.UNDECORATED);
         stage.initModality(Modality.APPLICATION_MODAL);
         stage.setTitle("Royal Poker — Conectar");
@@ -121,12 +123,6 @@ public final class ConnectDialog {
         portField.setMaxWidth(380);
         portField.getStyleClass().add("lan-input-field");
 
-        // ── Name field ───────────────────────────────────────────────────────
-        TextField nameField = new TextField();
-        nameField.setPromptText("Tu nombre (solo letras)");
-        nameField.setMaxWidth(380);
-        nameField.getStyleClass().add("lan-input-field");
-
         // ── Error label (hidden by default) ──────────────────────────────────
         Label errorLabel = new Label();
         errorLabel.getStyleClass().add("lan-error-label");
@@ -153,7 +149,6 @@ public final class ConnectDialog {
             title,
             ipField,
             portField,
-            nameField,
             errorLabel,
             buttonBar
         );
@@ -183,30 +178,22 @@ public final class ConnectDialog {
                 return;
             }
 
-            String name = nameField.getText().trim();
-            if (name.isEmpty() || !name.matches("^[A-Za-záéíóúÁÉÍÓÚüÜñÑ ]+$")) {
-                showError(errorLabel, "El nombre debe contener solo letras.");
-                return;
-            }
-
             if (!future.isDone()) {
-                future.complete(new ConnectParams(host, port, name));
+                future.complete(new ConnectInfo(host, port));
             }
             stage.close();
         };
 
         connectBtn.setOnAction(event -> submit.run());
-        // Enter on name field triggers connect
-        nameField.setOnAction(event -> submit.run());
-        // Enter on IP or port field moves focus to next field
+        // Enter on port field triggers connect
+        portField.setOnAction(event -> submit.run());
+        // Enter on IP field moves focus to port field
         ipField.setOnAction(event -> portField.requestFocus());
-        portField.setOnAction(event -> nameField.requestFocus());
 
         // ── "VOLVER" cancels ─────────────────────────────────────────────────
         volverBtn.setOnAction(event -> cancel(stage, future));
 
         // ── Clear error on text change ───────────────────────────────────────
-        nameField.textProperty().addListener((obs, old, val) -> hideError(errorLabel));
         portField.textProperty().addListener((obs, old, val) -> hideError(errorLabel));
         ipField.textProperty().addListener((obs, old, val) -> hideError(errorLabel));
 
@@ -248,7 +235,7 @@ public final class ConnectDialog {
         errorLabel.setText("");
     }
 
-    private static void cancel(Stage stage, CompletableFuture<ConnectParams> future) {
+    private static void cancel(Stage stage, CompletableFuture<ConnectInfo> future) {
         if (!future.isDone()) {
             future.complete(null);
         }

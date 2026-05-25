@@ -24,15 +24,22 @@ public final class LanDialogs {
     public record ConnectParams(String host, int port, String playerName) {}
 
     /**
-     * Shows the unified LAN connection dialog (replaces the old 3-popup flow).
-     * Single casino-styled form with IP, port, and player name fields
-     * with inline validation.
+     * Shows the LAN connection dialog (IP + port) followed by the
+     * casino-styled player name dialog, keeping both concerns separated.
      *
-     * @return ConnectParams or null if cancelled
+     * @return ConnectParams or null if cancelled at any step
      */
     public static ConnectParams showConnectDialog() {
         JavaFxBootstrap.ensureStarted();
-        return ConnectDialog.showAndWaitBlocking();
+        ConnectDialog.ConnectInfo info = ConnectDialog.showAndWaitBlocking();
+        if (info == null) {
+            return null;
+        }
+        String name = PlayerNameDialog.showAndWaitBlocking();
+        if (name == null || name.trim().isEmpty()) {
+            return null;
+        }
+        return new ConnectParams(info.host(), info.port(), name.trim());
     }
 
     public static String showHostNameDialog() {
