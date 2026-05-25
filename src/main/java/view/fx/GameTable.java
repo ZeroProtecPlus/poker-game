@@ -127,6 +127,12 @@ public final class GameTable {
     // ── Betting buttons ───────────────────────────────────────────────────────
     private HBox bettingPanel;
 
+    // ── Status bar ────────────────────────────────────────────────────────────
+    private HBox statusBar;
+    private Label statusDot;
+    private Label statusPhase;
+    private Label statusTurn;
+
     // ── Exit flow ────────────────────────────────────────────────────────────
     private Runnable onExitConfirmed;
     private volatile boolean exitDialogShowing;
@@ -412,6 +418,27 @@ public final class GameTable {
         AnchorPane.setLeftAnchor(bettingPanel, DISPLAY_W / 2 - 420.0);
         AnchorPane.setTopAnchor(bettingPanel, DISPLAY_H - 200.0);
         canvas.getChildren().add(bettingPanel);
+
+        // ── Status bar (top-center, below AI badges) ─────────────────────
+        statusBar = new HBox(10);
+        statusBar.getStyleClass().add("status-bar");
+
+        statusDot = new Label("\u25CF");  // ● filled circle
+        statusDot.getStyleClass().add("status-dot");
+
+        statusPhase = new Label("");
+        statusPhase.getStyleClass().add("status-phase");
+
+        statusTurn = new Label("");
+        statusTurn.getStyleClass().add("status-turn");
+
+        statusBar.getChildren().addAll(statusDot, statusPhase, statusTurn);
+        applyRoundedClip(statusBar, 16);
+
+        AnchorPane.setLeftAnchor(statusBar, DISPLAY_W / 2 - 240.0);
+        AnchorPane.setTopAnchor(statusBar, 105.0);
+        statusBar.setVisible(false);
+        canvas.getChildren().add(statusBar);
 
         // ── Action log (bottom-right, hidden by default) ──────────────────
         actionLogContainer = new VBox();
@@ -1466,6 +1493,79 @@ public final class GameTable {
         if (!playerBadge.getStyleClass().contains("player-badge")) {
             playerBadge.getStyleClass().add("player-badge");
         }
+    }
+
+    // ── Status bar API ───────────────────────────────────────────────────────
+
+    /**
+     * Updates the connection status dot in the status bar.
+     *
+     * @param connected {@code true} for green dot, {@code false} for red dot
+     */
+    public void setStatusConnected(boolean connected) {
+        if (Platform.isFxApplicationThread()) {
+            setStatusConnectedInternal(connected);
+        } else {
+            Platform.runLater(() -> setStatusConnectedInternal(connected));
+        }
+    }
+
+    private void setStatusConnectedInternal(boolean connected) {
+        statusDot.getStyleClass().removeAll("status-dot-connected", "status-dot-disconnected");
+        statusDot.getStyleClass().add(connected ? "status-dot-connected" : "status-dot-disconnected");
+        statusBar.setVisible(true);
+    }
+
+    /**
+     * Updates the phase label in the status bar.
+     *
+     * @param phase the current betting phase (PREFLOP, FLOP, TURN, RIVER)
+     */
+    public void setStatusPhase(String phase) {
+        if (Platform.isFxApplicationThread()) {
+            setStatusPhaseInternal(phase);
+        } else {
+            Platform.runLater(() -> setStatusPhaseInternal(phase));
+        }
+    }
+
+    private void setStatusPhaseInternal(String phase) {
+        statusPhase.setText(phase != null ? phase : "");
+        statusBar.setVisible(true);
+    }
+
+    /**
+     * Updates the turn indicator in the status bar.
+     *
+     * @param text  the turn message (e.g., "Tu turno", "Esperando…",
+     *              "Turno de: Sofia")
+     */
+    public void setStatusTurn(String text) {
+        if (Platform.isFxApplicationThread()) {
+            setStatusTurnInternal(text);
+        } else {
+            Platform.runLater(() -> setStatusTurnInternal(text));
+        }
+    }
+
+    private void setStatusTurnInternal(String text) {
+        statusTurn.setText(text != null ? text : "");
+        statusBar.setVisible(true);
+    }
+
+    /**
+     * Hides the status bar. Called when the game ends.
+     */
+    public void hideStatusBar() {
+        if (Platform.isFxApplicationThread()) {
+            hideStatusBarInternal();
+        } else {
+            Platform.runLater(this::hideStatusBarInternal);
+        }
+    }
+
+    private void hideStatusBarInternal() {
+        statusBar.setVisible(false);
     }
 
     // ── Game-flow bridge API (migrated from Swing GameView) ──────────────────

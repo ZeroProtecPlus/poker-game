@@ -91,6 +91,9 @@ public class LanHostController {
         table = GameTable.create();
         table.awaitUiReady(5000);
         table.show();
+        table.setOnExitConfirmed(() -> exitRequested = true);
+        table.setStatusConnected(true);
+        table.setStatusPhase("Lobby");
 
         registerHost();
         runLobby();
@@ -227,6 +230,7 @@ public class LanHostController {
         table.showRoles(pokerGame.getHumanRole(), pokerGame.getAIPlayers());
         table.updatePot(pokerGame.getPot());
         currentPhase = BettingRound.Phase.PREFLOP;
+        table.setStatusPhase("PREFLOP");
         broadcastState(currentPhase);
 
         runLanBettingPhase(currentPhase);
@@ -238,6 +242,7 @@ public class LanHostController {
         table.showCommunityCards(pokerGame.getCommunityCards(), hostHand, 3);
         table.awaitLastAnimation(table.getUiSyncTimeoutMs());
         currentPhase = BettingRound.Phase.FLOP;
+        table.setStatusPhase("FLOP");
         broadcastState(currentPhase);
         runLanBettingPhase(currentPhase);
         if (allOthersFolded()) {
@@ -248,6 +253,7 @@ public class LanHostController {
         table.showCommunityCards(pokerGame.getCommunityCards(), hostHand, 1);
         table.awaitLastAnimation(table.getUiSyncTimeoutMs());
         currentPhase = BettingRound.Phase.TURN;
+        table.setStatusPhase("TURN");
         broadcastState(currentPhase);
         runLanBettingPhase(currentPhase);
         if (allOthersFolded()) {
@@ -258,6 +264,7 @@ public class LanHostController {
         table.showCommunityCards(pokerGame.getCommunityCards(), hostHand, 1);
         table.awaitLastAnimation(table.getUiSyncTimeoutMs());
         currentPhase = BettingRound.Phase.RIVER;
+        table.setStatusPhase("RIVER");
         broadcastState(currentPhase);
         runLanBettingPhase(currentPhase);
 
@@ -332,6 +339,7 @@ public class LanHostController {
             int amount = 0;
 
             if (pokerGame.isLocalHuman(human)) {
+                table.setStatusTurn("Tu turno");
                 int playerBet = human.getCurrentBet();
                 action = table.awaitPlayerAction(round, playerBet, table.getUiSyncTimeoutMs());
                 if (action == null) {
@@ -340,6 +348,7 @@ public class LanHostController {
                 }
                 amount = resolveAmount(action, round, human, playerBet);
             } else {
+                table.setStatusTurn("Turno de: " + human.getName());
                 // Check if the client is still connected before waiting.
                 // If disconnected, immediately FOLD without the 3-second timeout.
                 if (session.findClient(human.getPlayerId()).isEmpty()) {
@@ -365,6 +374,7 @@ public class LanHostController {
             actions.put(human.getPlayerId(), new PokerGame.HumanActionEntry(action, amount));
         }
         activePlayerId = null;
+        table.setStatusTurn("");
         return actions;
     }
 
