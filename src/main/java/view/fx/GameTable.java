@@ -109,6 +109,7 @@ public final class GameTable {
     // ── Card dealing ──────────────────────────────────────────────────────────
     private List<GameCard> playerCards = new ArrayList<>();
     private List<GameCard> communityCards = new ArrayList<>();
+    private boolean playerCardsDealt;
     private javafx.scene.canvas.Canvas deckPileCanvas;
 
     // ── Result banner ────────────────────────────────────────────────────────────
@@ -1277,6 +1278,11 @@ public final class GameTable {
     }
 
     private void dealPlayerHandInternal(List<Card> hand) {
+        // Don't re-animate player cards if already shown this round
+        if (playerCardsDealt && !playerCards.isEmpty()) {
+            return;
+        }
+
         // Clear previous player cards
         for (GameCard gc : playerCards) {
             canvas.getChildren().remove(gc.getNode());
@@ -1294,6 +1300,8 @@ public final class GameTable {
             playerCards.add(gc);
             gc.dealTo(startX + i * 110, y, i * 180L, null);
         }
+
+        playerCardsDealt = true;
     }
 
     /**
@@ -1359,6 +1367,7 @@ public final class GameTable {
         }
         playerCards.clear();
         communityCards.clear();
+        playerCardsDealt = false;
         playerHandSection.setVisible(false);
         commCardsSection.setVisible(false);
     }
