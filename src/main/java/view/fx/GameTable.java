@@ -680,6 +680,24 @@ public final class GameTable {
     }
 
     /**
+     * Sets the pot area to a free-text status message (e.g. lobby player count).
+     * Unlike {@link #updatePot(int)}, this always shows the label.
+     */
+    public void setPotMessage(String message) {
+        if (Platform.isFxApplicationThread()) {
+            setPotMessageInternal(message);
+        } else {
+            Platform.runLater(() -> setPotMessageInternal(message));
+        }
+    }
+
+    private void setPotMessageInternal(String message) {
+        potTextLabel.setText(message);
+        potIconLabel.setText("\u25CB"); // circle for status
+        potLabel.setVisible(true);
+    }
+
+    /**
      * Resets all badges, pot, and folded states for a new hand.
      */
     /**
@@ -1372,9 +1390,13 @@ public final class GameTable {
         potIconLabel.setText("\u2B21"); // restore hexagon
         potLabel.setVisible(false);
 
-        // Hide remote seats — they'll be shown by updateAIPlayers during game
+        // Only hide seats that are still "Esperando…" placeholders.
+        // Seats with actual player names stay visible — they carry over into
+        // the game where updateAIPlayers refreshes the display.
         for (int i = 0; i < 3; i++) {
-            fadeTo(i, false);
+            if ("Esperando…".equals(aiBadgeLabels[i].getText())) {
+                fadeTo(i, false);
+            }
         }
 
         // Reset player badge fold state

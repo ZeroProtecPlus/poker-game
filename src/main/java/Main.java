@@ -1,42 +1,158 @@
 import controller.GameController;
+import controller.LanClientController;
+import controller.LanHostController;
+import config.GameSettings;
+import javafx.application.Platform;
+import javafx.scene.control.Alert;
+import view.GameView;
+import view.LanDialogs;
+import view.fx.JavaFxBootstrap;
+import view.fx.MultiplayerMenuDialog;
+import view.fx.SettingsDialog;
+import view.fx.StartMenuDialog;
 
-/*
- * To-do:
- * 1. Ya esta implementada la logica base de reparto, falta sincronizar con la UI
- * 2. Implementar paso a paso distribucion de cartas Turn, River y Flop
- * 3. Implementar Base de datos para manejo de fichas y usuarios
- * 4. Realizar pruebas de software, pruebas funcionales y no funcionales
- * 5. agregar dentro de JFX Swing una modal, para preguntar al usuario si desea continuar el game
- * 6. Buscar informacion acerca de las fuentes y diseño UI en JavaX Swing
+/**
+ * Entry point. Default flow: start menu → mode selection → game.
+ * Legacy CLI flags {@code --lan-host} / {@code --lan-client} skip the menu.
  */
 public class Main {
 
     public static void main(String[] args) {
-        // La UI de Swing necesita el EDT libre.
-        // Corremos la lógica del juego en un hilo separado
-        // para que las animaciones y el repaint no se bloqueen.
+        if (args.length > 0 && "--lan-host".equals(args[0])) {
+            runOnGameThread(() -> {
+                try {
+                    runLanHost(args);
+                } catch (Exception ex) {
+                    throw new IllegalStateException(ex.getMessage(), ex);
+                }
+            });
+            return;
+        }
+        if (args.length > 0 && "--lan-client".equals(args[0])) {
+            runOnGameThread(() -> {
+                try {
+                    runLanClient();
+                } catch (Exception ex) {
+                    throw new IllegalStateException(ex.getMessage(), ex);
+                }
+            });
+            return;
+        }
+
+        JavaFxBootstrap.ensureStarted();
+        runMenuLoop();
+    }
+
+    private static void runMenuLoop() {
+        while (true) {
+            StartMenuDialog.Choice choice = StartMenuDialog.showAndWaitBlocking();
+            if (choice == null || choice == StartMenuDialog.Choice.CLOSED) {
+                return;
+            }
+            switch (choice) {
+                case SINGLE_PLAYER -> {
+                    Thread gameThread = runOnGameThread(Main::runSinglePlayer);
+                    try {
+                        gameThread.join();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                    return;
+                }
+                case MULTIPLAYER -> runMultiplayerSubmenu();
+                case SETTINGS -> SettingsDialog.showAndWaitBlocking();
+                default -> { return; }
+            }
+        }
+    }
+
+    private static void runMultiplayerSubmenu() {
+        while (true) {
+            MultiplayerMenuDialog.Choice choice = MultiplayerMenuDialog.showAndWaitBlocking();
+            if (choice == null || choice == MultiplayerMenuDialog.Choice.CLOSED) {
+                return;
+            }
+            switch (choice) {
+                case HOST -> {
+                    Thread gameThread = runOnGameThread(() -> {
+                        try {
+                            runLanHost(new String[] { "--lan-host" });
+                        } catch (Exception ex) {
+                            throw new IllegalStateException(ex.getMessage(), ex);
+                        }
+                    });
+                    try {
+                        gameThread.join();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                    return;
+                }
+                case JOIN -> {
+                    Thread gameThread = runOnGameThread(() -> {
+                        try {
+                            runLanClient();
+                        } catch (Exception ex) {
+                            throw new IllegalStateException(ex.getMessage(), ex);
+                        }
+                    });
+                    try {
+                        gameThread.join();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                    return;
+                }
+                case BACK -> {
+                    return;
+                }
+                default -> { return; }
+            }
+        }
+    }
+
+    private static Thread runOnGameThread(Runnable action) {
         Thread gameThread = new Thread(() -> {
             try {
-                GameController game = new GameController();
-                game.createNewPlayer();
-                game.createNewGame();
+                action.run();
             } catch (IllegalStateException e) {
-                javax.swing.SwingUtilities.invokeLater(() ->
-                    javax.swing.JOptionPane.showMessageDialog(
-                        null,
-                        e.getMessage(),
-                        "Cancelado",
-                        javax.swing.JOptionPane.WARNING_MESSAGE
-                    )
-                );
+                try {
+                    Platform.runLater(() -> {
+                        Alert alert = new Alert(Alert.AlertType.WARNING);
+                        alert.setTitle("Cancelado");
+                        alert.setHeaderText(null);
+                        alert.setContentText(e.getMessage());
+                        alert.showAndWait();
+                    });
+                } catch (IllegalStateException fxError) {
+                    System.err.println("Cancelado: " + e.getMessage());
+                }
             } catch (Exception e) {
-                System.out.println(
-                    "Ocurrió un error inesperado: " + e.getMessage()
-                );
+                System.out.println("Ocurrió un error inesperado: " + e.getMessage());
             }
         });
-
-        gameThread.setDaemon(false); // mantiene viva la JVM mientras corre
+        gameThread.setDaemon(false);
         gameThread.start();
+        return gameThread;
+    }
+
+    private static void runSinglePlayer() {
+        GameController game = new GameController();
+        game.createNewPlayer();
+        game.createNewGame();
+    }
+
+    private static void runLanHost(String[] args) throws Exception {
+        GameSettings settings = GameSettings.get();
+        int port = settings.getHostPort();
+        if (args.length > 1) {
+            port = Integer.parseInt(args[1]);
+        }
+        LanHostController host = new LanHostController(new GameView(), port);
+        host.run();
+    }
+
+    private static void runLanClient() throws Exception {
+        new LanClientController(new GameView()).run();
     }
 }

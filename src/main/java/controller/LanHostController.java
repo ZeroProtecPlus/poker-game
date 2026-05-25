@@ -132,9 +132,15 @@ public class LanHostController {
         while (session.lobbyPlayers().size() < LanConstants.MAX_HUMAN_PLAYERS) {
             List<GameTable.LanSeatInfo> seats = new ArrayList<>();
             for (ConnectedClient client : session.getClients()) {
-                seats.add(new GameTable.LanSeatInfo(client.getDisplayName(), 10000));
+                seats.add(new GameTable.LanSeatInfo(client.getDisplayName(), hostUser.getNumbChips()));
             }
             lobby.updateLanLobbySeats(seats);
+
+            // Show player count in the status area
+            int currentCount = session.lobbyPlayers().size();
+            Platform.runLater(() -> {
+                lobby.setPotMessage("Jugadores: " + currentCount + "/" + LanConstants.MAX_HUMAN_PLAYERS);
+            });
 
             try {
                 Thread.sleep(300);
@@ -147,9 +153,14 @@ public class LanHostController {
         // Update seats one final time to show all players
         List<GameTable.LanSeatInfo> finalSeats = new ArrayList<>();
         for (ConnectedClient client : session.getClients()) {
-            finalSeats.add(new GameTable.LanSeatInfo(client.getDisplayName(), 10000));
+            finalSeats.add(new GameTable.LanSeatInfo(client.getDisplayName(), hostUser.getNumbChips()));
         }
         lobby.updateLanLobbySeats(finalSeats);
+
+        // Final player count message
+        Platform.runLater(() -> {
+            lobby.setPotMessage("Jugadores: " + LanConstants.MAX_HUMAN_PLAYERS + "/" + LanConstants.MAX_HUMAN_PLAYERS);
+        });
 
         // Brief pause so players see the full table before game starts
         try {
