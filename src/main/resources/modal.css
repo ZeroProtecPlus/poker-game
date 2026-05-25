@@ -382,5 +382,8 @@
     -fx-font-family: -fx-font-heading;
     -fx-font-size: 14px;
     -fx-text-fill: #e74c3c;
-    -fx-padding: 0 4;
+    -fx-padding: 6 8 2 8;
+    -fx-wrap-text: true;
+    -fx-line-spacing: 2px;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.5), 4, 0.4, 0, 1);
 }

@@ -132,7 +132,7 @@ public final class ConnectDialog {
         errorLabel.setWrapText(true);
 
         // ── Buttons ──────────────────────────────────────────────────────────
-        HBox buttonBar = new HBox(20);
+        HBox buttonBar = new HBox(24);
         buttonBar.setAlignment(Pos.CENTER);
         buttonBar.setPadding(new Insets(8, 0, 0, 0));
 

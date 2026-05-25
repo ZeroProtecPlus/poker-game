@@ -91,9 +91,7 @@ public class LanHostController {
         table = GameTable.create();
         table.awaitUiReady(5000);
         table.show();
-        table.setOnExitConfirmed(() -> exitRequested = true);
 
-        view.awaitUiReady(view.getUiSyncTimeoutMs());
         registerHost();
         runLobby();
         try {
