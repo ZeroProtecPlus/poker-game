@@ -3,9 +3,14 @@ package view.fx;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
+
+import config.GameSettings;
 import javafx.animation.FadeTransition;
 import javafx.animation.RotateTransition;
 import javafx.application.Platform;
@@ -121,6 +126,14 @@ public final class GameTable {
 
     // ── Betting buttons ───────────────────────────────────────────────────────
     private HBox bettingPanel;
+
+    // ── Game-flow synchronisation (blocking from non-FX threads) ──────────────
+    private volatile CompletableFuture<Void> lastAnimationFuture;
+    private volatile CompletableFuture<BettingRound.Action> pendingActionFuture;
+
+    // ── Latest player name / chips for bridge methods ────────────────────────
+    private String latestPlayerName = "";
+    private int latestPlayerChips;
 
     /**
      * Returns the singleton instance. If an instance already exists,
@@ -1406,6 +1419,270 @@ public final class GameTable {
         if (!playerBadge.getStyleClass().contains("player-badge")) {
             playerBadge.getStyleClass().add("player-badge");
         }
+    }
+
+    // ── Game-flow bridge API (migrated from Swing GameView) ──────────────────
+
+    /**
+     * Returns the UI synchronisation timeout from {@link GameSettings}.
+     * Thread-safe.
+     */
+    public long getUiSyncTimeoutMs() {
+        return GameSettings.get().getUiSyncTimeoutMs();
+    }
+
+    /**
+     * Shows the player's hole cards with deal animation.
+     * Delegates to {@link #dealPlayerHand(List)}.
+     * Thread-safe.
+     */
+    public void showPlayerHand(List<Card> hand) {
+        dealPlayerHand(hand);
+        scheduleAnimationCompletion(hand.size(), "playerHand");
+    }
+
+    /**
+     * Shows community cards and the player hand together.
+     * Matches Swing {@code GameView.showCommunityCards(community, playerHand, newCardsCount)}.
+     * Thread-safe.
+     *
+     * @param community     the community cards (all dealt so far)
+     * @param playerHand    the player's hole cards
+     * @param revealCount   how many community cards are NEW this phase (flop=3, turn/river=1)
+     */
+    public void showCommunityCards(
+        List<Card> community,
+        List<Card> playerHand,
+        int revealCount
+    ) {
+        dealCommunityCards(community);
+        dealPlayerHand(playerHand);
+        scheduleAnimationCompletion(revealCount, "communityCards");
+    }
+
+    /**
+     * Updates the human player role and AI player badges.
+     * Thread-safe.
+     *
+     * @param humanRole  the human player's role (D, SB, BB, or NONE)
+     * @param aiPlayers  list of AI players with their roles
+     */
+    public void showRoles(AIPlayer.Role humanRole, List<AIPlayer> aiPlayers) {
+        String roleLabel = roleLabel(humanRole);
+        updatePlayerInfo(latestPlayerName, latestPlayerChips, roleLabel, false);
+        updateAIPlayers(aiPlayers);
+    }
+
+    /**
+     * Updates the human player badge with name and chip count.
+     * Preserves the current role and folded state.
+     * Thread-safe.
+     */
+    public void showUserChips(String name, int chips) {
+        latestPlayerName = name;
+        latestPlayerChips = chips;
+        updatePlayerInfo(name, chips, playerPrevRole, playerFolded);
+    }
+
+    /**
+     * Synchronous version of {@link #showUserChips(String, int)}.
+     * Blocks the calling thread until the FX thread has applied the update.
+     *
+     * @param name    player name
+     * @param chips   current chip count
+     * @param folded  whether the player is folded
+     */
+    public void showUserChipsSync(String name, int chips, boolean folded) {
+        latestPlayerName = name;
+        latestPlayerChips = chips;
+        CountDownLatch latch = new CountDownLatch(1);
+        Platform.runLater(() -> {
+            updatePlayerInfoInternal(name, chips, playerPrevRole, folded);
+            latch.countDown();
+        });
+        try {
+            if (!latch.await(5, TimeUnit.SECONDS)) {
+                // Fallback
+                updatePlayerInfo(name, chips, playerPrevRole, folded);
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            updatePlayerInfo(name, chips, playerPrevRole, folded);
+        }
+    }
+
+    /**
+     * Blocks until the last deal animation completes.
+     * If no animation is pending, returns immediately.
+     *
+     * @param timeoutMs maximum wait time in milliseconds
+     * @return true if animation completed, false on timeout
+     */
+    public boolean awaitLastAnimation(long timeoutMs) {
+        CompletableFuture<Void> fut = lastAnimationFuture;
+        if (fut == null) {
+            return true;
+        }
+        try {
+            fut.get(timeoutMs, TimeUnit.MILLISECONDS);
+            return true;
+        } catch (TimeoutException e) {
+            return false;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return false;
+        } catch (ExecutionException e) {
+            return false;
+        }
+    }
+
+    /**
+     * Shows the betting buttons and blocks until the player clicks one
+     * or the timeout expires.
+     *
+     * @param round           current betting round
+     * @param playerCurrentBet the player's current bet in this round
+     * @param timeoutMs       maximum wait time in milliseconds
+     * @return the chosen action, or null on timeout
+     */
+    public BettingRound.Action awaitPlayerAction(
+        BettingRound round,
+        int playerCurrentBet,
+        long timeoutMs
+    ) {
+        CompletableFuture<BettingRound.Action> future = new CompletableFuture<>();
+        pendingActionFuture = future;
+
+        showBettingButtons(round, playerCurrentBet, false, action -> {
+            if (future.complete(action)) {
+                pendingActionFuture = null;
+            }
+        });
+
+        try {
+            BettingRound.Action result = future.get(timeoutMs, TimeUnit.MILLISECONDS);
+            hideBettingButtons();
+            return result;
+        } catch (TimeoutException e) {
+            hideBettingButtons();
+            return null;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            hideBettingButtons();
+            return null;
+        } catch (ExecutionException e) {
+            hideBettingButtons();
+            return null;
+        }
+    }
+
+    /**
+     * Resolves a pending player action manually (used on timeout fallback).
+     * Shows a brief result banner about the auto-action.
+     *
+     * @param action the action to resolve with
+     */
+    public void resolvePendingPlayerAction(BettingRound.Action action) {
+        CompletableFuture<BettingRound.Action> future = pendingActionFuture;
+        if (future != null && future.complete(action)) {
+            pendingActionFuture = null;
+        }
+        if (action == BettingRound.Action.FOLD) {
+            showUserChips(latestPlayerName, latestPlayerChips);
+            Platform.runLater(() -> {
+                foldIndicator.setVisible(true);
+                playerFolded = true;
+            });
+        }
+    }
+
+    /**
+     * Opens the bet amount dialog and blocks until the player chooses an amount.
+     *
+     * @param minBet minimum bet (e.g. big blind or min raise)
+     * @param maxBet maximum bet (player's total chips)
+     * @return the chosen bet amount, or minBet on cancel/timeout
+     */
+    public int getPlayerBetAmount(int minBet, int maxBet) {
+        CompletableFuture<Integer> future = BetAmountDialog.showAndWait(minBet, maxBet);
+        try {
+            return future.get(60, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return minBet;
+        } catch (Exception e) {
+            return minBet;
+        }
+    }
+
+    /**
+     * Shows the "Play again?" dialog and blocks until the player answers.
+     *
+     * @param chips current chip count for display
+     * @return true if the player wants to continue, false otherwise
+     */
+    public boolean askPlayAgain(int chips) {
+        CompletableFuture<Boolean> future = ContinueDialog.showAndWait(chips);
+        try {
+            Boolean result = future.get(60, TimeUnit.SECONDS);
+            return result != null && result;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return false;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * Closes the GameTable stage and signals any threads blocked on {@link #awaitClose()}.
+     * Thread-safe.
+     */
+    public void requestGracefulShutdown() {
+        if (Platform.isFxApplicationThread()) {
+            shutdownInternal();
+        } else {
+            Platform.runLater(this::shutdownInternal);
+        }
+    }
+
+    private void shutdownInternal() {
+        if (stage != null && stage.isShowing()) {
+            stage.close();
+        }
+    }
+
+    /**
+     * No-op for GameTable: the table is always "active" once shown.
+     * Provided for compatibility with the Swing GameView API.
+     */
+    public void setGameActive(boolean active) {
+        // GameTable is always active once shown — no toggle needed
+    }
+
+    /**
+     * Schedules a CompletableFuture completion based on expected deal animation duration.
+     * The total animation time is computed from card count and stagger delays.
+     */
+    private void scheduleAnimationCompletion(int cardCount, String label) {
+        // Stagger delay: 180ms per player card, 100ms per community card
+        long staggerMs = label.startsWith("playerHand") ? 180L : 100L;
+        long totalMs = (cardCount - 1) * staggerMs + 600L; // 400ms fly + 200ms margin
+
+        CompletableFuture<Void> future = new CompletableFuture<>();
+        lastAnimationFuture = future;
+
+        Thread timer = new Thread(() -> {
+            try {
+                Thread.sleep(totalMs);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            future.complete(null);
+            lastAnimationFuture = null;
+        }, "fx-anim-timer");
+        timer.setDaemon(true);
+        timer.start();
     }
 
     // ── Internal API ──────────────────────────────────────────────────────────
