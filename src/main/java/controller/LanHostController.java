@@ -52,6 +52,9 @@ public class LanHostController {
     private volatile String activePlayerId;
     private volatile BettingRound.Phase currentPhase;
 
+    /** JavaFX GameTable used for lobby AND game rendering (replaces Swing GameView). */
+    private GameTable table;
+
     public LanHostController(GameView view, int port) throws IOException {
         this.view = view;
         this.session = new HostSession();
@@ -82,6 +85,11 @@ public class LanHostController {
     }
 
     public void run() {
+        // Create the JavaFX GameTable first — it serves both lobby and game rendering.
+        table = GameTable.create();
+        table.awaitUiReady(5000);
+        table.show();
+
         view.awaitUiReady(view.getUiSyncTimeoutMs());
         registerHost();
         runLobby();
@@ -106,7 +114,7 @@ public class LanHostController {
                 hostUser = loadOrCreateProfile(
                     new User(decision.getPlayerId(), decision.getDisplayName())
                 );
-                view.showUserChipsSync(hostUser.getName(), hostUser.getNumbChips(), false);
+                table.showUserChipsSync(hostUser.getName(), hostUser.getNumbChips(), false);
                 return;
             }
             LanDialogs.showJoinRejection(decision);
@@ -117,16 +125,8 @@ public class LanHostController {
     }
 
     private void runLobby() {
-        // Create and show the GameTable for lobby display
-        GameTable lobby = GameTable.create();
-        lobby.awaitUiReady(5000);
-        lobby.show();
-        lobby.showLanLobby(hostUser.getName(), hostUser.getNumbChips());
-
-        // Show connection info in the action log area via pot label
-        Platform.runLater(() -> {
-            lobby.updatePot(0);
-        });
+        // Show the player name in the GameTable already created in run()
+        table.showLanLobby(hostUser.getName(), hostUser.getNumbChips());
 
         // Wait until we have MAX_HUMAN_PLAYERS total (host + remotes)
         while (session.lobbyPlayers().size() < LanConstants.MAX_HUMAN_PLAYERS) {
@@ -134,12 +134,12 @@ public class LanHostController {
             for (ConnectedClient client : session.getClients()) {
                 seats.add(new GameTable.LanSeatInfo(client.getDisplayName(), hostUser.getNumbChips()));
             }
-            lobby.updateLanLobbySeats(seats);
+            table.updateLanLobbySeats(seats);
 
             // Show player count in the status area
             int currentCount = session.lobbyPlayers().size();
             Platform.runLater(() -> {
-                lobby.setPotMessage("Jugadores: " + currentCount + "/" + LanConstants.MAX_HUMAN_PLAYERS);
+                table.setPotMessage("Jugadores: " + currentCount + "/" + LanConstants.MAX_HUMAN_PLAYERS);
             });
 
             // Broadcast updated lobby state to all connected clients
@@ -163,11 +163,11 @@ public class LanHostController {
         for (ConnectedClient client : session.getClients()) {
             finalSeats.add(new GameTable.LanSeatInfo(client.getDisplayName(), hostUser.getNumbChips()));
         }
-        lobby.updateLanLobbySeats(finalSeats);
+        table.updateLanLobbySeats(finalSeats);
 
         // Final player count message
         Platform.runLater(() -> {
-            lobby.setPotMessage("Jugadores: " + LanConstants.MAX_HUMAN_PLAYERS + "/" + LanConstants.MAX_HUMAN_PLAYERS);
+            table.setPotMessage("Jugadores: " + LanConstants.MAX_HUMAN_PLAYERS + "/" + LanConstants.MAX_HUMAN_PLAYERS);
         });
 
         // Brief pause so players see the full table before game starts
@@ -177,8 +177,9 @@ public class LanHostController {
             Thread.currentThread().interrupt();
         }
 
-        // Clean up lobby display
-        lobby.hideLanLobby();
+        // Transition to game: clear table without hiding the GameTable.
+        // GameTable stays visible and game rendering drives all UI.
+        table.clearTable();
     }
 
     private void refreshHostLobbyHint() {
@@ -187,7 +188,6 @@ public class LanHostController {
     }
 
     private void runLanGame() throws IOException {
-        view.setGameActive(true);
         List<User> remotes = new ArrayList<>();
         for (HostSession.UserSeat seat : session.buildRemoteSeats()) {
             remotes.add(new User(seat.playerId(), seat.displayName()));
@@ -196,25 +196,25 @@ public class LanHostController {
 
         while (hostUser.getNumbChips() > 0) {
             playOneHand();
-            boolean continuar = view.askPlayAgain(hostUser.getNumbChips());
+            boolean continuar = table.askPlayAgain(hostUser.getNumbChips());
             if (!continuar) {
                 savePlayerProfile(hostUser);
-                view.requestGracefulShutdown();
+                table.requestGracefulShutdown();
                 return;
             }
         }
-        view.showGameOver(hostUser.getNumbChips());
+        table.showGameOver(hostUser.getNumbChips());
     }
 
     private void playOneHand() throws IOException {
-        view.clearTableForNewHand();
+        table.clearTable();
         pokerGame.startNewRound();
 
         ArrayList<Card> hostHand = pokerGame.getPlayerHand();
-        view.showPlayerHand(hostHand);
-        view.awaitLastAnimation(view.getUiSyncTimeoutMs());
-        view.showRoles(pokerGame.getHumanRole(), pokerGame.getAIPlayers());
-        view.showPot(pokerGame.getPot());
+        table.showPlayerHand(hostHand);
+        table.awaitLastAnimation(table.getUiSyncTimeoutMs());
+        table.showRoles(pokerGame.getHumanRole(), pokerGame.getAIPlayers());
+        table.updatePot(pokerGame.getPot());
         currentPhase = BettingRound.Phase.PREFLOP;
         broadcastState(currentPhase);
 
@@ -224,8 +224,8 @@ public class LanHostController {
         }
 
         pokerGame.dealFlop();
-        view.showCommunityCards(pokerGame.getCommunityCards(), hostHand, 3);
-        view.awaitLastAnimation(view.getUiSyncTimeoutMs());
+        table.showCommunityCards(pokerGame.getCommunityCards(), hostHand, 3);
+        table.awaitLastAnimation(table.getUiSyncTimeoutMs());
         currentPhase = BettingRound.Phase.FLOP;
         broadcastState(currentPhase);
         runLanBettingPhase(currentPhase);
@@ -234,8 +234,8 @@ public class LanHostController {
         }
 
         pokerGame.dealTurnOrRiver();
-        view.showCommunityCards(pokerGame.getCommunityCards(), hostHand, 1);
-        view.awaitLastAnimation(view.getUiSyncTimeoutMs());
+        table.showCommunityCards(pokerGame.getCommunityCards(), hostHand, 1);
+        table.awaitLastAnimation(table.getUiSyncTimeoutMs());
         currentPhase = BettingRound.Phase.TURN;
         broadcastState(currentPhase);
         runLanBettingPhase(currentPhase);
@@ -244,8 +244,8 @@ public class LanHostController {
         }
 
         pokerGame.dealTurnOrRiver();
-        view.showCommunityCards(pokerGame.getCommunityCards(), hostHand, 1);
-        view.awaitLastAnimation(view.getUiSyncTimeoutMs());
+        table.showCommunityCards(pokerGame.getCommunityCards(), hostHand, 1);
+        table.awaitLastAnimation(table.getUiSyncTimeoutMs());
         currentPhase = BettingRound.Phase.RIVER;
         broadcastState(currentPhase);
         runLanBettingPhase(currentPhase);
@@ -270,15 +270,15 @@ public class LanHostController {
                 phase,
                 actions
             );
-            view.showAIActions(result.log);
-            view.awaitLastAnimation(view.getUiSyncTimeoutMs());
+            table.setActionLog(result.log);
+            table.awaitLastAnimation(table.getUiSyncTimeoutMs());
 
             if (result.highBet > round.getCurrentBet()) {
                 round.forceCurrentBet(result.highBet);
             }
 
-            view.showPot(pokerGame.getPot());
-            view.showUserChips(hostUser.getName(), hostUser.getNumbChips());
+            table.updatePot(pokerGame.getPot());
+            table.showUserChips(hostUser.getName(), hostUser.getNumbChips());
             broadcastState(phase);
 
             if (pokerGame.getRemainingActivePlayersCount() <= 1) {
@@ -322,10 +322,10 @@ public class LanHostController {
 
             if (pokerGame.isLocalHuman(human)) {
                 int playerBet = human.getCurrentBet();
-                action = view.waitForPlayerAction(round, playerBet, view.getUiSyncTimeoutMs());
+                action = table.awaitPlayerAction(round, playerBet, table.getUiSyncTimeoutMs());
                 if (action == null) {
                     action = resolveTimeoutAction(round, playerBet);
-                    view.resolvePendingPlayerAction(action);
+                    table.resolvePendingPlayerAction(action);
                 }
                 amount = resolveAmount(action, round, human, playerBet);
             } else {
@@ -364,13 +364,13 @@ public class LanHostController {
         int playerCurrentBet
     ) {
         if (action == BettingRound.Action.BET) {
-            return view.getPlayerBetAmount(round.getBigBlind(), human.getNumbChips());
+            return table.getPlayerBetAmount(round.getBigBlind(), human.getNumbChips());
         }
         if (action == BettingRound.Action.CALL) {
             return round.callAmount(playerCurrentBet);
         }
         if (action == BettingRound.Action.RAISE) {
-            return view.getPlayerBetAmount(round.minRaiseAmount(), human.getNumbChips());
+            return table.getPlayerBetAmount(round.minRaiseAmount(), human.getNumbChips());
         }
         return 0;
     }
@@ -431,8 +431,8 @@ public class LanHostController {
         long activeRemote = pokerGame.getLanHumanPlayers().stream().filter(u -> !u.isFolded()).count();
         if (activeAi == 0 && activeRemote == 0) {
             pokerGame.awardPotToPlayer();
-            view.showUserChips(hostUser.getName(), hostUser.getNumbChips());
-            view.showPot(0);
+            table.showUserChips(hostUser.getName(), hostUser.getNumbChips());
+            table.updatePot(0);
             broadcastState(BettingRound.Phase.RIVER);
             return true;
         }
@@ -443,8 +443,8 @@ public class LanHostController {
         ShowdownResult result = pokerGame.determineShowdownResult();
         int pot = pokerGame.getPot();
         pokerGame.awardPot(result);
-        view.showResult(pokerGame.getCommunityCards(), pokerGame.getPlayerHand(), result, pot);
-        view.showUserChips(hostUser.getName(), hostUser.getNumbChips());
+        showResult(result, pot);
+        table.showUserChips(hostUser.getName(), hostUser.getNumbChips());
         broadcastState(BettingRound.Phase.RIVER);
         session.broadcast(new LanEnvelope(
             LanMessageType.HAND_RESULT,
@@ -452,6 +452,34 @@ public class LanHostController {
                 .put("winner", result.getWinners().isEmpty() ? "" : result.getWinners().get(0).getName())
                 .put("pot", pot)
         ));
+    }
+
+    /**
+     * Shows the showdown result on the GameTable.
+     * Translates the {@link ShowdownResult} into the GameTable's result banner.
+     */
+    private void showResult(ShowdownResult result, int pot) {
+        if (result == null || result.getWinners().isEmpty()) {
+            table.showResult("Sin ganador definido", false);
+            return;
+        }
+        if (result.isTie()) {
+            StringBuilder names = new StringBuilder();
+            for (Player w : result.getWinners()) {
+                if (names.length() > 0) names.append(", ");
+                names.append(w.getName());
+            }
+            table.showResult("Empate: " + names + " dividen " + String.format("%,d", pot), false);
+            return;
+        }
+        Player winner = result.getWinners().get(0);
+        boolean humanWon = winner instanceof User;
+        String handName = result.getBestRank() != null ? result.getBestRank().spanishName : "";
+        if (humanWon) {
+            table.showResult("¡Ganaste! +" + String.format("%,d", pot) + "  |  " + handName, true);
+        } else {
+            table.showResult(winner.getName() + " gana " + String.format("%,d", pot) + "  |  " + handName, false);
+        }
     }
 
     /**
