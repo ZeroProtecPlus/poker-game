@@ -24,7 +24,6 @@ import network.protocol.LanConstants;
 import network.protocol.LanEnvelope;
 import network.protocol.LanMessageType;
 import org.json.JSONObject;
-import view.GameView;
 import view.LanDialogs;
 import view.fx.GameTable;
 
@@ -38,7 +37,6 @@ import java.util.concurrent.TimeoutException;
 
 public class LanHostController {
 
-    private final GameView view;
     private final HostSession session;
     private final HostServer server;
     private final PendingActionRegistry pendingActions = new PendingActionRegistry();
@@ -57,8 +55,7 @@ public class LanHostController {
 
     private volatile boolean exitRequested;
 
-    public LanHostController(GameView view, int port) throws IOException {
-        this.view = view;
+    public LanHostController(int port) throws IOException {
         this.session = new HostSession();
         this.server = new HostServer(port, session, this::onPlayerAction);
         this.machineIdProvider = FileMachineIdProvider.INSTANCE;

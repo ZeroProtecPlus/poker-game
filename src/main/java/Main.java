@@ -4,7 +4,6 @@ import controller.LanHostController;
 import config.GameSettings;
 import javafx.application.Platform;
 import javafx.scene.control.Alert;
-import view.GameView;
 import view.LanDialogs;
 import view.fx.JavaFxBootstrap;
 import view.fx.MultiplayerMenuDialog;
@@ -148,11 +147,11 @@ public class Main {
         if (args.length > 1) {
             port = Integer.parseInt(args[1]);
         }
-        LanHostController host = new LanHostController(new GameView(), port);
+        LanHostController host = new LanHostController(port);
         host.run();
     }
 
     private static void runLanClient() throws Exception {
-        new LanClientController(new GameView()).run();
+        new LanClientController().run();
     }
 }

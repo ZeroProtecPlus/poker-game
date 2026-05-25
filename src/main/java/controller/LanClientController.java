@@ -15,7 +15,6 @@ import network.protocol.GameStateJsonMapper;
 import network.protocol.JoinPayloads;
 import network.protocol.LanEnvelope;
 import network.protocol.LanMessageType;
-import view.GameView;
 import view.LanDialogs;
 import view.fx.GameTable;
 
@@ -26,7 +25,6 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class LanClientController implements GameClient.Listener {
 
-    private final GameView view;
     private GameClient client;
     private String localPlayerId;
     private final AtomicLong lastStateSeq = new AtomicLong(-1);
@@ -38,8 +36,7 @@ public class LanClientController implements GameClient.Listener {
     private GameTable table;
     private String localDisplayName;
 
-    public LanClientController(GameView view) {
-        this.view = view;
+    public LanClientController() {
     }
 
     public void run() throws IOException {
