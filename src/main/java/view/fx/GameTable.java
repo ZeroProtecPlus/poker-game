@@ -127,6 +127,10 @@ public final class GameTable {
     // ── Betting buttons ───────────────────────────────────────────────────────
     private HBox bettingPanel;
 
+    // ── Exit flow ────────────────────────────────────────────────────────────
+    private Runnable onExitConfirmed;
+    private volatile boolean exitDialogShowing;
+
     // ── Game-flow synchronisation (blocking from non-FX threads) ──────────────
     private volatile CompletableFuture<Void> lastAnimationFuture;
     private volatile CompletableFuture<BettingRound.Action> pendingActionFuture;
@@ -242,14 +246,15 @@ public final class GameTable {
 
         scene.setOnKeyPressed(event -> {
             if (event.getCode() == KeyCode.ESCAPE) {
-                stage.close();
+                requestExit();
             }
         });
 
         stage.setScene(scene);
 
         stage.setOnCloseRequest(event -> {
-            closeLatch.countDown();
+            event.consume();
+            requestExit();
         });
 
         uiReadyLatch.countDown();
@@ -448,6 +453,16 @@ public final class GameTable {
     // ── Public API ────────────────────────────────────────────────────────────
 
     /**
+     * Sets a callback invoked when the user confirms exit via the
+     * confirmation dialog (ESC key or chrome close button).
+     *
+     * @param callback the action to run on confirmed exit (e.g., cleanup resources)
+     */
+    public void setOnExitConfirmed(Runnable callback) {
+        this.onExitConfirmed = callback;
+    }
+
+    /**
      * Shows the stage. Safe to call from any thread.
      */
     public void show() {
@@ -485,6 +500,38 @@ public final class GameTable {
     private void hideFrameInternal() {
         if (stage != null) {
             stage.hide();
+        }
+    }
+
+    /**
+     * Shows the exit confirmation dialog and, if confirmed, invokes
+     * {@link #onExitConfirmed} and closes the stage.
+     *
+     * <p>Called from the FX thread when the user presses ESC or clicks
+     * the chrome close button. Uses a nested event loop via
+     * {@link ExitConfirmDialog#showAndWaitBlocking()} so the method
+     * blocks synchronously on the FX thread until the user responds.
+     */
+    private void requestExit() {
+        if (exitDialogShowing) {
+            return;  // Prevent re-entrant calls
+        }
+        exitDialogShowing = true;
+        try {
+            boolean confirmed = ExitConfirmDialog.showAndWaitBlocking();
+            if (confirmed) {
+                if (onExitConfirmed != null) {
+                    onExitConfirmed.run();
+                }
+                closeLatch.countDown();
+                if (stage != null) {
+                    // Bypass the close-request interceptor for final close
+                    stage.setOnCloseRequest(e -> {});
+                    stage.close();
+                }
+            }
+        } finally {
+            exitDialogShowing = false;
         }
     }
 

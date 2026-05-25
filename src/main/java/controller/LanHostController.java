@@ -55,6 +55,8 @@ public class LanHostController {
     /** JavaFX GameTable used for lobby AND game rendering (replaces Swing GameView). */
     private GameTable table;
 
+    private volatile boolean exitRequested;
+
     public LanHostController(GameView view, int port) throws IOException {
         this.view = view;
         this.session = new HostSession();
@@ -89,6 +91,7 @@ public class LanHostController {
         table = GameTable.create();
         table.awaitUiReady(5000);
         table.show();
+        table.setOnExitConfirmed(() -> exitRequested = true);
 
         view.awaitUiReady(view.getUiSyncTimeoutMs());
         registerHost();
@@ -129,7 +132,7 @@ public class LanHostController {
         table.showLanLobby(hostUser.getName(), hostUser.getNumbChips());
 
         // Wait until we have MAX_HUMAN_PLAYERS total (host + remotes)
-        while (session.lobbyPlayers().size() < LanConstants.MAX_HUMAN_PLAYERS) {
+        while (session.lobbyPlayers().size() < LanConstants.MAX_HUMAN_PLAYERS && !exitRequested) {
             List<GameTable.LanSeatInfo> seats = new ArrayList<>();
             for (ConnectedClient client : session.getClients()) {
                 seats.add(new GameTable.LanSeatInfo(client.getDisplayName(), hostUser.getNumbChips()));
@@ -156,6 +159,11 @@ public class LanHostController {
                 Thread.currentThread().interrupt();
                 break;
             }
+        }
+
+        if (exitRequested) {
+            table.hideFrame();
+            throw new IllegalStateException("Juego cancelado");
         }
 
         // Update seats one final time to show all players
@@ -194,8 +202,9 @@ public class LanHostController {
         }
         pokerGame = new PokerGame(hostUser, remotes, true);
 
-        while (hostUser.getNumbChips() > 0) {
+        while (hostUser.getNumbChips() > 0 && !exitRequested) {
             playOneHand();
+            if (exitRequested) break;
             boolean continuar = table.askPlayAgain(hostUser.getNumbChips());
             if (!continuar) {
                 savePlayerProfile(hostUser);
@@ -203,7 +212,11 @@ public class LanHostController {
                 return;
             }
         }
-        table.showGameOver(hostUser.getNumbChips());
+        if (exitRequested) {
+            savePlayerProfile(hostUser);
+        } else {
+            table.showGameOver(hostUser.getNumbChips());
+        }
     }
 
     private void playOneHand() throws IOException {

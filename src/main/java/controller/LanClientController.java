@@ -35,20 +35,25 @@ public class LanClientController implements GameClient.Listener {
     private volatile boolean gameRunning;
     private volatile long lastActedStateSeq = -1;
     private String lastLobbyRoster = "";
-    private GameTable lobbyTable;
+    private GameTable table;
     private String localDisplayName;
+    private volatile boolean exitRequested;
 
     public LanClientController(GameView view) {
         this.view = view;
     }
 
     public void run() throws IOException {
-        view.awaitUiReady(view.getUiSyncTimeoutMs());
+        // Create GameTable early so the player sees it during connection
+        table = GameTable.create();
+        table.awaitUiReady(5000);
+        table.show();
 
         JoinDecision decision = null;
         while (decision == null || !decision.isAccepted()) {
             LanDialogs.ConnectParams params = LanDialogs.showConnectDialog();
             if (params == null) {
+                table.requestGracefulShutdown();
                 throw new IllegalStateException("Conexión cancelada");
             }
             client = new GameClient(params.host(), params.port(), this);
@@ -56,6 +61,7 @@ public class LanClientController implements GameClient.Listener {
             if (!decision.isAccepted()) {
                 LanDialogs.showJoinRejection(decision);
                 if (!LanDialogs.askRetryJoin()) {
+                    table.requestGracefulShutdown();
                     throw new IllegalStateException("Unión cancelada");
                 }
                 client.close();
@@ -64,19 +70,20 @@ public class LanClientController implements GameClient.Listener {
 
         localPlayerId = decision.getPlayerId();
         localDisplayName = decision.getDisplayName();
-        view.showUserChipsSync(decision.getDisplayName(), 10000, false);
+        table.showUserChipsSync(decision.getDisplayName(), 10000, false);
         waitForGameStart();
         runClientGameLoop();
     }
 
     private void waitForGameStart() {
-        // Show GameTable with waiting state
-        lobbyTable = GameTable.create();
-        lobbyTable.awaitUiReady(5000);
-        lobbyTable.show();
-        lobbyTable.showLanLobby(localDisplayName, 10000);
+        // Create GameTable for lobby AND game rendering
+        table = GameTable.create();
+        table.awaitUiReady(5000);
+        table.show();
+        table.showLanLobby(localDisplayName, 10000);
+        table.setOnExitConfirmed(() -> exitRequested = true);
 
-        while (!gameRunning) {
+        while (!gameRunning && !exitRequested) {
             try {
                 Thread.sleep(200);
             } catch (InterruptedException ex) {
@@ -85,13 +92,19 @@ public class LanClientController implements GameClient.Listener {
             }
         }
 
-        // Transition from lobby to game — hide lobby indicators
-        lobbyTable.hideLanLobby();
+        if (exitRequested) {
+            table.hideFrame();
+            if (client != null) client.close();
+            throw new IllegalStateException("Juego cancelado");
+        }
+
+        // Transition from lobby to game — clear lobby placeholders
+        // but keep the GameTable visible for game rendering.
+        table.clearTable();
     }
 
     private void runClientGameLoop() throws IOException {
-        view.setGameActive(true);
-        while (gameRunning) {
+        while (gameRunning && !exitRequested) {
             long seq = lastStateSeq.get();
             GameStateDto state = latestState;
             if (state != null
@@ -121,19 +134,19 @@ public class LanClientController implements GameClient.Listener {
         int highBet = maxBet(state);
         BettingRound round = new BettingRound(phase, state.getPot(), highBet, PokerGame.BIG_BLIND);
 
-        BettingRound.Action action = view.waitForPlayerAction(round, me.getCurrentBet(), view.getUiSyncTimeoutMs());
+        BettingRound.Action action = table.awaitPlayerAction(round, me.getCurrentBet(), table.getUiSyncTimeoutMs());
         if (action == null) {
             action = round.canCheck(me.getCurrentBet()) ? BettingRound.Action.CHECK : BettingRound.Action.FOLD;
-            view.resolvePendingPlayerAction(action);
+            table.resolvePendingPlayerAction(action);
         }
 
         int amount = 0;
         if (action == BettingRound.Action.BET) {
-            amount = view.getPlayerBetAmount(round.getBigBlind(), me.getChips());
+            amount = table.getPlayerBetAmount(round.getBigBlind(), me.getChips());
         } else if (action == BettingRound.Action.CALL) {
             amount = round.callAmount(me.getCurrentBet());
         } else if (action == BettingRound.Action.RAISE) {
-            amount = view.getPlayerBetAmount(round.minRaiseAmount(), me.getChips());
+            amount = table.getPlayerBetAmount(round.minRaiseAmount(), me.getChips());
         }
 
         client.sendAction(action, amount);
@@ -172,8 +185,8 @@ public class LanClientController implements GameClient.Listener {
                             seats.add(new GameTable.LanSeatInfo(player.displayName(), 10000));
                         }
                     }
-                    if (lobbyTable != null) {
-                        Platform.runLater(() -> lobbyTable.updateLanLobbySeats(seats));
+                    if (table != null) {
+                        Platform.runLater(() -> table.updateLanLobbySeats(seats));
                     }
                 }
                 case START_GAME -> gameRunning = true;
@@ -208,11 +221,11 @@ public class LanClientController implements GameClient.Listener {
     }
 
     private void renderState(GameStateDto state) {
-        view.showPot(state.getPot());
+        table.updatePot(state.getPot());
         if (!state.getCommunityCards().isEmpty()) {
             PlayerStateDto me = findLocalPlayer(state);
             ArrayList<Card> hand = me != null ? new ArrayList<>(me.getHand()) : new ArrayList<>();
-            view.showCommunityCards(
+            table.showCommunityCards(
                 new ArrayList<>(state.getCommunityCards()),
                 hand,
                 state.getCommunityCards().size()
@@ -220,9 +233,9 @@ public class LanClientController implements GameClient.Listener {
         }
         PlayerStateDto me = findLocalPlayer(state);
         if (me != null) {
-            view.showUserChips(me.getName(), me.getChips());
+            table.showUserChips(me.getName(), me.getChips());
             if (!me.getHand().isEmpty()) {
-                view.showPlayerHand(new ArrayList<>(me.getHand()));
+                table.showPlayerHand(new ArrayList<>(me.getHand()));
             }
         }
     }
