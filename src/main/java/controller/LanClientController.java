@@ -75,8 +75,8 @@ public class LanClientController implements GameClient.Listener {
                 continue; // retry — show ConnectDialog again
             }
             if (!decision.isAccepted()) {
-                LanDialogs.showJoinRejection(decision);
-                if (!LanDialogs.askRetryJoin()) {
+                LanDialogs.showJoinRejection(decision, table.getStage());
+                if (!LanDialogs.askRetryJoin(table.getStage())) {
                     table.requestGracefulShutdown();
                     return; // user cancelled retry — no error alert
                 }
@@ -214,6 +214,7 @@ public class LanClientController implements GameClient.Listener {
                 case GAME_STATE -> applyGameState(envelope.getPayload());
                 case ACTION_REJECTED -> Platform.runLater(() -> {
                     Alert alert = new Alert(Alert.AlertType.WARNING);
+                    alert.initOwner(table.getStage());
                     alert.setTitle("LAN");
                     alert.setHeaderText(null);
                     alert.setContentText(envelope.getPayload().optString("reason", "Acción rechazada"));
@@ -429,6 +430,7 @@ public class LanClientController implements GameClient.Listener {
         gameRunning = false;
         Platform.runLater(() -> {
             Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.initOwner(table.getStage());
             alert.setTitle("LAN");
             alert.setHeaderText(null);
             alert.setContentText("Desconectado del host: " + reason);
@@ -445,6 +447,7 @@ public class LanClientController implements GameClient.Listener {
         try {
             Platform.runLater(() -> {
                 Alert alert = new Alert(Alert.AlertType.ERROR);
+                alert.initOwner(table.getStage());
                 alert.setTitle("Error de conexión");
                 alert.setHeaderText("No se pudo conectar al host");
                 String message = detail != null && !detail.isEmpty()

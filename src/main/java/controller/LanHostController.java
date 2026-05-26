@@ -129,8 +129,8 @@ public class LanHostController {
                 table.showUserChipsSync(hostUser.getName(), hostUser.getNumbChips(), false);
                 return;
             }
-            LanDialogs.showJoinRejection(decision);
-            if (!LanDialogs.askRetryJoin()) {
+            LanDialogs.showJoinRejection(decision, table.getStage());
+            if (!LanDialogs.askRetryJoin(table.getStage())) {
                 throw new IllegalStateException("Registro de host cancelado");
             }
         }

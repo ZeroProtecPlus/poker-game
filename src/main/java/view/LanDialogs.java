@@ -4,6 +4,7 @@ import javafx.application.Platform;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.TextInputDialog;
+import javafx.stage.Window;
 import network.contracts.JoinDecision;
 import network.contracts.RejectReason;
 import network.protocol.JoinPayloads.LobbyPlayer;
@@ -63,14 +64,28 @@ public final class LanDialogs {
         }
     }
 
-    public static void showJoinRejection(JoinDecision decision) {
+    // ── Owner-aware overloads ──────────────────────────────────────────────
+
+    /** Shows join rejection anchored to an owner window. */
+    public static void showJoinRejection(JoinDecision decision, Window owner) {
         JavaFxBootstrap.ensureStarted();
-        showAlert(Alert.AlertType.WARNING, "No se pudo unir", toJoinRejectionMessage(decision));
+        showAlert(Alert.AlertType.WARNING, "No se pudo unir", toJoinRejectionMessage(decision), owner);
     }
 
-    public static boolean askRetryJoin() {
+    /** Backward-compatible (unowned) overload. */
+    public static void showJoinRejection(JoinDecision decision) {
+        showJoinRejection(decision, null);
+    }
+
+    /** Shows retry-join confirmation anchored to an owner window. */
+    public static boolean askRetryJoin(Window owner) {
         JavaFxBootstrap.ensureStarted();
-        return showConfirmDialog("¿Intentar con otro nombre?", "Unirse a la partida");
+        return showConfirmDialog("¿Intentar con otro nombre?", "Unirse a la partida", owner);
+    }
+
+    /** Backward-compatible (unowned) overload. */
+    public static boolean askRetryJoin() {
+        return askRetryJoin(null);
     }
 
     public static String toJoinRejectionMessage(JoinDecision decision) {
@@ -88,7 +103,7 @@ public final class LanDialogs {
         return "No se pudo unir a la sesión. Intenta nuevamente.";
     }
 
-    public static void showLobbyWaiting(List<LobbyPlayer> players, boolean canStart, boolean isHost) {
+    public static void showLobbyWaiting(List<LobbyPlayer> players, boolean canStart, boolean isHost, Window owner) {
         JavaFxBootstrap.ensureStarted();
         String roster = players.stream()
             .map(LobbyPlayer::displayName)
@@ -103,15 +118,23 @@ public final class LanDialogs {
         } else {
             message += "\n\nEsperando a que el host inicie la partida…";
         }
-        showAlert(Alert.AlertType.INFORMATION, "Lobby LAN", message);
+        showAlert(Alert.AlertType.INFORMATION, "Lobby LAN", message, owner);
     }
 
-    public static boolean hostWantsToStart(boolean canStart) {
+    public static void showLobbyWaiting(List<LobbyPlayer> players, boolean canStart, boolean isHost) {
+        showLobbyWaiting(players, canStart, isHost, null);
+    }
+
+    public static boolean hostWantsToStart(boolean canStart, Window owner) {
         if (!canStart) {
             return false;
         }
         JavaFxBootstrap.ensureStarted();
-        return showConfirmDialog("¿Iniciar la partida ahora?", "Lobby LAN");
+        return showConfirmDialog("¿Iniciar la partida ahora?", "Lobby LAN", owner);
+    }
+
+    public static boolean hostWantsToStart(boolean canStart) {
+        return hostWantsToStart(canStart, null);
     }
 
     // ── JavaFX dialog helpers (called from game threads) ──
@@ -134,11 +157,14 @@ public final class LanDialogs {
         }
     }
 
-    private static void showAlert(Alert.AlertType type, String title, String message) {
+    private static void showAlert(Alert.AlertType type, String title, String message, Window owner) {
         try {
             CompletableFuture<Void> future = new CompletableFuture<>();
             Platform.runLater(() -> {
                 Alert alert = new Alert(type);
+                if (owner != null) {
+                    alert.initOwner(owner);
+                }
                 alert.setTitle(title);
                 alert.setHeaderText(null);
                 alert.setContentText(message);
@@ -151,11 +177,18 @@ public final class LanDialogs {
         }
     }
 
-    private static boolean showConfirmDialog(String message, String title) {
+    private static void showAlert(Alert.AlertType type, String title, String message) {
+        showAlert(type, title, message, null);
+    }
+
+    private static boolean showConfirmDialog(String message, String title, Window owner) {
         try {
             CompletableFuture<Boolean> future = new CompletableFuture<>();
             Platform.runLater(() -> {
                 Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+                if (owner != null) {
+                    alert.initOwner(owner);
+                }
                 alert.setTitle(title);
                 alert.setHeaderText(null);
                 alert.setContentText(message);
@@ -168,5 +201,9 @@ public final class LanDialogs {
             System.err.println("JavaFX confirm dialog failed: " + ex.getMessage());
             return false;
         }
+    }
+
+    private static boolean showConfirmDialog(String message, String title) {
+        return showConfirmDialog(message, title, null);
     }
 }

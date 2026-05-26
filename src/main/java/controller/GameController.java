@@ -106,8 +106,8 @@ public class GameController {
                 return true;
             }
 
-            LanDialogs.showJoinRejection(decision);
-            if (!LanDialogs.askRetryJoin()) {
+            LanDialogs.showJoinRejection(decision, table.getStage());
+            if (!LanDialogs.askRetryJoin(table.getStage())) {
                 table.requestGracefulShutdown();
                 return false; // user cancelled retry — return to menu
             }

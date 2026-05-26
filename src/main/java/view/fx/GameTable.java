@@ -2022,4 +2022,13 @@ public final class GameTable {
     Stage getStageForTest() {
         return stage;
     }
+
+    /**
+     * Returns the JavaFX Stage that hosts this GameTable.
+     * Use this as the owner window for dialogs and alerts
+     * so they stay anchored and don't get lost behind other windows.
+     */
+    public Stage getStage() {
+        return stage;
+    }
 }
