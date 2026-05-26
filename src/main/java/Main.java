@@ -129,7 +129,7 @@ public class Main {
                 action.run();
             } catch (IllegalStateException e) {
                 String msg = e.getMessage();
-                if (msg != null && msg.toLowerCase().contains("cancelado")) {
+                if (msg != null && msg.toLowerCase().contains("cancel")) {
                     // User-initiated cancellation — just log, no Alert needed
                     System.out.println("Cancelado: " + msg);
                 } else {

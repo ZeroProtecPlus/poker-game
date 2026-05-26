@@ -65,7 +65,7 @@ public class LanClientController implements GameClient.Listener {
             LanDialogs.ConnectParams params = LanDialogs.showConnectDialog();
             if (params == null) {
                 table.requestGracefulShutdown();
-                throw new IllegalStateException("Conexión cancelada");
+                return; // user cancelled cleanly — no error alert
             }
             try {
                 client = new GameClient(params.host(), params.port(), this);
@@ -78,7 +78,7 @@ public class LanClientController implements GameClient.Listener {
                 LanDialogs.showJoinRejection(decision);
                 if (!LanDialogs.askRetryJoin()) {
                     table.requestGracefulShutdown();
-                    throw new IllegalStateException("Unión cancelada");
+                    return; // user cancelled retry — no error alert
                 }
                 client.close();
             }
