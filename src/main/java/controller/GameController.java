@@ -35,6 +35,7 @@ public class GameController {
     private String userNamePlayer;
     private User newPlayer;
     private GameTable table;
+    private volatile boolean exitRequested;
     private final HostJoinHandler hostJoinHandler;
     private final PlayerRepository playerRepository;
     private final GameRepository gameRepository;
@@ -174,10 +175,18 @@ public class GameController {
     public void createNewGame() {
         // GameTable is already showing (shown in createNewPlayer after name accepted).
         table.setGameActive(true);
+        table.setOnExitConfirmed(() -> exitRequested = true);
         offerResume();
 
         while (newPlayer.getNumbChips() > 0) {
+            if (exitRequested) {
+                break;
+            }
             playOneHand();
+
+            if (exitRequested) {
+                break;
+            }
 
             // ── fix-endgame-states: elimination / game-over checks ──────────
             // Check if the human was eliminated during this hand
@@ -198,6 +207,10 @@ public class GameController {
             }
         }
         tryDeleteGameState();
+
+        if (exitRequested) {
+            return;
+        }
 
         // ── fix-endgame-states: determine winner name for game-over display ──
         String winnerName;
@@ -304,6 +317,9 @@ public class GameController {
 
     private void playOneHand() {
         // Mano completa: inicializa mesa, ejecuta fases y termina en showdown o fold.
+        if (exitRequested) {
+            return;
+        }
         table.clearTable();
         this.pokerGame = new PokerGame(newPlayer);
         pokerGame.startNewRound();
@@ -317,6 +333,7 @@ public class GameController {
 // ── PREFLOP ──────────────────────────────────────────────────────────
         table.setStatusPhase("PREFLOP");
         runBettingPhase(BettingRound.Phase.PREFLOP);
+        if (exitRequested) { saveHandEnd(); return; }
         if (allFolded()) { saveHandEnd(); return; }
 
 // ── FLOP ─────────────────────────────────────────────────────────────
@@ -325,6 +342,7 @@ public class GameController {
         table.awaitLastAnimation(table.getUiSyncTimeoutMs());
         table.setStatusPhase("FLOP");
         runBettingPhase(BettingRound.Phase.FLOP);
+        if (exitRequested) { saveHandEnd(); return; }
         if (allFolded()) { saveHandEnd(); return; }
 
 // ── TURN ─────────────────────────────────────────────────────────────
@@ -333,6 +351,7 @@ public class GameController {
         table.awaitLastAnimation(table.getUiSyncTimeoutMs());
         table.setStatusPhase("TURN");
         runBettingPhase(BettingRound.Phase.TURN);
+        if (exitRequested) { saveHandEnd(); return; }
         if (allFolded()) { saveHandEnd(); return; }
 
 // ── RIVER ────────────────────────────────────────────────────────────
@@ -341,6 +360,7 @@ public class GameController {
         table.awaitLastAnimation(table.getUiSyncTimeoutMs());
         table.setStatusPhase("RIVER");
         runBettingPhase(BettingRound.Phase.RIVER);
+        if (exitRequested) { saveHandEnd(); return; }
 
         // ── SHOWDOWN ─────────────────────────────────────────────────────────
         endRound();
@@ -373,6 +393,9 @@ public class GameController {
         List<String> accumulatedLog = new ArrayList<>();
 
         while (true) {
+            if (exitRequested) {
+                break;
+            }
             humanFolded = newPlayer.isFolded();
 
             BettingRound.Action action = null;
