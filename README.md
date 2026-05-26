@@ -131,4 +131,4 @@ mvn test -Dtest=GameTableTest
 
 ---
 
-> *"La casa no juega, pero vos sí. Que la suerte te acompañe, camarada."*
+> *"La casa no juega, pero tu sí. Que la suerte te acompañe, Socio."*
