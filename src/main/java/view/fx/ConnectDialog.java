@@ -10,7 +10,6 @@ import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.Background;
-import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
@@ -110,15 +109,15 @@ public final class ConnectDialog {
         // ── IP field ─────────────────────────────────────────────────────────
         TextField ipField = new TextField("127.0.0.1");
         ipField.setPromptText("Dirección IP del host");
-        ipField.setMaxWidth(400);
-        ipField.setMinWidth(320);
+        ipField.setMaxWidth(450);
+        ipField.setMinWidth(400);
         ipField.getStyleClass().add("lan-input-field");
 
         // ── Port field ───────────────────────────────────────────────────────
         TextField portField = new TextField(String.valueOf(LanConstants.DEFAULT_PORT));
         portField.setPromptText("Puerto (1–65535)");
-        portField.setMaxWidth(400);
-        portField.setMinWidth(320);
+        portField.setMaxWidth(450);
+        portField.setMinWidth(400);
         portField.getStyleClass().add("lan-input-field");
 
         // ── Error label (hidden by default) ──────────────────────────────────
@@ -126,18 +125,22 @@ public final class ConnectDialog {
         errorLabel.getStyleClass().add("lan-error-label");
         errorLabel.setVisible(false);
         errorLabel.setManaged(false);
-        errorLabel.setMaxWidth(400);
+        errorLabel.setMaxWidth(450);
         errorLabel.setWrapText(true);
 
-        // ── Buttons (multiplayer-btn / multiplayer-btn-back) ─────────────────
-        HBox buttonBar = new HBox(24);
+        // ── Buttons stacked vertically (VBox, same width as inputs) ──────────
+        VBox buttonBar = new VBox(14);
         buttonBar.setAlignment(Pos.CENTER);
 
         Button connectBtn = new Button("CONECTAR");
         connectBtn.getStyleClass().add("multiplayer-btn");
+        connectBtn.setMaxWidth(450);
+        connectBtn.setMinWidth(400);
 
         Button volverBtn = new Button("VOLVER");
         volverBtn.getStyleClass().addAll("multiplayer-btn", "multiplayer-btn-back");
+        volverBtn.setMaxWidth(450);
+        volverBtn.setMinWidth(400);
 
         buttonBar.getChildren().addAll(connectBtn, volverBtn);
 
