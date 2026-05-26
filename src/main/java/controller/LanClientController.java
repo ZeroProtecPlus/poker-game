@@ -43,6 +43,9 @@ public class LanClientController implements GameClient.Listener {
     private final List<String> accumulatedLog = new ArrayList<>();
     private static final int ACTION_LOG_MAX = 4;
 
+    /** Tracks community cards already shown — prevents re-deal animation. */
+    private final List<Card> shownCommunityCards = new ArrayList<>();
+
     public LanClientController() {
     }
 
@@ -224,14 +227,24 @@ public class LanClientController implements GameClient.Listener {
 
     private void renderState(GameStateDto state) {
         table.updatePot(state.getPot());
-        if (!state.getCommunityCards().isEmpty()) {
+
+        // Only deal community cards when they actually change —
+        // prevents animation replay on every GAME_STATE broadcast.
+        List<Card> incomingCommunity = state.getCommunityCards();
+        if (!incomingCommunity.isEmpty() && !incomingCommunity.equals(shownCommunityCards)) {
+            shownCommunityCards.clear();
+            shownCommunityCards.addAll(incomingCommunity);
             PlayerStateDto me = findLocalPlayer(state);
             ArrayList<Card> hand = me != null ? new ArrayList<>(me.getHand()) : new ArrayList<>();
             table.showCommunityCards(
-                new ArrayList<>(state.getCommunityCards()),
+                new ArrayList<>(incomingCommunity),
                 hand,
-                state.getCommunityCards().size()
+                incomingCommunity.size()
             );
+        }
+        // Reset when new hand starts (community cards cleared)
+        if (incomingCommunity.isEmpty()) {
+            shownCommunityCards.clear();
         }
         PlayerStateDto me = findLocalPlayer(state);
         if (me != null) {
