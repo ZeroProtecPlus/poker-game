@@ -744,6 +744,58 @@ public final class GameTable {
     }
 
     /**
+     * Updates a single AI/remote badge slot (0-2) with arbitrary player data.
+     * Thread-safe.
+     *
+     * @param slot    badge index (0, 1, or 2)
+     * @param name    player name (empty string to hide the badge)
+     * @param chips   current chip count
+     * @param role    role abbreviation ("D", "SB", "BB", or "")
+     * @param folded  whether the player has folded this hand
+     */
+    public void updateRemoteBadge(int slot, String name, int chips, String role, boolean folded) {
+        if (Platform.isFxApplicationThread()) {
+            updateRemoteBadgeInternal(slot, name, chips, role, folded);
+        } else {
+            Platform.runLater(() -> updateRemoteBadgeInternal(slot, name, chips, role, folded));
+        }
+    }
+
+    private void updateRemoteBadgeInternal(int slot, String name, int chips, String role, boolean folded) {
+        if (slot < 0 || slot >= 3) {
+            return;
+        }
+        if (name == null || name.isEmpty()) {
+            fadeTo(slot, false);
+            return;
+        }
+
+        aiBadgeLabels[slot].setText(name);
+        aiChipsLabels[slot].setText(String.format(Locale.US, "%,d", chips));
+
+        String cleanRole = (role != null) ? role : "";
+        if (!cleanRole.equals(aiPrevRoles[slot])) {
+            animateRoleChip(aiRoleChips[slot], aiPrevRoles[slot], cleanRole);
+            aiPrevRoles[slot] = cleanRole;
+        }
+
+        aiFolded[slot] = folded;
+        if (folded) {
+            aiBadges[slot].getStyleClass().remove("ai-badge");
+            if (!aiBadges[slot].getStyleClass().contains("ai-badge-folded")) {
+                aiBadges[slot].getStyleClass().add("ai-badge-folded");
+            }
+        } else {
+            aiBadges[slot].getStyleClass().remove("ai-badge-folded");
+            if (!aiBadges[slot].getStyleClass().contains("ai-badge")) {
+                aiBadges[slot].getStyleClass().add("ai-badge");
+            }
+        }
+
+        fadeTo(slot, true);
+    }
+
+    /**
      * Updates the pot display at the center of the table.
      * Hides the label when the amount is 0.
      *
@@ -1895,6 +1947,9 @@ public final class GameTable {
             stage.setOnCloseRequest(e -> {});
             stage.close();
         }
+        // Terminate JavaFX runtime so the JVM can exit.
+        // Without this, non-daemon threads (e.g. JavaFX QuantumRenderer) keep the process alive.
+        Platform.exit();
     }
 
     /**

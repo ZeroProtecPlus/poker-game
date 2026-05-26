@@ -15,6 +15,7 @@ import network.protocol.GameStateJsonMapper;
 import network.protocol.JoinPayloads;
 import network.protocol.LanEnvelope;
 import network.protocol.LanMessageType;
+import org.json.JSONObject;
 import view.LanDialogs;
 import view.fx.GameTable;
 
@@ -87,6 +88,7 @@ public class LanClientController implements GameClient.Listener {
                 client.close();
             }
             table.requestGracefulShutdown();
+            javafx.application.Platform.exit();
         }
     }
 
@@ -210,7 +212,24 @@ public class LanClientController implements GameClient.Listener {
                     alert.showAndWait();
                 });
                 case DISCONNECT -> { /* host notifies leave */ }
-                case HAND_RESULT -> { /* optional toast */ }
+                case HAND_RESULT -> {
+                    // Show the hand result banner to all clients
+                    JSONObject result = envelope.getPayload();
+                    String winner = result.optString("winner", "");
+                    int pot = result.optInt("pot", 0);
+                    if (!winner.isEmpty()) {
+                        Platform.runLater(() -> {
+                            table.showResult(winner + " gana " + String.format("%,d", pot),
+                                localDisplayName.equals(winner));
+                        });
+                    }
+                }
+                case GAME_OVER -> {
+                    JSONObject goPayload = envelope.getPayload();
+                    int finalChips = goPayload.optInt("finalChips", 0);
+                    gameRunning = false;
+                    Platform.runLater(() -> table.showGameOver(finalChips));
+                }
                 default -> { }
             }
         } catch (Exception ex) {
@@ -281,9 +300,53 @@ public class LanClientController implements GameClient.Listener {
         previousState = state;
         table.setActionLog(new ArrayList<>(accumulatedLog));
 
+        // ── Populate remote/AI player badges ─────────────────────────────────
+        // Build the list of players that are NOT the local player.
+        // Remote humans go first (slots 0+), then AIs fill remaining slots.
+        List<PlayerStateDto> remotePlayers = new ArrayList<>();
+        List<PlayerStateDto> aiPlayers = new ArrayList<>();
+        for (PlayerStateDto p : state.getPlayers()) {
+            if (localPlayerId.equals(p.getPlayerId())) {
+                continue;
+            }
+            if (p.isAi()) {
+                aiPlayers.add(p);
+            } else {
+                remotePlayers.add(p);
+            }
+        }
+        int slot = 0;
+        for (PlayerStateDto rp : remotePlayers) {
+            if (slot >= 3) break;
+            table.updateRemoteBadge(slot, rp.getName(), rp.getChips(),
+                roleAbbreviation(rp.getRole()), rp.isFolded());
+            slot++;
+        }
+        for (PlayerStateDto ap : aiPlayers) {
+            if (slot >= 3) break;
+            table.updateRemoteBadge(slot, ap.getName(), ap.getChips(),
+                roleAbbreviation(ap.getRole()), ap.isFolded());
+            slot++;
+        }
+        // Hide any remaining unused badge slots
+        for (int i = slot; i < 3; i++) {
+            table.updateRemoteBadge(i, "", 0, "", false);
+        }
+
         // Highlight the active player using the player name map from the state
         Map<String, String> idToName = buildPlayerIdNameMap(state);
         table.highlightActivePlayer(activePlayerId, idToName);
+    }
+
+    /** Converts a PlayerRole enum to its display abbreviation. */
+    private static String roleAbbreviation(model.PlayerRole role) {
+        if (role == null) return "";
+        return switch (role) {
+            case DEALER -> "D";
+            case SMALL_BLIND -> "SB";
+            case BIG_BLIND -> "BB";
+            case NONE -> "";
+        };
     }
 
     /**

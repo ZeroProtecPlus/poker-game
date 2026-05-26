@@ -108,6 +108,7 @@ public class LanHostController {
         } finally {
             table.requestGracefulShutdown();
             server.close();
+            javafx.application.Platform.exit();
         }
     }
 
@@ -217,6 +218,7 @@ public class LanHostController {
             boolean continuar = table.askPlayAgain(hostUser.getNumbChips());
             if (!continuar) {
                 savePlayerProfile(hostUser);
+                broadcastGameOver(hostUser.getNumbChips());
                 table.requestGracefulShutdown();
                 return;
             }
@@ -224,8 +226,17 @@ public class LanHostController {
         if (exitRequested) {
             savePlayerProfile(hostUser);
         } else {
+            // Host bust — broadcast game over to all clients
+            broadcastGameOver(hostUser.getNumbChips());
             table.showGameOver(hostUser.getNumbChips());
         }
+    }
+
+    private void broadcastGameOver(int finalChips) throws IOException {
+        JSONObject payload = new JSONObject()
+            .put("finalChips", finalChips)
+            .put("winner", hostUser.getName());
+        session.broadcast(new LanEnvelope(LanMessageType.GAME_OVER, payload));
     }
 
     private void playOneHand() throws IOException {
@@ -398,6 +409,23 @@ public class LanHostController {
             }
 
             actions.put(human.getPlayerId(), new PokerGame.HumanActionEntry(action, amount));
+
+            // Immediately reflect this player's bet on the round so the
+            // next player's broadcast state shows the corrected high-bet.
+            // Without this, subsequent players see CHECK instead of CALL
+            // because the round still carries the initial (pre-action) high-bet.
+            if (action == BettingRound.Action.BET || action == BettingRound.Action.RAISE) {
+                int newTotal = human.getCurrentBet() + amount;
+                if (newTotal > round.getCurrentBet()) {
+                    round.forceCurrentBet(newTotal);
+                }
+            } else if (action == BettingRound.Action.ALL_IN) {
+                // All-in puts all remaining chips in — use total chips as the new bet
+                int allInTotal = human.getCurrentBet() + human.getNumbChips();
+                if (allInTotal > round.getCurrentBet()) {
+                    round.forceCurrentBet(allInTotal);
+                }
+            }
         }
         activePlayerId = null;
         table.setStatusTurn("");
@@ -599,6 +627,7 @@ public class LanHostController {
         copy.setDealerIndex(source.getDealerIndex());
         copy.setCurrentPhase(source.getCurrentPhase());
         copy.setTimestamp(source.getTimestamp());
+        copy.setRecentActions(new ArrayList<>(source.getRecentActions()));
         List<PlayerStateDto> players = new ArrayList<>();
         for (PlayerStateDto p : source.getPlayers()) {
             PlayerStateDto clone = new PlayerStateDto();
