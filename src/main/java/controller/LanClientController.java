@@ -215,16 +215,17 @@ public class LanClientController implements GameClient.Listener {
                 });
                 case DISCONNECT -> { /* host notifies leave */ }
                 case HAND_RESULT -> {
-                    // Show the hand result banner to all clients
+                    // Show the hand result banner and reset pot for the new hand
                     JSONObject result = envelope.getPayload();
                     String winner = result.optString("winner", "");
                     int pot = result.optInt("pot", 0);
-                    if (!winner.isEmpty()) {
-                        Platform.runLater(() -> {
+                    Platform.runLater(() -> {
+                        table.updatePot(0);
+                        if (!winner.isEmpty()) {
                             table.showResult(winner + " gana " + String.format("%,d", pot),
                                 localDisplayName.equals(winner));
-                        });
-                    }
+                        }
+                    });
                 }
                 case GAME_OVER -> {
                     JSONObject goPayload = envelope.getPayload();

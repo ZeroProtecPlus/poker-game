@@ -543,6 +543,7 @@ public class LanHostController {
         ShowdownResult result = pokerGame.determineShowdownResult();
         int pot = pokerGame.getPot();
         pokerGame.awardPot(result);
+        table.updatePot(pokerGame.getPot());
         showResult(result, pot);
         table.showUserChips(hostUser.getName(), hostUser.getNumbChips());
         broadcastState(BettingRound.Phase.RIVER);
