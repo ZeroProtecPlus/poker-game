@@ -31,12 +31,17 @@ public class LanClientController implements GameClient.Listener {
     private String localPlayerId;
     private final AtomicLong lastStateSeq = new AtomicLong(-1);
     private volatile GameStateDto latestState;
+    private volatile GameStateDto previousState;
     private volatile String activePlayerId;
     private volatile boolean gameRunning;
     private volatile long lastActedStateSeq = -1;
     private String lastLobbyRoster = "";
     private GameTable table;
     private String localDisplayName;
+
+    /** Accumulated action log — built from GAME_STATE changes. */
+    private final List<String> accumulatedLog = new ArrayList<>();
+    private static final int ACTION_LOG_MAX = 4;
 
     public LanClientController() {
     }
@@ -69,8 +74,15 @@ public class LanClientController implements GameClient.Listener {
         localPlayerId = decision.getPlayerId();
         localDisplayName = decision.getDisplayName();
         table.showUserChipsSync(decision.getDisplayName(), 10000, false);
-        waitForGameStart();
-        runClientGameLoop();
+        try {
+            waitForGameStart();
+            runClientGameLoop();
+        } finally {
+            if (client != null) {
+                client.close();
+            }
+            table.requestGracefulShutdown();
+        }
     }
 
     private void waitForGameStart() {
@@ -86,8 +98,10 @@ public class LanClientController implements GameClient.Listener {
             }
         }
 
-        // Transition from lobby to game — clear lobby placeholders
+        // Transition from lobby to game — clear lobby placeholders and log
         // but keep the GameTable visible for game rendering.
+        accumulatedLog.clear();
+        previousState = null;
         table.clearTable();
     }
 
@@ -231,9 +245,72 @@ public class LanClientController implements GameClient.Listener {
             }
         }
 
+        // ── Build action log from state changes ────────────────────────────────
+        if (previousState != null) {
+            detectStateChanges(previousState, state);
+        }
+        previousState = state;
+        table.setActionLog(new ArrayList<>(accumulatedLog));
+
         // Highlight the active player using the player name map from the state
         Map<String, String> idToName = buildPlayerIdNameMap(state);
         table.highlightActivePlayer(activePlayerId, idToName);
+    }
+
+    /**
+     * Compares previous and current states, adding detected changes
+     * (folds, all-ins) to the accumulated action log.
+     * Clears the log when a new hand is detected (community cards cleared).
+     */
+    private void detectStateChanges(GameStateDto prev, GameStateDto curr) {
+        if (prev == null || curr == null) {
+            return;
+        }
+
+        // New hand detection: previous state had community cards, current doesn't
+        if (!prev.getCommunityCards().isEmpty() && curr.getCommunityCards().isEmpty()) {
+            accumulatedLog.clear();
+        }
+
+        Map<String, PlayerStateDto> prevMap = playerMap(prev);
+        for (PlayerStateDto curP : curr.getPlayers()) {
+            PlayerStateDto prevP = prevMap.get(curP.getPlayerId());
+            if (prevP == null) {
+                continue;
+            }
+            // Fold detection
+            if (!prevP.isFolded() && curP.isFolded()) {
+                addLogEntry(curP.getName() + " se retira");
+            }
+            // All-in detection
+            if (!prevP.isAllIn() && curP.isAllIn()) {
+                addLogEntry(curP.getName() + " ALL IN");
+            }
+        }
+    }
+
+    private void addLogEntry(String text) {
+        if (text == null || text.isBlank()) {
+            return;
+        }
+        // Deduplicate: don't add the same entry twice consecutively
+        if (!accumulatedLog.isEmpty() && accumulatedLog.get(accumulatedLog.size() - 1).equals(text)) {
+            return;
+        }
+        accumulatedLog.add(text);
+        while (accumulatedLog.size() > ACTION_LOG_MAX) {
+            accumulatedLog.remove(0);
+        }
+    }
+
+    private static Map<String, PlayerStateDto> playerMap(GameStateDto state) {
+        Map<String, PlayerStateDto> map = new HashMap<>();
+        for (PlayerStateDto p : state.getPlayers()) {
+            if (p.getPlayerId() != null) {
+                map.put(p.getPlayerId(), p);
+            }
+        }
+        return map;
     }
 
     private Map<String, String> buildPlayerIdNameMap(GameStateDto state) {
