@@ -537,31 +537,42 @@ public final class GameTable {
      * {@link #onExitConfirmed} and closes the stage.
      *
      * <p>Called from the FX thread when the user presses ESC or clicks
-     * the chrome close button. Uses a nested event loop via
-     * {@link ExitConfirmDialog#showAndWaitBlocking()} so the method
-     * blocks synchronously on the FX thread until the user responds.
+     * the chrome close button.  Because {@link ExitConfirmDialog#showAndWaitBlocking}
+     * blocks the FX thread via {@code stage.showAndWait()}, we must dispatch
+     * the dialog from a BACKGROUND thread so the nested event loop can
+     * process the modal without deadlocking.
      */
     private void requestExit() {
         if (exitDialogShowing) {
             return;  // Prevent re-entrant calls
         }
         exitDialogShowing = true;
-        try {
-            boolean confirmed = ExitConfirmDialog.showAndWaitBlocking();
-            if (confirmed) {
-                if (onExitConfirmed != null) {
-                    onExitConfirmed.run();
-                }
-                closeLatch.countDown();
-                if (stage != null) {
-                    // Bypass the close-request interceptor for final close
-                    stage.setOnCloseRequest(e -> {});
-                    stage.close();
-                }
+        // Must NOT block the FX thread — showAndWaitBlocking() runs on FX
+        // and would deadlock the event dispatch thread.
+        new Thread(() -> {
+            try {
+                boolean confirmed = ExitConfirmDialog.showAndWaitBlocking();
+                Platform.runLater(() -> {
+                    try {
+                        if (confirmed) {
+                            if (onExitConfirmed != null) {
+                                onExitConfirmed.run();
+                            }
+                            closeLatch.countDown();
+                            if (stage != null) {
+                                // Bypass the close-request interceptor for final close
+                                stage.setOnCloseRequest(e -> {});
+                                stage.close();
+                            }
+                        }
+                    } finally {
+                        exitDialogShowing = false;
+                    }
+                });
+            } catch (Exception e) {
+                Platform.runLater(() -> exitDialogShowing = false);
             }
-        } finally {
-            exitDialogShowing = false;
-        }
+        }, "exit-dialog-thread").start();
     }
 
     /**
