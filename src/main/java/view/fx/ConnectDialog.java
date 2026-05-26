@@ -30,10 +30,10 @@ import java.util.concurrent.CompletableFuture;
  *   Full-canvas Star_Game.png background (same source sprite as StartMenu)
  *   FxMenuChrome title bar "Unirse a partida"
  *   Transparent overlay with minimal card containing:
- *     - .modal-title "CONECTAR A PARTIDA LAN"
+ *     - .multiplayer-title "CONECTAR A PARTIDA LAN"
  *     - 2 TextFields: IP (default 127.0.0.1), Puerto (default 9876)
  *     - .lan-error-label for inline validation errors
- *     - "CONECTAR" (lan-btn-primary) / "VOLVER" (lan-btn-cancel) buttons
+ *     - "CONECTAR" (.multiplayer-btn) / "VOLVER" (.multiplayer-btn .multiplayer-btn-back) buttons
  *   CSS: fonts.css + multiplayer-menu.css + menu-chrome.css
  */
 public final class ConnectDialog {
@@ -97,13 +97,13 @@ public final class ConnectDialog {
         canvas.getChildren().add(centerWrapper);
 
         // ── Transparent card — no background panel, floats on sprite ─────────
-        VBox card = new VBox(16);
+        VBox card = new VBox(18);
         card.setAlignment(Pos.CENTER);
         card.setMaxWidth(500);
 
         // ── Title ────────────────────────────────────────────────────────────
         Label title = new Label("CONECTAR A PARTIDA LAN");
-        title.getStyleClass().add("modal-title");
+        title.getStyleClass().add("multiplayer-title");
         title.setAlignment(Pos.CENTER);
         title.setMaxWidth(Double.MAX_VALUE);
 
@@ -129,17 +129,15 @@ public final class ConnectDialog {
         errorLabel.setMaxWidth(400);
         errorLabel.setWrapText(true);
 
-        // ── Buttons (lan-btn-primary / lan-btn-cancel) ──────────────────────
+        // ── Buttons (multiplayer-btn / multiplayer-btn-back) ─────────────────
         HBox buttonBar = new HBox(24);
         buttonBar.setAlignment(Pos.CENTER);
 
         Button connectBtn = new Button("CONECTAR");
-        connectBtn.getStyleClass().add("lan-btn-primary");
-        connectBtn.setMinWidth(220);
+        connectBtn.getStyleClass().add("multiplayer-btn");
 
         Button volverBtn = new Button("VOLVER");
-        volverBtn.getStyleClass().add("lan-btn-cancel");
-        volverBtn.setMinWidth(220);
+        volverBtn.getStyleClass().addAll("multiplayer-btn", "multiplayer-btn-back");
 
         buttonBar.getChildren().addAll(connectBtn, volverBtn);
 
