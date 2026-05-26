@@ -1,11 +1,13 @@
 package view.fx;
 
+import audio.BackgroundMusicPlayer;
 import config.GameSettings;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.Slider;
 import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -13,6 +15,7 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
@@ -32,6 +35,7 @@ public final class SettingsDialog {
     private static final String BG_PATH = "/sprites/Star_Game.png";
     private static final String FONTS_CSS_PATH = "/fonts.css";
     private static final String CSS_PATH = "/multiplayer-menu.css";
+    private static final String MODAL_CSS_PATH = "/modal.css";
     private static final String CHROME_CSS_PATH = "/menu-chrome.css";
     private static final double DESIGN_WIDTH = MenuLayoutConstants.DESIGN_WIDTH;
     private static final double DESIGN_HEIGHT = MenuLayoutConstants.DESIGN_HEIGHT;
@@ -60,34 +64,53 @@ public final class SettingsDialog {
         title.getStyleClass().add("multiplayer-title");
 
         TextField portField = new TextField(String.valueOf(settings.getHostPort()));
+        portField.getStyleClass().add("settings-field");
+
         TextField clientHostField = new TextField(settings.getClientHost());
+        clientHostField.getStyleClass().add("settings-field");
+
         TextField timeoutField = new TextField(String.valueOf(settings.getUiSyncTimeoutMs()));
+        timeoutField.getStyleClass().add("settings-field");
 
         GridPane form = new GridPane();
-        form.setHgap(12);
-        form.setVgap(12);
-        form.add(new Label("Puerto host (LAN):"), 0, 0);
+        form.setHgap(14);
+        form.setVgap(14);
+        form.add(createLabel("Puerto host (LAN):"), 0, 0);
         form.add(portField, 1, 0);
-        form.add(new Label("IP predeterminada (cliente):"), 0, 1);
+        form.add(createLabel("IP predeterminada (cliente):"), 0, 1);
         form.add(clientHostField, 1, 1);
-        form.add(new Label("Timeout UI (ms):"), 0, 2);
+        form.add(createLabel("Timeout UI (ms):"), 0, 2);
         form.add(timeoutField, 1, 2);
 
-        for (var node : form.getChildren()) {
-            if (node instanceof Label label) {
-                label.setStyle("-fx-text-fill: #f5edd8; -fx-font-size: 16px;");
-            }
-            if (node instanceof TextField field) {
-                field.setStyle("-fx-font-size: 16px; -fx-pref-width: 220;");
-            }
-        }
-
-        Label hint = new Label("Puerto por defecto del proyecto: " + LanConstants.DEFAULT_PORT);
+        Label hint = new Label("Puerto por defecto: " + LanConstants.DEFAULT_PORT);
         hint.setStyle("-fx-text-fill: #c9a84c; -fx-font-size: 13px;");
+        hint.setPadding(new Insets(0, 0, 8, 0));
 
+        // ── Music volume slider ───────────────────────────────────────────
+        Label volumeLabel = createLabel("Volumen música:");
+        Slider volumeSlider = new Slider(0, 100, settings.getMusicVolume() * 100);
+        volumeSlider.getStyleClass().add("settings-slider");
+        volumeSlider.setShowTickMarks(false);
+        volumeSlider.setShowTickLabels(false);
+        volumeSlider.setPrefWidth(320);
+        volumeSlider.setMinWidth(220);
+        volumeSlider.setMaxWidth(320);
+
+        Label volumeValue = new Label(String.format("%.0f%%", volumeSlider.getValue()));
+        volumeValue.setStyle("-fx-text-fill: #f0d060; -fx-font-size: 15px; -fx-font-weight: bold;");
+        volumeValue.setMinWidth(48);
+
+        // Save volume to GameSettings + apply to music player on change
+        volumeSlider.valueProperty().addListener((obs, old, val) -> {
+            double level = val.doubleValue() / 100.0;
+            settings.setMusicVolume(level);
+            volumeValue.setText(String.format("%.0f%%", val));
+            BackgroundMusicPlayer.getInstance().setVolume(level);
+        });
+
+        // ── Buttons — same width ──────────────────────────────────────────
         Button saveBtn = new Button("Guardar");
         saveBtn.getStyleClass().add("multiplayer-btn");
-        FxMenuChrome.bindHoverShadow(saveBtn);
         saveBtn.setOnAction(event -> {
             if (applyFields(settings, portField, clientHostField, timeoutField)) {
                 settings.save();
@@ -97,16 +120,36 @@ public final class SettingsDialog {
 
         Button cancelBtn = new Button("Volver");
         cancelBtn.getStyleClass().addAll("multiplayer-btn", "multiplayer-btn-back");
-        FxMenuChrome.bindHoverShadow(cancelBtn);
-        cancelBtn.setOnAction(event -> complete(stage, future, Result.CANCELLED));
+        cancelBtn.setOnAction(event -> {
+            settings.save();
+            complete(stage, future, Result.CANCELLED);
+        });
 
-        javafx.scene.layout.VBox panel = new javafx.scene.layout.VBox(
-            16, title, form, hint, saveBtn, cancelBtn
-        );
+        // Make both buttons the same width (max of the two)
+        cancelBtn.setMinWidth(400);
+        cancelBtn.setMaxWidth(400);
+        cancelBtn.setPrefWidth(400);
+        saveBtn.setMinWidth(400);
+        saveBtn.setMaxWidth(400);
+        saveBtn.setPrefWidth(400);
+
+        // ── Assemble panel — NO background color/shadow ───────────────────
+        VBox panel = new VBox(16);
         panel.setAlignment(Pos.CENTER);
         panel.setPadding(new Insets(36));
         panel.setMaxWidth(640);
-        panel.setStyle("-fx-background-color: rgba(6, 14, 10, 0.72); -fx-background-radius: 16;");
+        panel.setPickOnBounds(false); // clicks pass through to background
+        // No background style — completely transparent, Star_Game.png shows through
+
+        // Volume row: label | slider | percentage
+        var volumeRow = new javafx.scene.layout.HBox(12, volumeLabel, volumeSlider, volumeValue);
+        volumeRow.setAlignment(Pos.CENTER_LEFT);
+
+        panel.getChildren().addAll(
+            title, form, hint,
+            volumeRow,
+            saveBtn, cancelBtn
+        );
 
         AnchorPane canvas = new AnchorPane();
         canvas.setPrefSize(DESIGN_WIDTH, DESIGN_HEIGHT);
@@ -129,22 +172,31 @@ public final class SettingsDialog {
         var fontsCss = SettingsDialog.class.getResource(FONTS_CSS_PATH);
         if (fontsCss != null) scene.getStylesheets().add(fontsCss.toExternalForm());
         var css = SettingsDialog.class.getResource(CSS_PATH);
-        if (css != null) {
-            scene.getStylesheets().add(css.toExternalForm());
-        }
+        if (css != null) scene.getStylesheets().add(css.toExternalForm());
+        var modalCss = SettingsDialog.class.getResource(MODAL_CSS_PATH);
+        if (modalCss != null) scene.getStylesheets().add(modalCss.toExternalForm());
         var chromeCss = SettingsDialog.class.getResource(CHROME_CSS_PATH);
-        if (chromeCss != null) {
-            scene.getStylesheets().add(chromeCss.toExternalForm());
-        }
+        if (chromeCss != null) scene.getStylesheets().add(chromeCss.toExternalForm());
+
+        // ── Close saves ───────────────────────────────────────────────────
+        Runnable closeAndSave = () -> {
+            settings.save();
+            complete(stage, future, Result.SAVED);
+        };
         scene.setOnKeyPressed(event -> {
-            if (event.getCode() == KeyCode.ESCAPE) {
-                complete(stage, future, Result.CANCELLED);
-            }
+            if (event.getCode() == KeyCode.ESCAPE) closeAndSave.run();
         });
+        stage.setOnCloseRequest(event -> closeAndSave.run());
 
         stage.setScene(scene);
-        stage.setOnCloseRequest(event -> complete(stage, future, Result.CANCELLED));
         return stage;
+    }
+
+    /** Creates a label styled for the settings form. */
+    private static Label createLabel(String text) {
+        Label label = new Label(text);
+        label.setStyle("-fx-text-fill: #f5edd8; -fx-font-size: 16px;");
+        return label;
     }
 
     private static boolean applyFields(

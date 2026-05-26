@@ -394,6 +394,19 @@
     -fx-font-size: 11px;
 }
 
+/* Manual tick label pane — sits between slider and buttons.
+ * Labels are absolutely positioned via layoutX bindings. */
+.tick-labels-box {
+    -fx-background-color: transparent;
+}
+
+.tick-label {
+    -fx-text-fill: #c9a84c;
+    -fx-font-family: -fx-font-heading;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+}
+
 .bet-btn {
     -fx-font-family: -fx-font-heading;
     -fx-font-size: 15px;
@@ -508,4 +521,54 @@
 .lan-btn-cancel:hover {
     -fx-background-color: #502020;
     -fx-border-color: #cd853f;
+}
+
+/* =============================================================================
+ * SettingsDialog — thicker input fields, slider
+ * ============================================================================= */
+.settings-field {
+    -fx-font-family: -fx-font-heading;
+    -fx-font-size: 16px;
+    -fx-text-fill: #f5edd8;
+    -fx-prompt-text-fill: rgba(245, 237, 216, 0.4);
+    -fx-background-color: #060E0A;
+    -fx-background-radius: 8;
+    -fx-border-color: #c9a84c;
+    -fx-border-width: 2.5;
+    -fx-border-radius: 8;
+    -fx-padding: 12 16;
+    -fx-pref-width: 260;
+}
+
+.settings-field:focused {
+    -fx-border-color: #f0d88a;
+    -fx-effect: dropshadow(gaussian, rgba(201, 168, 76, 0.35), 10, 0.5, 0, 0);
+}
+
+.settings-slider {
+    -fx-pref-width: 320;
+}
+
+.settings-slider .track {
+    -fx-background-color: #0a1e12;
+    -fx-background-radius: 4;
+    -fx-border-color: #c9a84c;
+    -fx-border-radius: 4;
+    -fx-border-width: 1.5;
+    -fx-pref-height: 10;
+}
+
+.settings-slider .thumb {
+    -fx-background-color: linear-gradient(to bottom, #f0d88a, #c9a84c, #8a6020);
+    -fx-background-radius: 14;
+    -fx-border-color: #f5edd8;
+    -fx-border-radius: 14;
+    -fx-border-width: 2;
+    -fx-pref-width: 26;
+    -fx-pref-height: 26;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.5), 4, 0.4, 0, 2);
+}
+
+.settings-slider .thumb:hover {
+    -fx-effect: dropshadow(gaussian, rgba(201, 168, 76, 0.5), 10, 0.5, 0, 0);
 }
