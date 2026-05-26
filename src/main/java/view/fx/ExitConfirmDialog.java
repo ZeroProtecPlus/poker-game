@@ -1,7 +1,10 @@
 package view.fx;
 
+import audio.BackgroundMusicPlayer;
+import config.GameSettings;
 import java.util.concurrent.CompletableFuture;
 
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -21,15 +24,15 @@ import javafx.stage.StageStyle;
 /**
  * ExitConfirmDialog — casino-styled modal to confirm leaving a game.
  *
- * <p>Pattern: follows {@link ResumeGameDialog} — UNDECORATED stage,
- * APPLICATION_MODAL, menu-bg.png background, FxMenuChrome title bar,
- * VBox .modal-card panel with message and two buttons.
- *
  * <p>Buttons:
  * <ul>
- *   <li>"SALIR" — .btn-no style (crimson/danger) — confirms exit</li>
- *   <li>"CANCELAR" — .btn-yes style (green/safe) — cancels</li>
+ *   <li>"SALIR" — confirms exit and kills the JVM</li>
+ *   <li>"CANCELAR" — cancels and returns to the game</li>
  * </ul>
+ *
+ * <p>Any exit path (SALIR button, Enter key, X window button) triggers
+ * {@code Platform.exit()} to guarantee the JVM terminates.
+ * ESC and CANCELAR cancel gracefully without killing the JVM.
  *
  * <p>CSS: fonts.css + modal.css + menu-chrome.css
  */
@@ -41,7 +44,7 @@ public final class ExitConfirmDialog {
     private static final String CHROME_CSS_PATH = "/menu-chrome.css";
 
     private static final double WIDTH = 520;
-    private static final double HEIGHT = 270;
+    private static final double HEIGHT = 340;
 
     private ExitConfirmDialog() {}
 
@@ -64,13 +67,11 @@ public final class ExitConfirmDialog {
         stage.initModality(Modality.APPLICATION_MODAL);
         stage.setTitle("Royal Poker — Salir");
 
-        // ── Root canvas ──────────────────────────────────────────────────────
         AnchorPane canvas = new AnchorPane();
         canvas.setPrefSize(WIDTH, HEIGHT);
         canvas.setMinSize(WIDTH, HEIGHT);
         canvas.setMaxSize(WIDTH, HEIGHT);
 
-        // ── Background image ─────────────────────────────────────────────────
         ImageView bg = MenuImages.fullCanvasLayer(BG_PATH);
         bg.setFitWidth(WIDTH);
         bg.setFitHeight(HEIGHT);
@@ -78,10 +79,8 @@ public final class ExitConfirmDialog {
         AnchorPane.setLeftAnchor(bg, 0.0);
         canvas.getChildren().add(bg);
 
-        // ── Chrome title bar ─────────────────────────────────────────────────
         FxMenuChrome.apply(stage, canvas, "Royal Poker", WIDTH, HEIGHT);
 
-        // ── Center wrapper ───────────────────────────────────────────────────
         StackPane centerWrapper = new StackPane();
         centerWrapper.setPrefSize(WIDTH, HEIGHT);
         centerWrapper.setMinSize(WIDTH, HEIGHT);
@@ -91,35 +90,44 @@ public final class ExitConfirmDialog {
         AnchorPane.setLeftAnchor(centerWrapper, 0.0);
         canvas.getChildren().add(centerWrapper);
 
-        // ── Modal card panel ─────────────────────────────────────────────────
         VBox card = new VBox(16);
-        card.getStyleClass().add("modal-card");
+        card.getStyleClass().add("exit-card");
         card.setAlignment(Pos.CENTER);
         card.setMaxWidth(430);
         card.setPadding(new Insets(28, 36, 24, 36));
 
-        // ── Warning icon ─────────────────────────────────────────────────────
-        Label iconLabel = new Label("\u26A0");  // ⚠
+        Label iconLabel = new Label("\u26A0");
         iconLabel.getStyleClass().add("modal-title");
         iconLabel.getStyleClass().add("exit-warning-icon");
 
-        // ── Message ──────────────────────────────────────────────────────────
         Label message = new Label("¿Salir de la partida?\nSe perderá el progreso.");
         message.getStyleClass().add("modal-question");
         message.setWrapText(true);
         message.setAlignment(Pos.CENTER);
         message.setMaxWidth(380);
 
-        // ── Buttons ──────────────────────────────────────────────────────────
-        HBox buttonBox = new HBox(24);
-        buttonBox.setAlignment(Pos.CENTER);
-        buttonBox.setPadding(new Insets(4, 0, 0, 0));
+        // ── Shared helper to kill the JVM cleanly ───────────────────────────
+        Runnable killJvm = () -> {
+            try {
+                GameSettings.get().save();
+            } catch (Exception ignored) {}
+            try {
+                BackgroundMusicPlayer.getInstance().stop();
+            } catch (Exception ignored) {}
+            try {
+                Thread.sleep(150);
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+            }
+            Platform.exit();
+        };
 
         Button salirBtn = new Button("SALIR");
         salirBtn.getStyleClass().add("btn-no");
         salirBtn.setOnAction(e -> {
             future.complete(true);
-            stage.close();
+            stage.hide();
+            killJvm.run();
         });
 
         Button cancelarBtn = new Button("CANCELAR");
@@ -129,19 +137,24 @@ public final class ExitConfirmDialog {
             stage.close();
         });
 
+        HBox buttonBox = new HBox(24);
+        buttonBox.setAlignment(Pos.CENTER);
+        buttonBox.setPadding(new Insets(4, 0, 0, 0));
         buttonBox.getChildren().addAll(salirBtn, cancelarBtn);
         card.getChildren().addAll(iconLabel, message, buttonBox);
         centerWrapper.getChildren().add(card);
 
-        // ── Scene ────────────────────────────────────────────────────────────
         Scene scene = new Scene(canvas, WIDTH, HEIGHT, Color.BLACK);
+
+        // ESC = cancel (no JVM kill)
         scene.setOnKeyPressed(event -> {
             if (event.getCode() == KeyCode.ESCAPE) {
                 future.complete(false);
                 stage.close();
             } else if (event.getCode() == KeyCode.ENTER) {
                 future.complete(true);
-                stage.close();
+                stage.hide();
+                killJvm.run();
             }
         });
 
@@ -153,10 +166,14 @@ public final class ExitConfirmDialog {
         if (chromeCss != null) scene.getStylesheets().add(chromeCss.toExternalForm());
 
         stage.setScene(scene);
+
+        // X button / window close = confirm exit (kill JVM)
         stage.setOnCloseRequest(e -> {
             if (!future.isDone()) {
-                future.complete(false);
+                future.complete(true);
             }
+            stage.hide();
+            killJvm.run();
         });
 
         return stage;
