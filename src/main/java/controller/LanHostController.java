@@ -310,10 +310,9 @@ public class LanHostController {
         recentActions = new ArrayList<>();
 
         while (true) {
-            List<String> humanLog = collectHumanActions(round, phase);
-            recentActions.addAll(humanLog);
-
-            // Human actions are already applied inline during collection above.
+            collectHumanActions(round, phase);
+            // Human actions are already applied inline during collection above
+            // and recentActions + table.setActionLog are updated inside.
             // Pass an empty map so runLanUnifiedBettingRound only processes AIs.
             PokerGame.AIBettingResult result = pokerGame.runLanUnifiedBettingRound(
                 round.getCurrentBet(),
@@ -448,6 +447,20 @@ public class LanHostController {
                 human.getCurrentBet());
             if (logEntry != null) {
                 log.add(logEntry);
+                // ── Update action log and host UI immediately ─────────────
+                // Bug 2: action log must appear instantly, not after AI round.
+                // Bug 3: host chips/pot must update right after the host acts.
+                recentActions.add(logEntry);
+                table.setActionLog(new ArrayList<>(recentActions));
+                if (pokerGame.isLocalHuman(human)) {
+                    table.showUserChips(hostUser.getName(), hostUser.getNumbChips());
+                    table.updatePot(pokerGame.getPot());
+                }
+                // ── Broadcast updated log to remote clients ───────────────
+                String saved = activePlayerId;
+                activePlayerId = null;
+                broadcastState(phase);
+                activePlayerId = saved;
             }
         }
         activePlayerId = null;
@@ -555,16 +568,47 @@ public class LanHostController {
     }
 
     private boolean allOthersFolded() throws IOException {
-        long activeAi = pokerGame.getAIPlayers().stream().filter(ai -> !ai.isFolded()).count();
-        long activeRemote = pokerGame.getLanHumanPlayers().stream().filter(u -> !u.isFolded()).count();
-        if (activeAi == 0 && activeRemote == 0) {
-            pokerGame.awardPotToPlayer();
-            table.showUserChips(hostUser.getName(), hostUser.getNumbChips());
-            table.updatePot(0);
-            broadcastState(BettingRound.Phase.RIVER);
-            return true;
+        // Find the last remaining active player (any player, not just the host).
+        Player lastStanding = null;
+        for (Player p : pokerGame.getPlayers()) {
+            if (!p.isFolded()) {
+                if (lastStanding != null) {
+                    return false; // more than one active — no auto-win
+                }
+                lastStanding = p;
+            }
         }
-        return false;
+        if (lastStanding == null) {
+            return false;
+        }
+
+        int pot = pokerGame.getPot();
+        pokerGame.awardPotTo(lastStanding);
+        table.updatePot(0);
+
+        boolean isHostWinner = pokerGame.isLocalHuman(lastStanding);
+        String winnerName = lastStanding.getName();
+
+        if (isHostWinner) {
+            table.showResult("¡Ganaste! +" + String.format("%,d", pot), true);
+        } else {
+            table.showResult(winnerName + " gana " + String.format("%,d", pot), false);
+        }
+        table.showUserChips(hostUser.getName(), hostUser.getNumbChips());
+
+        // Update remote badges so client tables reflect the winner's new chips.
+        updateRemoteBadges();
+
+        // Broadcast HAND_RESULT so clients show the result banner.
+        session.broadcast(new LanEnvelope(
+            LanMessageType.HAND_RESULT,
+            new JSONObject()
+                .put("winner", winnerName)
+                .put("pot", pot)
+        ));
+
+        broadcastState(BettingRound.Phase.RIVER);
+        return true;
     }
 
     private void endRound() throws IOException {
