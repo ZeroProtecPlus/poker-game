@@ -9,6 +9,11 @@ public interface Player {
 
     int getChips();
 
+    /** A player is eliminated when they have no chips left. */
+    default boolean isEliminated() {
+        return getChips() <= 0;
+    }
+
     void setChips(int chips);
 
     int getCurrentBet();

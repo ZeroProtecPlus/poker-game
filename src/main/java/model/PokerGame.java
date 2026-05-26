@@ -734,4 +734,37 @@ public class PokerGame {
     public ArrayList<Card> getRemainingDeck() {
         return deck.getRemainingCardsList();
     }
+
+    /**
+     * Returns true when every opponent of the local human player has 0 chips.
+     * Opponents = all players except the local {@link #player}.
+     */
+    public boolean areAllOpponentsEliminated() {
+        for (Player current : players) {
+            if (current == player) {
+                continue; // skip local human
+            }
+            if (current.getChips() > 0) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Returns the player with the most chips among all players,
+     * provided at least one player has chips &gt; 0.
+     * Returns {@code null} if every player has 0 chips.
+     */
+    public Player determineOverallWinner() {
+        Player best = null;
+        int bestChips = 0;
+        for (Player current : players) {
+            if (current.getChips() > bestChips) {
+                bestChips = current.getChips();
+                best = current;
+            }
+        }
+        return best; // null if all have 0 (bestChips stays 0)
+    }
 }
