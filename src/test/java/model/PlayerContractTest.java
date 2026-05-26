@@ -5,6 +5,7 @@ public class PlayerContractTest {
         shouldExposeEquivalentContractBehaviorForUserAndAI();
         shouldGuardInvalidBetsForUserAndAI();
         shouldKeepPlayerIdStableAndIndependentFromDisplayName();
+        shouldDetectElimination();
         System.out.println("PlayerContractTest: all tests passed");
     }
 
@@ -87,6 +88,27 @@ public class PlayerContractTest {
 
         require(expectedPlayerId.equals(player.getPlayerId()), "player id should remain stable across state transitions");
         require(expectedDisplayName.equals(player.getName()), "display name should remain stable across state transitions");
+    }
+
+    private static void shouldDetectElimination() {
+        // User with chips == 0 → eliminated
+        User bustedUser = new User("Busted");
+        bustedUser.setChips(0);
+        require(bustedUser.isEliminated(), "User with chips==0 should be eliminated");
+
+        // User with chips > 0 → not eliminated
+        User aliveUser = new User("Alive");
+        aliveUser.setChips(100);
+        require(!aliveUser.isEliminated(), "User with chips>0 should NOT be eliminated");
+
+        // AIPlayer with chips == 0 → eliminated
+        AIPlayer bustedAI = new AIPlayer("BustedBot", 1000);
+        bustedAI.setChips(0);
+        require(bustedAI.isEliminated(), "AIPlayer with chips==0 should be eliminated");
+
+        // AIPlayer with chips > 0 → not eliminated
+        AIPlayer aliveAI = new AIPlayer("AliveBot", 500);
+        require(!aliveAI.isEliminated(), "AIPlayer with chips>0 should NOT be eliminated");
     }
 
     private static void require(boolean condition, String message) {
