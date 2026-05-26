@@ -5,8 +5,6 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.StackPane;
@@ -16,11 +14,11 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 
-import java.io.InputStream;
 import java.util.concurrent.CompletableFuture;
 
 /**
  * Second step after Multiplayer: host or join (LAN flow wired from {@link Main}).
+ * Clean dark background, no background image, solid casino buttons.
  */
 public final class MultiplayerMenuDialog {
 
@@ -31,7 +29,6 @@ public final class MultiplayerMenuDialog {
         CLOSED
     }
 
-    private static final String BG_PATH = "/sprites/Star_Game.png";
     private static final String FONTS_CSS_PATH = "/fonts.css";
     private static final String CSS_PATH = "/multiplayer-menu.css";
     private static final String CHROME_CSS_PATH = "/menu-chrome.css";
@@ -54,8 +51,6 @@ public final class MultiplayerMenuDialog {
         stage.initModality(Modality.APPLICATION_MODAL);
         stage.setTitle("Multijugador");
 
-        ImageView background = imageViewAtNativeSize(loadImage(BG_PATH));
-
         Label title = new Label("Multijugador LAN");
         title.getStyleClass().add("multiplayer-title");
 
@@ -74,16 +69,15 @@ public final class MultiplayerMenuDialog {
         VBox panel = new VBox(18, title, hostBtn, joinBtn, backBtn);
         panel.setAlignment(Pos.CENTER);
         panel.setPadding(new Insets(40));
-        panel.setMaxWidth(520);
+        panel.setMaxWidth(560);
         panel.getStyleClass().add("multiplayer-panel");
 
+        // Solid dark background canvas — no background image
         AnchorPane canvas = new AnchorPane();
+        canvas.setStyle("-fx-background-color: #060E0A;");
         canvas.setPrefSize(DESIGN_WIDTH, DESIGN_HEIGHT);
         canvas.setMinSize(DESIGN_WIDTH, DESIGN_HEIGHT);
         canvas.setMaxSize(DESIGN_WIDTH, DESIGN_HEIGHT);
-        AnchorPane.setTopAnchor(background, 0.0);
-        AnchorPane.setLeftAnchor(background, 0.0);
-        canvas.getChildren().add(background);
 
         StackPane panelStack = new StackPane(panel);
         panelStack.setPickOnBounds(false);
@@ -115,22 +109,6 @@ public final class MultiplayerMenuDialog {
         stage.setScene(scene);
         stage.setOnCloseRequest(event -> complete(stage, future, Choice.CLOSED));
         return stage;
-    }
-
-    private static ImageView imageViewAtNativeSize(Image image) {
-        ImageView view = new ImageView(image);
-        view.setPreserveRatio(false);
-        view.setFitWidth(image.getWidth());
-        view.setFitHeight(image.getHeight());
-        return view;
-    }
-
-    private static Image loadImage(String classpathResource) {
-        InputStream stream = MultiplayerMenuDialog.class.getResourceAsStream(classpathResource);
-        if (stream == null) {
-            throw new IllegalStateException("Resource not found: " + classpathResource);
-        }
-        return new Image(stream);
     }
 
     private static void complete(Stage stage, CompletableFuture<Choice> future, Choice choice) {

@@ -6,7 +6,6 @@ import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
-import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.HBox;
@@ -27,20 +26,19 @@ import java.util.concurrent.CompletableFuture;
  *
  * Layout:
  *   UNDECORATED Stage + APPLICATION_MODAL
- *   menu-bg.png background (full-canvas layer)
+ *   Solid dark canvas (no background image)
  *   FxMenuChrome title bar "Unirse a partida"
- *   Centered .modal-card panel containing:
+ *   Centered .lan-dialog-panel panel containing:
  *     - .modal-title "CONECTAR A PARTIDA LAN"
  *     - 2 TextFields: IP (default 127.0.0.1), Puerto (default 9876)
  *     - .lan-error-label for inline validation errors
- *     - "CONECTAR" / "VOLVER" buttons
+ *     - "CONECTAR" (lan-btn-primary) / "VOLVER" (lan-btn-cancel) buttons
  *   CSS: fonts.css + modal.css + menu-chrome.css
  */
 public final class ConnectDialog {
 
     public record ConnectInfo(String host, int port) {}
 
-    private static final String BG_PATH = "/sprites/Star_Game.png";
     private static final String FONTS_CSS_PATH = "/fonts.css";
     private static final String MODAL_CSS_PATH = "/modal.css";
     private static final String CHROME_CSS_PATH = "/menu-chrome.css";
@@ -71,19 +69,12 @@ public final class ConnectDialog {
         stage.initModality(Modality.APPLICATION_MODAL);
         stage.setTitle("Royal Poker — Conectar");
 
-        // ── Root canvas ──────────────────────────────────────────────────────
+        // ── Root canvas (solid dark, no background image) ──────────────────
         AnchorPane canvas = new AnchorPane();
+        canvas.setStyle("-fx-background-color: #060E0A;");
         canvas.setPrefSize(DISPLAY_W, DISPLAY_H);
         canvas.setMinSize(DISPLAY_W, DISPLAY_H);
         canvas.setMaxSize(DISPLAY_W, DISPLAY_H);
-
-        // ── Background image (full-canvas layer) ─────────────────────────────
-        ImageView bg = MenuImages.fullCanvasLayer(BG_PATH);
-        bg.setFitWidth(DISPLAY_W);
-        bg.setFitHeight(DISPLAY_H);
-        AnchorPane.setTopAnchor(bg, 0.0);
-        AnchorPane.setLeftAnchor(bg, 0.0);
-        canvas.getChildren().add(bg);
 
         // ── Chrome title bar ─────────────────────────────────────────────────
         FxMenuChrome.apply(stage, canvas, "Unirse a partida");
@@ -98,11 +89,11 @@ public final class ConnectDialog {
         AnchorPane.setLeftAnchor(centerWrapper, 0.0);
         canvas.getChildren().add(centerWrapper);
 
-        // ── Modal card panel (.modal-card) ───────────────────────────────────
-        VBox card = new VBox(14);
-        card.getStyleClass().add("modal-card");
+        // ── Solid LAN dialog panel (.lan-dialog-panel) ──────────────────────
+        VBox card = new VBox(16);
+        card.getStyleClass().add("lan-dialog-panel");
         card.setAlignment(Pos.CENTER);
-        card.setMaxWidth(480);
+        card.setMaxWidth(500);
         card.setPadding(new Insets(36, 48, 36, 48));
 
         // ── Title ────────────────────────────────────────────────────────────
@@ -114,13 +105,15 @@ public final class ConnectDialog {
         // ── IP field ─────────────────────────────────────────────────────────
         TextField ipField = new TextField("127.0.0.1");
         ipField.setPromptText("Dirección IP del host");
-        ipField.setMaxWidth(380);
+        ipField.setMaxWidth(400);
+        ipField.setMinWidth(320);
         ipField.getStyleClass().add("lan-input-field");
 
         // ── Port field ───────────────────────────────────────────────────────
         TextField portField = new TextField(String.valueOf(LanConstants.DEFAULT_PORT));
         portField.setPromptText("Puerto (1–65535)");
-        portField.setMaxWidth(380);
+        portField.setMaxWidth(400);
+        portField.setMinWidth(320);
         portField.getStyleClass().add("lan-input-field");
 
         // ── Error label (hidden by default) ──────────────────────────────────
@@ -128,19 +121,21 @@ public final class ConnectDialog {
         errorLabel.getStyleClass().add("lan-error-label");
         errorLabel.setVisible(false);
         errorLabel.setManaged(false);
-        errorLabel.setMaxWidth(380);
+        errorLabel.setMaxWidth(400);
         errorLabel.setWrapText(true);
 
-        // ── Buttons ──────────────────────────────────────────────────────────
+        // ── Buttons (lan-btn-primary / lan-btn-cancel) ──────────────────────
         HBox buttonBar = new HBox(24);
         buttonBar.setAlignment(Pos.CENTER);
         buttonBar.setPadding(new Insets(8, 0, 0, 0));
 
         Button connectBtn = new Button("CONECTAR");
-        connectBtn.getStyleClass().add("btn-yes");
+        connectBtn.getStyleClass().add("lan-btn-primary");
+        connectBtn.setMinWidth(220);
 
         Button volverBtn = new Button("VOLVER");
-        volverBtn.getStyleClass().add("btn-no");
+        volverBtn.getStyleClass().add("lan-btn-cancel");
+        volverBtn.setMinWidth(220);
 
         buttonBar.getChildren().addAll(connectBtn, volverBtn);
 
