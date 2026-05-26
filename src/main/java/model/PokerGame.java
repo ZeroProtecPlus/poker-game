@@ -47,6 +47,7 @@ public class PokerGame {
     private Deck deck;
     private final HandEvaluator handEvaluator;
     private final User player;
+    private final ArrayList<User> lanHumanPlayers = new ArrayList<>();
     private final ArrayList<AIPlayer> aiPlayers = new ArrayList<>();
     private final ArrayList<Player> players = new ArrayList<>();
     private final ArrayList<Card> communityCards = new ArrayList<>();
@@ -65,12 +66,165 @@ public class PokerGame {
         rebuildPlayers();
     }
 
+    /** LAN table: local host human + remote humans; fills empty seats with AI up to 4 players. */
+    public PokerGame(User localHuman, List<User> remoteHumans, boolean fillWithAi) {
+        this.player = localHuman;
+        this.handEvaluator = new HandEvaluator();
+        lanHumanPlayers.clear();
+        if (remoteHumans != null) {
+            lanHumanPlayers.addAll(remoteHumans);
+        }
+        aiPlayers.clear();
+        rebuildLanPlayers(fillWithAi);
+    }
+
+    private int seatCount() {
+        return (player != null ? 1 : 0) + lanHumanPlayers.size();
+    }
+
+    private void rebuildLanPlayers(boolean fillWithAi) {
+        players.clear();
+        aiPlayers.clear();
+        if (player != null) {
+            players.add(player);
+        }
+        players.addAll(lanHumanPlayers);
+        if (fillWithAi) {
+            String[] names = {"Carlos", "María", "Sofía"};
+            int index = 0;
+            while (players.size() < 4) {
+                aiPlayers.add(new AIPlayer(names[index % names.length], 10000));
+                index++;
+            }
+        }
+        players.addAll(aiPlayers);
+    }
+
     private void rebuildPlayers() {
         players.clear();
         if (player != null) {
             players.add(player);
         }
+        players.addAll(lanHumanPlayers);
         players.addAll(aiPlayers);
+    }
+
+    public boolean isLocalHuman(Player current) {
+        return current == player;
+    }
+
+    public List<User> getLanHumanPlayers() {
+        return List.copyOf(lanHumanPlayers);
+    }
+
+    public List<User> getAllHumanUsers() {
+        ArrayList<User> humans = new ArrayList<>();
+        if (player != null) {
+            humans.add(player);
+        }
+        humans.addAll(lanHumanPlayers);
+        return humans;
+    }
+
+    public User findUserByPlayerId(String playerId) {
+        if (playerId == null) {
+            return null;
+        }
+        if (player != null && playerId.equals(player.getPlayerId())) {
+            return player;
+        }
+        for (User remote : lanHumanPlayers) {
+            if (playerId.equals(remote.getPlayerId())) {
+                return remote;
+            }
+        }
+        return null;
+    }
+
+    public record HumanActionEntry(BettingRound.Action action, int amount) {}
+
+    public AIBettingResult runLanUnifiedBettingRound(
+        int currentHighBet,
+        BettingRound.Phase phase,
+        Map<String, HumanActionEntry> humanActions
+    ) {
+        List<String> log = new ArrayList<>();
+        Map<String, HumanActionEntry> actions = humanActions != null ? humanActions : Map.of();
+
+        for (Player current : players) {
+            if (current.isFolded() || current.isAllIn()) {
+                continue;
+            }
+
+            if (current instanceof User user) {
+                HumanActionEntry entry = actions.get(user.getPlayerId());
+                if (entry != null && entry.action() != null) {
+                    currentHighBet = applyUserAction(user, entry.action(), entry.amount(), currentHighBet);
+                }
+                continue;
+            }
+
+            AIPlayer ai = (AIPlayer) current;
+            int callAmount = Math.max(0, currentHighBet - ai.getCurrentBet());
+            BettingRound.Action action = ai.decide(callAmount, pot, communityCards, ai.getRole(), phase);
+
+            switch (action) {
+                case FOLD -> {
+                    ai.setFolded(true);
+                    log.add(ai.getName() + " se retira");
+                }
+                case CHECK -> log.add(ai.getName() + " pasa");
+                case CALL -> {
+                    int amount = ai.placeBet(callAmount);
+                    pot += amount;
+                    log.add(ai.getName() + " iguala " + amount);
+                }
+                case BET, RAISE -> {
+                    int amount = ai.decideAmount(BIG_BLIND, pot, communityCards, ai.getRole(), phase);
+                    amount = ai.placeBet(amount);
+                    pot += amount;
+                    currentHighBet = Math.max(currentHighBet, ai.getCurrentBet());
+                    String word = action == BettingRound.Action.BET ? "apuesta" : "sube a";
+                    log.add(ai.getName() + " " + word + " " + amount);
+                }
+                default -> log.add(ai.getName() + " pasa");
+            }
+        }
+
+        return new AIBettingResult(log, currentHighBet, player != null && player.isFolded());
+    }
+
+    public int applyUserAction(User target, BettingRound.Action action, int amount, int currentHighBet) {
+        if (action == null) {
+            return currentHighBet;
+        }
+        switch (action) {
+            case FOLD -> target.setFolded(true);
+            case CHECK -> { }
+            case CALL -> {
+                int actual = target.placeBet(amount);
+                pot += actual;
+            }
+            case BET -> {
+                int actual = target.placeBet(amount);
+                pot += actual;
+                currentHighBet = Math.max(currentHighBet, target.getCurrentBet());
+            }
+            case RAISE -> {
+                int extra = Math.max(0, amount - target.getCurrentBet());
+                int actual = target.placeBet(extra);
+                pot += actual;
+                currentHighBet = Math.max(currentHighBet, target.getCurrentBet());
+            }
+            case ALL_IN -> {
+                if (!target.isAllIn()) {
+                    int actual = target.placeBet(target.getChips());
+                    pot += actual;
+                    currentHighBet = Math.max(currentHighBet, target.getCurrentBet());
+                }
+            }
+        }
+        return currentHighBet;
     }
 
     public void startNewRound() {

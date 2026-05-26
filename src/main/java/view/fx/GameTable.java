@@ -1947,9 +1947,8 @@ public final class GameTable {
             stage.setOnCloseRequest(e -> {});
             stage.close();
         }
-        // Terminate JavaFX runtime so the JVM can exit.
-        // Without this, non-daemon threads (e.g. JavaFX QuantumRenderer) keep the process alive.
-        Platform.exit();
+        // Stage closed — latch released, thread unblocked.
+        // JVM exits when all windows close and game thread finishes.
     }
 
     /**

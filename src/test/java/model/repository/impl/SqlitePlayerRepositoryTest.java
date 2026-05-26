@@ -3,6 +3,7 @@ package model.repository.impl;
 import model.User;
 import model.persistence.ConnectionFactory;
 import model.persistence.DatabaseBootstrapper;
+import model.persistence.RepositoryException;
 import model.repository.PlayerRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -61,7 +62,7 @@ class SqlitePlayerRepositoryTest {
     }
 
     @Test
-    void shouldUpdateExistingPlayer() throws Exception {
+    void shouldUpdateExistingPlayerByPlayerId() throws Exception {
         User player = new User("player-3", "Charlie");
         player.setChips(1000);
         repository.save(player);
@@ -72,6 +73,16 @@ class SqlitePlayerRepositoryTest {
         Optional<User> found = repository.findById("player-3");
         assertTrue(found.isPresent());
         assertEquals(2000, found.get().getChips(), "chips should be updated");
+    }
+
+    @Test
+    void shouldRejectInsertWhenNameAlreadyExistsUnderDifferentPlayerId() {
+        assertDoesNotThrow(() -> repository.save(new User("stable-id", "Alice")));
+
+        User newSessionId = new User("new-session-id", "Alice");
+        RepositoryException ex = assertThrows(RepositoryException.class, () -> repository.save(newSessionId));
+        assertTrue(ex.getMessage().contains("Transaction failed"));
+        assertNotNull(ex.getCause());
     }
 
     @Test

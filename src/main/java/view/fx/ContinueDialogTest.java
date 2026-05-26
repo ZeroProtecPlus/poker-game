@@ -6,7 +6,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import javafx.application.Application;
-import javafx.application.Platform;
 import javafx.stage.Stage;
 
 /**
@@ -30,7 +29,6 @@ public class ContinueDialogTest extends Application {
 
         future.thenAccept(result -> {
             System.out.println("Result: " + (result ? "SÍ (continue)" : "NO (exit)"));
-            Platform.exit();
         });
 
         // Safety: force exit after 65s if dialog doesn't respond
@@ -38,7 +36,6 @@ public class ContinueDialogTest extends Application {
             try {
                 Thread.sleep(65_000);
                 System.out.println("Timeout — forcing exit.");
-                Platform.exit();
             } catch (InterruptedException ignored) {}
         }).start();
     }

@@ -108,7 +108,7 @@ public class LanHostController {
         } finally {
             table.requestGracefulShutdown();
             server.close();
-            javafx.application.Platform.exit();
+            // No Platform.exit() — let the thread return and JVM exit naturally
         }
     }
 

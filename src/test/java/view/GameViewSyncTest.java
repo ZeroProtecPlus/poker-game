@@ -1,11 +1,15 @@
 package view;
 
+import javafx.application.Platform;
 import model.BettingRound;
 import model.PokerGame;
+import view.fx.JavaFxBootstrap;
 
 import javax.swing.SwingUtilities;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 public class GameViewSyncTest {
 
@@ -13,6 +17,7 @@ public class GameViewSyncTest {
         shouldReturnFalseWhenUiReadyTimesOut();
         shouldReturnTrueWhenUiReadySignaled();
         shouldExecuteRunOnEdtAndWait();
+        shouldExecutePlatformRunLaterWithCompletableFuture();
         shouldTimeoutWaitForPlayerActionAndReturnNull();
         shouldReturnTrueWhenNoAnimationPending();
         System.out.println("GameViewSyncTest: all tests passed");
@@ -36,6 +41,18 @@ public class GameViewSyncTest {
         boolean[] ranOnEdt = {false};
         view.runOnEdtAndWait(() -> ranOnEdt[0] = SwingUtilities.isEventDispatchThread());
         require(ranOnEdt[0], "runOnEdtAndWait should execute on EDT");
+    }
+
+    private static void shouldExecutePlatformRunLaterWithCompletableFuture() {
+        JavaFxBootstrap.ensureStarted();
+        CompletableFuture<Boolean> future = new CompletableFuture<>();
+        Platform.runLater(() -> future.complete(Platform.isFxApplicationThread()));
+        try {
+            Boolean ranOnFx = future.get(5, TimeUnit.SECONDS);
+            require(ranOnFx, "Platform.runLater should execute on FX application thread");
+        } catch (Exception e) {
+            throw new AssertionError("Platform.runLater test failed", e);
+        }
     }
 
     private static void shouldTimeoutWaitForPlayerActionAndReturnNull() {

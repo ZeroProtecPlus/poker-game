@@ -1,5 +1,9 @@
 package view;
 
+// TODO: Rewrite this test once GameView migrates to JavaFX.
+// Currently tests Swing JPanel / JButton inside GameView.TablePanel via reflection.
+// After migration: test JavaFX Button / Pane nodes instead of Swing JButton / JPanel.
+
 import model.BettingRound;
 import model.Card;
 import model.PokerGame;

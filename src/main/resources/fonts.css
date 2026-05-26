@@ -1,0 +1,38 @@
+/* ===================================================================
+ * FONT SYSTEM — Poker Game
+ *
+ * Single source of truth for all font families, sizes, and weights.
+ * Every CSS file imports this to reference fonts via custom properties.
+ *
+ * To change the entire game's typography, edit ONLY this file.
+ * To use Google Fonts: drop the .ttf in resources/fonts/, load via
+ *   Font.loadFont(getClass().getResource("/fonts/YourFont.ttf").toExternalForm(), -1)
+ *   then replace the family strings below.
+ * =================================================================== */
+
+.root {
+    /* ── Font Families ───────────────────────────────────────────────
+     * heading  — titles, labels, buttons (serif personality)
+     * body     — input fields, descriptions
+     * mono     — chip counters, log lines, tabular data
+     * ui       — chrome buttons, small system controls
+     */
+    -fx-font-heading: "Georgia", "Times New Roman", serif;
+    -fx-font-body:    "Georgia", "Times New Roman", serif;
+    -fx-font-mono:    "Consolas", "Courier New", monospace;
+    -fx-font-ui:      "Segoe UI", "SansSerif", sans-serif;
+
+    /* ── Font Sizes ────────────────────────────────────────────────── */
+    -fx-size-hero:       68px;   /* main modal title */
+    -fx-size-display:    100px;  /* accent display (rare) */
+    -fx-size-title:      42px;   /* section / dialog title */
+    -fx-size-heading:    28px;   /* headings, large labels */
+    -fx-size-big:        32px;   /* big numbers (bet value, pot) */
+    -fx-size-subhead:    24px;   /* sub-headings, slider titles */
+    -fx-size-body:       18px;   /* body text, standard buttons */
+    -fx-size-label:      16px;   /* standard labels */
+    -fx-size-small:      14px;   /* secondary labels, field text */
+    -fx-size-caption:    13px;   /* captions, phase labels */
+    -fx-size-micro:      11px;   /* badges, tiny text */
+    -fx-size-chip:       10px;   /* chip counters, log monospace */
+}

@@ -88,7 +88,7 @@ public class LanClientController implements GameClient.Listener {
                 client.close();
             }
             table.requestGracefulShutdown();
-            javafx.application.Platform.exit();
+            // No Platform.exit() — let the thread return and JVM exit naturally
         }
     }
 

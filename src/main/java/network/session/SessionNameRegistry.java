@@ -33,4 +33,11 @@ public class SessionNameRegistry {
     public synchronized boolean isCommitted(String normalizedName) {
         return committedNames.contains(normalizedName);
     }
+
+    /** Removes a committed name when a player disconnects from the session. */
+    public synchronized boolean unregister(String normalizedName) {
+        boolean removedCommitted = committedNames.remove(normalizedName);
+        reservedNames.remove(normalizedName);
+        return removedCommitted;
+    }
 }

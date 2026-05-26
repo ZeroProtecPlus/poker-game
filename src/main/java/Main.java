@@ -129,14 +129,8 @@ public class Main {
             } catch (Exception e) {
                 System.out.println("Ocurrió un error inesperado: " + e.getMessage());
             } finally {
-                // Ensure JavaFX shuts down when the game thread finishes
-                Platform.exit();
-                // Nuclear option: force JVM exit after a short grace period
-                // in case Platform.exit() didn't terminate all threads.
-                try {
-                    Thread.sleep(500);
-                } catch (InterruptedException ignored) { }
-                System.exit(0);
+                // Game thread finished naturally — cleanup happens in controllers.
+                // No Platform.exit() here — let the JVM exit when all windows close.
             }
         });
         gameThread.setDaemon(true);
