@@ -78,6 +78,13 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   Active Turn Highlight — golden glow on the badge whose turn it is
+   ═══════════════════════════════════════════════════════════════ */
+.badge-active-turn {
+    -fx-effect: dropshadow(gaussian, #f0d88a, 18, 0.6, 0, 0);
+}
+
+/* ═══════════════════════════════════════════════════════════════
    AI Badge (fila superior, 3 posiciones)
    Compactos, elegantes, fáciles de leer de un vistazo
    ═══════════════════════════════════════════════════════════════ */

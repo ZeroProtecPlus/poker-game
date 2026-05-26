@@ -20,7 +20,9 @@ import view.fx.GameTable;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class LanClientController implements GameClient.Listener {
@@ -223,7 +225,25 @@ public class LanClientController implements GameClient.Listener {
             if (!me.getHand().isEmpty()) {
                 table.showPlayerHand(new ArrayList<>(me.getHand()));
             }
+            // Update fold indicator on the local player badge
+            if (me.isFolded()) {
+                table.showPlayerFolded();
+            }
         }
+
+        // Highlight the active player using the player name map from the state
+        Map<String, String> idToName = buildPlayerIdNameMap(state);
+        table.highlightActivePlayer(activePlayerId, idToName);
+    }
+
+    private Map<String, String> buildPlayerIdNameMap(GameStateDto state) {
+        Map<String, String> map = new HashMap<>();
+        for (PlayerStateDto p : state.getPlayers()) {
+            if (p.getPlayerId() != null && p.getName() != null) {
+                map.put(p.getPlayerId(), p.getName());
+            }
+        }
+        return map;
     }
 
     @Override

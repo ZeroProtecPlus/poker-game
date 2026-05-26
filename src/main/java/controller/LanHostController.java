@@ -345,6 +345,7 @@ public class LanHostController {
             int amount = 0;
 
             if (pokerGame.isLocalHuman(human)) {
+                table.highlightActivePlayer(human.getPlayerId(), buildHostPlayerNameMap());
                 table.setStatusTurn("Tu turno");
                 int playerBet = human.getCurrentBet();
                 action = table.awaitPlayerAction(round, playerBet, table.getUiSyncTimeoutMs());
@@ -352,11 +353,13 @@ public class LanHostController {
                     action = resolveTimeoutAction(round, playerBet);
                     table.resolvePendingPlayerAction(action);
                 }
+                if (action == BettingRound.Action.FOLD) {
+                    table.showPlayerFolded();
+                }
                 amount = resolveAmount(action, round, human, playerBet);
             } else {
+                table.highlightActivePlayer(human.getPlayerId(), buildHostPlayerNameMap());
                 table.setStatusTurn("Turno de: " + human.getName());
-                // Check if the client is still connected before waiting.
-                // If disconnected, immediately FOLD without the 3-second timeout.
                 if (session.findClient(human.getPlayerId()).isEmpty()) {
                     action = resolveTimeoutAction(round, human.getCurrentBet());
                 } else {
@@ -381,6 +384,7 @@ public class LanHostController {
         }
         activePlayerId = null;
         table.setStatusTurn("");
+        table.highlightActivePlayer(null, null);
         return actions;
     }
 
@@ -400,6 +404,16 @@ public class LanHostController {
             return table.getPlayerBetAmount(round.minRaiseAmount(), human.getNumbChips());
         }
         return 0;
+    }
+
+    /** Builds a playerId → displayName map for the host's active-player highlight. */
+    private Map<String, String> buildHostPlayerNameMap() {
+        Map<String, String> map = new HashMap<>();
+        map.put(hostUser.getPlayerId(), hostUser.getName());
+        for (User remote : pokerGame.getLanHumanPlayers()) {
+            map.put(remote.getPlayerId(), remote.getName());
+        }
+        return map;
     }
 
     private void onPlayerAction(String connectionPlayerId, LanEnvelope envelope) throws IOException {

@@ -1755,6 +1755,53 @@ public final class GameTable {
     }
 
     /**
+     * Highlights the badge of the active player with a golden glow.
+     * Removes the glow from all other badges.
+     *
+     * @param playerId the playerId of the active player, or null to clear all highlights
+     * @param playerIdToName map of playerId → display name to find the correct badge
+     */
+    public void highlightActivePlayer(String playerId, java.util.Map<String, String> playerIdToName) {
+        if (Platform.isFxApplicationThread()) {
+            highlightActivePlayerInternal(playerId, playerIdToName);
+        } else {
+            Platform.runLater(() -> highlightActivePlayerInternal(playerId, playerIdToName));
+        }
+    }
+
+    private void highlightActivePlayerInternal(String playerId, java.util.Map<String, String> playerIdToName) {
+        // Remove glow from all badges
+        playerBadge.getStyleClass().remove("badge-active-turn");
+        for (int i = 0; i < 3; i++) {
+            aiBadges[i].getStyleClass().remove("badge-active-turn");
+        }
+
+        if (playerId == null || playerIdToName == null) {
+            return;
+        }
+
+        // Find the matching name for this playerId
+        String targetName = playerIdToName.get(playerId);
+        if (targetName == null) {
+            return;
+        }
+
+        // Check if this is the local player badge
+        if (targetName.equals(playerBadgeLabel.getText())) {
+            playerBadge.getStyleClass().add("badge-active-turn");
+            return;
+        }
+
+        // Check AI/remote badge slots
+        for (int i = 0; i < 3; i++) {
+            if (targetName.equals(aiBadgeLabels[i].getText())) {
+                aiBadges[i].getStyleClass().add("badge-active-turn");
+                return;
+            }
+        }
+    }
+
+    /**
      * Resolves a pending player action manually (used on timeout fallback).
      * Shows a brief result banner about the auto-action.
      *
