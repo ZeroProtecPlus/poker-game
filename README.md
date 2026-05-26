@@ -1,4 +1,4 @@
-![PokerMao Header](docs/banner.png)
+![PokerMao Header](src/main/resources/sprites/Star_Game.png)
 
 # PokerMao
 
