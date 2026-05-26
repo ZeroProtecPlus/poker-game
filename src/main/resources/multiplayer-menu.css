@@ -1,20 +1,10 @@
 /* ============================================================
    Multiplayer Menu — Royal Poker
-   Solid dark background, no sprites, casino buttons
+   Buttons over Star_Game.png background (no solid panel)
    Hierarchy: .multiplayer-* namespace
    ============================================================ */
 
-/* ---- Solid dialog panel ---- */
-.multiplayer-panel {
-    -fx-background-color: #060E0A;
-    -fx-background-radius: 16;
-    -fx-border-color: #c9a84c;
-    -fx-border-width: 2;
-    -fx-border-radius: 16;
-    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.7), 30, 0.5, 0, 6);
-}
-
-/* ---- Title ---- */
+/* ── Title ────────────────────────────────────────────────────── */
 .multiplayer-title {
     -fx-font-family: -fx-font-heading;
     -fx-font-size: 36px;

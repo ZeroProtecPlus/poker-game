@@ -1,13 +1,15 @@
 package view.fx;
 
-import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.AnchorPane;
+import javafx.scene.layout.Background;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
@@ -25,26 +27,26 @@ import java.util.concurrent.CompletableFuture;
  * after this dialog returns, keeping concerns separated.
  *
  * Layout:
- *   UNDECORATED Stage + APPLICATION_MODAL
- *   Solid dark canvas (no background image)
+ *   Full-canvas Star_Game.png background (same source sprite as StartMenu)
  *   FxMenuChrome title bar "Unirse a partida"
- *   Centered .lan-dialog-panel panel containing:
+ *   Transparent overlay with minimal card containing:
  *     - .modal-title "CONECTAR A PARTIDA LAN"
  *     - 2 TextFields: IP (default 127.0.0.1), Puerto (default 9876)
  *     - .lan-error-label for inline validation errors
  *     - "CONECTAR" (lan-btn-primary) / "VOLVER" (lan-btn-cancel) buttons
- *   CSS: fonts.css + modal.css + menu-chrome.css
+ *   CSS: fonts.css + multiplayer-menu.css + menu-chrome.css
  */
 public final class ConnectDialog {
 
     public record ConnectInfo(String host, int port) {}
 
+    private static final String BG_PATH = "/sprites/Star_Game.png";
     private static final String FONTS_CSS_PATH = "/fonts.css";
-    private static final String MODAL_CSS_PATH = "/modal.css";
+    private static final String CSS_PATH = "/multiplayer-menu.css";
     private static final String CHROME_CSS_PATH = "/menu-chrome.css";
 
-    private static final double DISPLAY_W = MenuLayoutConstants.DESIGN_WIDTH;
-    private static final double DISPLAY_H = MenuLayoutConstants.DESIGN_HEIGHT;
+    private static final double DISPLAY_W = StartMenuLayoutConstants.CANVAS_WIDTH;
+    private static final double DISPLAY_H = StartMenuLayoutConstants.CANVAS_HEIGHT;
 
     private ConnectDialog() {}
 
@@ -69,32 +71,35 @@ public final class ConnectDialog {
         stage.initModality(Modality.APPLICATION_MODAL);
         stage.setTitle("Royal Poker — Conectar");
 
-        // ── Root canvas (solid dark, no background image) ──────────────────
+        // ── Root canvas with Star_Game.png background ────────────────────────
         AnchorPane canvas = new AnchorPane();
-        canvas.setStyle("-fx-background-color: #060E0A;");
         canvas.setPrefSize(DISPLAY_W, DISPLAY_H);
         canvas.setMinSize(DISPLAY_W, DISPLAY_H);
         canvas.setMaxSize(DISPLAY_W, DISPLAY_H);
+
+        Image backgroundImage = MenuImages.load(BG_PATH);
+        ImageView backgroundView = MenuImages.nativeSizedView(backgroundImage, "start-menu-base-image");
+        backgroundView.setMouseTransparent(true);
+        AnchorPane.setTopAnchor(backgroundView, 0.0);
+        AnchorPane.setLeftAnchor(backgroundView, 0.0);
+        canvas.getChildren().add(backgroundView);
 
         // ── Chrome title bar ─────────────────────────────────────────────────
         FxMenuChrome.apply(stage, canvas, "Unirse a partida");
 
         // ── Centered content via StackPane ───────────────────────────────────
         StackPane centerWrapper = new StackPane();
-        centerWrapper.setPrefSize(DISPLAY_W, DISPLAY_H);
-        centerWrapper.setMinSize(DISPLAY_W, DISPLAY_H);
-        centerWrapper.setMaxSize(DISPLAY_W, DISPLAY_H);
-        centerWrapper.setAlignment(Pos.CENTER);
+        centerWrapper.setPickOnBounds(false);
         AnchorPane.setTopAnchor(centerWrapper, 0.0);
         AnchorPane.setLeftAnchor(centerWrapper, 0.0);
+        AnchorPane.setBottomAnchor(centerWrapper, 0.0);
+        AnchorPane.setRightAnchor(centerWrapper, 0.0);
         canvas.getChildren().add(centerWrapper);
 
-        // ── Solid LAN dialog panel (.lan-dialog-panel) ──────────────────────
+        // ── Transparent card — no background panel, floats on sprite ─────────
         VBox card = new VBox(16);
-        card.getStyleClass().add("lan-dialog-panel");
         card.setAlignment(Pos.CENTER);
         card.setMaxWidth(500);
-        card.setPadding(new Insets(36, 48, 36, 48));
 
         // ── Title ────────────────────────────────────────────────────────────
         Label title = new Label("CONECTAR A PARTIDA LAN");
@@ -127,7 +132,6 @@ public final class ConnectDialog {
         // ── Buttons (lan-btn-primary / lan-btn-cancel) ──────────────────────
         HBox buttonBar = new HBox(24);
         buttonBar.setAlignment(Pos.CENTER);
-        buttonBar.setPadding(new Insets(8, 0, 0, 0));
 
         Button connectBtn = new Button("CONECTAR");
         connectBtn.getStyleClass().add("lan-btn-primary");
@@ -193,7 +197,11 @@ public final class ConnectDialog {
         ipField.textProperty().addListener((obs, old, val) -> hideError(errorLabel));
 
         // ── Scene ────────────────────────────────────────────────────────────
-        Scene scene = new Scene(canvas, DISPLAY_W, DISPLAY_H, Color.BLACK);
+        StackPane root = new StackPane(canvas);
+        root.setAlignment(Pos.CENTER);
+        root.setBackground(Background.EMPTY);
+
+        Scene scene = new Scene(root, DISPLAY_W, DISPLAY_H, Color.BLACK);
         loadStyles(scene);
 
         scene.setOnKeyPressed(event -> {
@@ -212,8 +220,8 @@ public final class ConnectDialog {
     private static void loadStyles(Scene scene) {
         var fontsCss = ConnectDialog.class.getResource(FONTS_CSS_PATH);
         if (fontsCss != null) scene.getStylesheets().add(fontsCss.toExternalForm());
-        var modalCss = ConnectDialog.class.getResource(MODAL_CSS_PATH);
-        if (modalCss != null) scene.getStylesheets().add(modalCss.toExternalForm());
+        var css = ConnectDialog.class.getResource(CSS_PATH);
+        if (css != null) scene.getStylesheets().add(css.toExternalForm());
         var chromeCss = ConnectDialog.class.getResource(CHROME_CSS_PATH);
         if (chromeCss != null) scene.getStylesheets().add(chromeCss.toExternalForm());
     }

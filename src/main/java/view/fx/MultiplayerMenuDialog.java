@@ -1,12 +1,14 @@
 package view.fx;
 
-import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.AnchorPane;
+import javafx.scene.layout.Background;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
@@ -18,7 +20,7 @@ import java.util.concurrent.CompletableFuture;
 
 /**
  * Second step after Multiplayer: host or join (LAN flow wired from {@link Main}).
- * Clean dark background, no background image, solid casino buttons.
+ * Full-canvas Star_Game.png background (source sprite), clean overlay for buttons.
  */
 public final class MultiplayerMenuDialog {
 
@@ -29,11 +31,12 @@ public final class MultiplayerMenuDialog {
         CLOSED
     }
 
+    private static final String BG_PATH = "/sprites/Star_Game.png";
     private static final String FONTS_CSS_PATH = "/fonts.css";
     private static final String CSS_PATH = "/multiplayer-menu.css";
     private static final String CHROME_CSS_PATH = "/menu-chrome.css";
-    private static final double DESIGN_WIDTH = MenuLayoutConstants.DESIGN_WIDTH;
-    private static final double DESIGN_HEIGHT = MenuLayoutConstants.DESIGN_HEIGHT;
+    private static final double W = StartMenuLayoutConstants.CANVAS_WIDTH;
+    private static final double H = StartMenuLayoutConstants.CANVAS_HEIGHT;
 
     private MultiplayerMenuDialog() {}
 
@@ -51,6 +54,20 @@ public final class MultiplayerMenuDialog {
         stage.initModality(Modality.APPLICATION_MODAL);
         stage.setTitle("Multijugador");
 
+        // ── Full-canvas Star_Game.png background (same source as StartMenu) ──
+        AnchorPane canvas = new AnchorPane();
+        canvas.setPrefSize(W, H);
+        canvas.setMinSize(W, H);
+        canvas.setMaxSize(W, H);
+
+        Image backgroundImage = MenuImages.load(BG_PATH);
+        ImageView backgroundView = MenuImages.nativeSizedView(backgroundImage, "start-menu-base-image");
+        backgroundView.setMouseTransparent(true);
+        AnchorPane.setTopAnchor(backgroundView, 0.0);
+        AnchorPane.setLeftAnchor(backgroundView, 0.0);
+        canvas.getChildren().add(backgroundView);
+
+        // ── Overlay content — floating on the sprite background ──────────────
         Label title = new Label("Multijugador LAN");
         title.getStyleClass().add("multiplayer-title");
 
@@ -66,18 +83,10 @@ public final class MultiplayerMenuDialog {
         backBtn.getStyleClass().addAll("multiplayer-btn", "multiplayer-btn-back");
         backBtn.setOnAction(event -> complete(stage, future, Choice.BACK));
 
+        // Transparent card — no background panel, buttons float directly on sprite
         VBox panel = new VBox(18, title, hostBtn, joinBtn, backBtn);
         panel.setAlignment(Pos.CENTER);
-        panel.setPadding(new Insets(40));
         panel.setMaxWidth(560);
-        panel.getStyleClass().add("multiplayer-panel");
-
-        // Solid dark background canvas — no background image
-        AnchorPane canvas = new AnchorPane();
-        canvas.setStyle("-fx-background-color: #060E0A;");
-        canvas.setPrefSize(DESIGN_WIDTH, DESIGN_HEIGHT);
-        canvas.setMinSize(DESIGN_WIDTH, DESIGN_HEIGHT);
-        canvas.setMaxSize(DESIGN_WIDTH, DESIGN_HEIGHT);
 
         StackPane panelStack = new StackPane(panel);
         panelStack.setPickOnBounds(false);
@@ -89,7 +98,11 @@ public final class MultiplayerMenuDialog {
 
         FxMenuChrome.apply(stage, canvas, "Multijugador");
 
-        Scene scene = new Scene(canvas, DESIGN_WIDTH, DESIGN_HEIGHT, Color.BLACK);
+        StackPane root = new StackPane(canvas);
+        root.setAlignment(Pos.CENTER);
+        root.setBackground(Background.EMPTY);
+
+        Scene scene = new Scene(root, W, H, Color.BLACK);
         var fontsCss = MultiplayerMenuDialog.class.getResource(FONTS_CSS_PATH);
         if (fontsCss != null) scene.getStylesheets().add(fontsCss.toExternalForm());
         var css = MultiplayerMenuDialog.class.getResource(CSS_PATH);
