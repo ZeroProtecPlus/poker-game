@@ -124,24 +124,34 @@ public final class BackgroundMusicPlayer {
     private void playCurrentTrack() {
         if (!playing) return;
 
-        var url = resolveTrack(currentTrackIndex);
-        if (url == null) {
-            log("Cannot load track: " + TRACKS[currentTrackIndex]);
-            advanceToNextTrack();
-            return;
+        // Try each track once; stop if none can be loaded.
+        // (Must NOT call advanceToNextTrack() → playCurrentTrack() here —
+        //  that recursion overflows the stack when every track fails.)
+        for (int attempt = 0; attempt < TRACKS.length; attempt++) {
+            var url = resolveTrack(currentTrackIndex);
+            if (url == null) {
+                log("Cannot load track: " + TRACKS[currentTrackIndex]);
+                currentTrackIndex = (currentTrackIndex + 1) % TRACKS.length;
+                continue;
+            }
+
+            var media = new Media(url.toString());
+            var player = new MediaPlayer(media);
+            currentPlayer = player;
+            player.setVolume(targetVolume);
+
+            player.setOnReady(() -> scheduleCrossFade(media, player, currentTrackIndex));
+            player.setOnError(() -> {
+                log("Error playing: " + TRACKS[currentTrackIndex]);
+                advanceToNextTrack();
+            });
+            player.play();
+            return;   // track accepted — exit loop
         }
 
-        var media = new Media(url.toString());
-        var player = new MediaPlayer(media);
-        currentPlayer = player;
-        player.setVolume(targetVolume);
-
-        player.setOnReady(() -> scheduleCrossFade(media, player, currentTrackIndex));
-        player.setOnError(() -> {
-            log("Error playing: " + TRACKS[currentTrackIndex]);
-            advanceToNextTrack();
-        });
-        player.play();
+        // All tracks failed — disable music to avoid infinite retries
+        playing = false;
+        log("All tracks failed to load. Background music disabled.");
     }
 
     private void scheduleCrossFade(Media media, MediaPlayer player, int trackIndex) {

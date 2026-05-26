@@ -5,6 +5,7 @@ import javafx.application.Platform;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Supplier;
 
 public final class JavaFxBootstrap {
@@ -50,7 +51,12 @@ public final class JavaFxBootstrap {
             }
         });
         try {
-            return future.get(5, TimeUnit.MINUTES);
+            return future.get(30, TimeUnit.SECONDS);
+        } catch (TimeoutException ex) {
+            throw new IllegalStateException(
+                "JavaFX task timed out after 30 s — the FX thread may be blocked or dead. "
+                + "Check BackgroundMusicPlayer or other Platform.runLater callbacks for stack overflows.",
+                ex);
         } catch (Exception ex) {
             throw new IllegalStateException("JavaFX task failed", ex);
         }
