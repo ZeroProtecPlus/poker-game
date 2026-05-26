@@ -18,28 +18,41 @@ public class Main {
 
     public static void main(String[] args) {
         if (args.length > 0 && "--lan-host".equals(args[0])) {
-            runOnGameThread(() -> {
+            Thread gameThread = runOnGameThread(() -> {
                 try {
                     runLanHost(args);
                 } catch (Exception ex) {
                     throw new IllegalStateException(ex.getMessage(), ex);
                 }
             });
+            try {
+                gameThread.join();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            Platform.exit();
             return;
         }
         if (args.length > 0 && "--lan-client".equals(args[0])) {
-            runOnGameThread(() -> {
+            Thread gameThread = runOnGameThread(() -> {
                 try {
                     runLanClient();
                 } catch (Exception ex) {
                     throw new IllegalStateException(ex.getMessage(), ex);
                 }
             });
+            try {
+                gameThread.join();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            Platform.exit();
             return;
         }
 
         JavaFxBootstrap.ensureStarted();
         runMenuLoop();
+        Platform.exit();
     }
 
     private static void runMenuLoop() {
