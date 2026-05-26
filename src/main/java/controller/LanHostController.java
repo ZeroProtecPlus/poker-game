@@ -33,6 +33,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.TimeoutException;
 
 public class LanHostController {
@@ -166,6 +167,7 @@ public class LanHostController {
         }
 
         if (exitRequested) {
+            pendingActions.cancelAll();
             table.hideFrame();
             throw new IllegalStateException("Juego cancelado");
         }
@@ -208,7 +210,10 @@ public class LanHostController {
 
         while (hostUser.getNumbChips() > 0 && !exitRequested) {
             playOneHand();
-            if (exitRequested) break;
+            if (exitRequested) {
+                pendingActions.cancelAll();
+                break;
+            }
             boolean continuar = table.askPlayAgain(hostUser.getNumbChips());
             if (!continuar) {
                 savePlayerProfile(hostUser);
@@ -380,6 +385,9 @@ public class LanHostController {
                     } catch (InterruptedException ex) {
                         Thread.currentThread().interrupt();
                         // Skip this player — don't auto-fold
+                        continue;
+                    } catch (CancellationException ex) {
+                        // Pending action was cancelled (e.g. on window close)
                         continue;
                     } catch (TimeoutException ex) {
                         // Skip this player — don't auto-fold, stay in hand
