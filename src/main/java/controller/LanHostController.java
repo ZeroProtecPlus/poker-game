@@ -74,6 +74,7 @@ public class LanHostController {
         this.gameRepository = new SqliteGameRepository(bootstrapper.getConnectionFactory());
 
         session.setPendingActionRegistry(pendingActions);
+        session.setChipResolver(this::resolveChipsForName);
         session.addDisconnectListener(this::onRemoteDisconnect);
         session.addLobbyListener(this::refreshHostLobbyHint);
         server.start();
@@ -141,7 +142,8 @@ public class LanHostController {
         while (session.lobbyPlayers().size() < LanConstants.MAX_HUMAN_PLAYERS && !exitRequested) {
             List<GameTable.LanSeatInfo> seats = new ArrayList<>();
             for (ConnectedClient client : session.getClients()) {
-                seats.add(new GameTable.LanSeatInfo(client.getDisplayName(), hostUser.getNumbChips()));
+                int clientChips = resolveChipsForName(client.getDisplayName());
+                seats.add(new GameTable.LanSeatInfo(client.getDisplayName(), clientChips));
             }
             table.updateLanLobbySeats(seats);
 
@@ -176,7 +178,8 @@ public class LanHostController {
         // Update seats one final time to show all players
         List<GameTable.LanSeatInfo> finalSeats = new ArrayList<>();
         for (ConnectedClient client : session.getClients()) {
-            finalSeats.add(new GameTable.LanSeatInfo(client.getDisplayName(), hostUser.getNumbChips()));
+            int clientChips = resolveChipsForName(client.getDisplayName());
+            finalSeats.add(new GameTable.LanSeatInfo(client.getDisplayName(), clientChips));
         }
         table.updateLanLobbySeats(finalSeats);
 
@@ -205,7 +208,8 @@ public class LanHostController {
     private void runLanGame() throws IOException {
         List<User> remotes = new ArrayList<>();
         for (HostSession.UserSeat seat : session.buildRemoteSeats()) {
-            remotes.add(new User(seat.playerId(), seat.displayName()));
+            User remote = loadOrCreateProfile(new User(seat.playerId(), seat.displayName()));
+            remotes.add(remote);
         }
         pokerGame = new PokerGame(hostUser, remotes, true);
 
@@ -737,6 +741,12 @@ public class LanHostController {
             table.updateRemoteBadge(aiCount + i, remote.getName(), remote.getChips(),
                 roleAbbreviation(remote.getPlayerRole()), remote.isFolded());
         }
+    }
+
+    /** Resolves the saved chip count for a player by name. Defaults to 10000 on error. */
+    private int resolveChipsForName(String displayName) {
+        User profile = loadOrCreateProfile(new User(displayName));
+        return profile.getNumbChips();
     }
 
     private static String roleAbbreviation(PlayerRole role) {

@@ -22,6 +22,7 @@ public final class JoinPayloads {
         if (decision.isAccepted()) {
             json.put("playerId", decision.getPlayerId());
             json.put("displayName", decision.getDisplayName());
+            json.put("startingChips", decision.getStartingChips());
         } else {
             json.put("reasonCode", decision.getReasonCode() != null ? decision.getReasonCode().name() : null);
             json.put("detail", decision.getDetail());
@@ -31,7 +32,8 @@ public final class JoinPayloads {
 
     public static JoinDecision joinDecisionFromJson(JSONObject json) {
         if (json.getBoolean("accepted")) {
-            return JoinDecision.accepted(json.getString("playerId"), json.getString("displayName"));
+            int chips = json.optInt("startingChips", 10000);
+            return JoinDecision.accepted(json.getString("playerId"), json.getString("displayName"), chips);
         }
         String reason = json.optString("reasonCode", RejectReason.INTERNAL_ERROR.name());
         return JoinDecision.rejected(RejectReason.valueOf(reason), json.optString("detail", ""));

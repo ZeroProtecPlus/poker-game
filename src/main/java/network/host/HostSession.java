@@ -20,6 +20,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Function;
 
 public class HostSession {
 
@@ -34,6 +35,7 @@ public class HostSession {
     private String hostPlayerId;
     private String hostDisplayName;
     private PendingActionRegistry pendingActions;
+    private Function<String, Integer> chipResolver = name -> 10000;
 
     public HostSession() {
         SessionNameRegistry registry = new SessionNameRegistry();
@@ -96,6 +98,7 @@ public class HostSession {
         }
 
         String normalized = nameValidator.normalize(decision.getDisplayName());
+        int chips = chipResolver.apply(decision.getDisplayName());
         ConnectedClient client = new ConnectedClient(
             socket,
             decision.getPlayerId(),
@@ -103,8 +106,9 @@ public class HostSession {
             normalized
         );
         clientsById.put(decision.getPlayerId(), client);
+        JoinDecision withChips = JoinDecision.accepted(decision.getPlayerId(), decision.getDisplayName(), chips);
         try {
-            client.send(new LanEnvelope(LanMessageType.JOIN_RESPONSE, JoinPayloads.joinResponse(decision)));
+            client.send(new LanEnvelope(LanMessageType.JOIN_RESPONSE, JoinPayloads.joinResponse(withChips)));
         } catch (IOException e) {
             // Clean up partial registration if the response fails to send
             clientsById.remove(decision.getPlayerId());
@@ -119,6 +123,10 @@ public class HostSession {
 
     public void setPendingActionRegistry(PendingActionRegistry pendingActions) {
         this.pendingActions = pendingActions;
+    }
+
+    public void setChipResolver(Function<String, Integer> chipResolver) {
+        this.chipResolver = chipResolver;
     }
 
     public void addDisconnectListener(Runnable listener) {

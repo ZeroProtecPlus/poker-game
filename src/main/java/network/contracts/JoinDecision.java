@@ -6,6 +6,7 @@ public class JoinDecision {
     private final String displayName;
     private final RejectReason reasonCode;
     private final String detail;
+    private final int startingChips;
 
     public JoinDecision(
         boolean accepted,
@@ -14,15 +15,31 @@ public class JoinDecision {
         RejectReason reasonCode,
         String detail
     ) {
+        this(accepted, playerId, displayName, reasonCode, detail, 10000);
+    }
+
+    public JoinDecision(
+        boolean accepted,
+        String playerId,
+        String displayName,
+        RejectReason reasonCode,
+        String detail,
+        int startingChips
+    ) {
         this.accepted = accepted;
         this.playerId = playerId;
         this.displayName = displayName;
         this.reasonCode = reasonCode;
         this.detail = detail;
+        this.startingChips = startingChips;
     }
 
     public static JoinDecision accepted(String playerId, String displayName) {
-        return new JoinDecision(true, playerId, displayName, null, null);
+        return accepted(playerId, displayName, 10000);
+    }
+
+    public static JoinDecision accepted(String playerId, String displayName, int startingChips) {
+        return new JoinDecision(true, playerId, displayName, null, null, startingChips);
     }
 
     public static JoinDecision rejected(RejectReason reasonCode, String detail) {
@@ -47,5 +64,9 @@ public class JoinDecision {
 
     public String getDetail() {
         return detail;
+    }
+
+    public int getStartingChips() {
+        return startingChips;
     }
 }

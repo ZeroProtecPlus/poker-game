@@ -40,6 +40,7 @@ public class LanClientController implements GameClient.Listener {
     private String lastLobbyRoster = "";
     private GameTable table;
     private String localDisplayName;
+    private int startingChips = 10000;
 
     /** Accumulated action log — built from GAME_STATE changes. */
     private final List<String> accumulatedLog = new ArrayList<>();
@@ -79,7 +80,8 @@ public class LanClientController implements GameClient.Listener {
 
         localPlayerId = decision.getPlayerId();
         localDisplayName = decision.getDisplayName();
-        table.showUserChipsSync(decision.getDisplayName(), 10000, false);
+        startingChips = decision.getStartingChips();
+        table.showUserChipsSync(decision.getDisplayName(), startingChips, false);
         try {
             waitForGameStart();
             runClientGameLoop();
@@ -94,7 +96,7 @@ public class LanClientController implements GameClient.Listener {
 
     private void waitForGameStart() {
         // GameTable already created in run() — set up lobby view
-        table.showLanLobby(localDisplayName, 10000);
+        table.showLanLobby(localDisplayName, startingChips);
 
         while (!gameRunning && !exitRequested) {
             try {
@@ -195,7 +197,7 @@ public class LanClientController implements GameClient.Listener {
                     for (var player : players) {
                         // Skip ourselves — we're already shown in the player badge
                         if (!localPlayerId.equals(player.playerId())) {
-                            seats.add(new GameTable.LanSeatInfo(player.displayName(), 10000));
+                            seats.add(new GameTable.LanSeatInfo(player.displayName(), startingChips));
                         }
                     }
                     if (table != null) {
