@@ -120,7 +120,7 @@ public final class ResumeGameDialog {
         card.getChildren().addAll(chipsLabel, titleLabel, messageLabel, buttonBox);
         root.getChildren().add(card);
 
-        Scene scene = new Scene(root, DISPLAY_W, DISPLAY_H, Color.rgb(6, 14, 10));
+        Scene scene = new Scene(root, DISPLAY_W, DISPLAY_H, Color.TRANSPARENT);
         scene.setOnKeyPressed(event -> {
             if (event.getCode() == KeyCode.ENTER) {
                 future.complete(true);
