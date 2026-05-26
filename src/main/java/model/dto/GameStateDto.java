@@ -21,6 +21,7 @@ public class GameStateDto {
     private int dealerIndex;
     private BettingRound.Phase currentPhase;
     private List<PlayerStateDto> players = new ArrayList<>();
+    private List<String> recentActions = new ArrayList<>();
     private long timestamp;
 
     public GameStateDto() {
@@ -97,6 +98,14 @@ public class GameStateDto {
 
     public void setPlayers(List<PlayerStateDto> players) {
         this.players = players != null ? players : new ArrayList<>();
+    }
+
+    public List<String> getRecentActions() {
+        return recentActions;
+    }
+
+    public void setRecentActions(List<String> recentActions) {
+        this.recentActions = recentActions != null ? recentActions : new ArrayList<>();
     }
 
     public long getTimestamp() {

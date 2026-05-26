@@ -55,6 +55,9 @@ public class LanHostController {
 
     private volatile boolean exitRequested;
 
+    /** Accumulated action log entries for the current betting phase. */
+    private List<String> recentActions = new ArrayList<>();
+
     public LanHostController(int port) throws IOException {
         this.session = new HostSession();
         this.server = new HostServer(port, session, this::onPlayerAction);
@@ -284,7 +287,7 @@ public class LanHostController {
 
         // Accumulated action log — keep entries across loop iterations so the
         // player sees the full betting sequence, not just the last batch.
-        List<String> accumulatedLog = new ArrayList<>();
+        recentActions = new ArrayList<>();
 
         while (true) {
             Map<String, PokerGame.HumanActionEntry> actions = collectHumanActions(round, phase);
@@ -294,8 +297,8 @@ public class LanHostController {
                 phase,
                 actions
             );
-            accumulatedLog.addAll(result.log);
-            table.setActionLog(accumulatedLog);
+            recentActions.addAll(result.log);
+            table.setActionLog(recentActions);
             table.awaitLastAnimation(table.getUiSyncTimeoutMs());
 
             if (result.highBet > round.getCurrentBet()) {
@@ -614,6 +617,7 @@ public class LanHostController {
         state.setRemainingDeck(pokerGame.getRemainingDeck());
         state.setDealerIndex(pokerGame.getDealerIndex());
         state.setCurrentPhase(phase);
+        state.setRecentActions(new ArrayList<>(recentActions));
         int totalHumanChips = hostUser.getNumbChips();
         for (User remote : pokerGame.getLanHumanPlayers()) {
             totalHumanChips += remote.getNumbChips();

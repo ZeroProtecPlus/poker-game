@@ -245,9 +245,19 @@ public class LanClientController implements GameClient.Listener {
             }
         }
 
-        // ── Build action log from state changes ────────────────────────────────
-        if (previousState != null) {
-            detectStateChanges(previousState, state);
+        // ── Build action log from state's recent actions ─────────────────────
+        List<String> stateActions = state.getRecentActions();
+        if (stateActions != null && !stateActions.isEmpty()) {
+            // Only replace if different — avoid flicker on repeated identical state
+            if (!stateActions.equals(accumulatedLog)) {
+                accumulatedLog.clear();
+                // Truncate to max display lines
+                int max = ACTION_LOG_MAX;
+                int start = Math.max(0, stateActions.size() - max);
+                for (int i = start; i < stateActions.size(); i++) {
+                    accumulatedLog.add(stateActions.get(i));
+                }
+            }
         }
         previousState = state;
         table.setActionLog(new ArrayList<>(accumulatedLog));
