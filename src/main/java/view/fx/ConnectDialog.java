@@ -40,7 +40,7 @@ public final class ConnectDialog {
 
     public record ConnectInfo(String host, int port) {}
 
-    private static final String BG_PATH = "/menu-bg.png";
+    private static final String BG_PATH = "/sprites/Star_Game.png";
     private static final String FONTS_CSS_PATH = "/fonts.css";
     private static final String MODAL_CSS_PATH = "/modal.css";
     private static final String CHROME_CSS_PATH = "/menu-chrome.css";
