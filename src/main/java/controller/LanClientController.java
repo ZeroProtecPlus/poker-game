@@ -34,6 +34,7 @@ public class LanClientController implements GameClient.Listener {
     private volatile GameStateDto previousState;
     private volatile String activePlayerId;
     private volatile boolean gameRunning;
+    private volatile boolean exitRequested;
     private volatile long lastActedStateSeq = -1;
     private String lastLobbyRoster = "";
     private GameTable table;
@@ -53,6 +54,7 @@ public class LanClientController implements GameClient.Listener {
         // Create GameTable early so the player sees it during connection
         table = GameTable.create();
         table.awaitUiReady(5000);
+        table.setOnExitConfirmed(() -> exitRequested = true);
         table.show();
 
         JoinDecision decision = null;
@@ -92,13 +94,17 @@ public class LanClientController implements GameClient.Listener {
         // GameTable already created in run() — set up lobby view
         table.showLanLobby(localDisplayName, 10000);
 
-        while (!gameRunning) {
+        while (!gameRunning && !exitRequested) {
             try {
                 Thread.sleep(200);
             } catch (InterruptedException ex) {
                 Thread.currentThread().interrupt();
-                throw new IllegalStateException("Espera de inicio interrumpida");
+                break;
             }
+        }
+
+        if (exitRequested && !gameRunning) {
+            throw new IllegalStateException("Juego cancelado por el usuario");
         }
 
         // Transition from lobby to game — clear lobby placeholders and log
@@ -109,7 +115,7 @@ public class LanClientController implements GameClient.Listener {
     }
 
     private void runClientGameLoop() throws IOException {
-        while (gameRunning) {
+        while (gameRunning && !exitRequested) {
             long seq = lastStateSeq.get();
             GameStateDto state = latestState;
             if (state != null

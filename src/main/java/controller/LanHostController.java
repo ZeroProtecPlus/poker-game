@@ -87,25 +87,23 @@ public class LanHostController {
     }
 
     public void run() {
-        // Create the JavaFX GameTable first — it serves both lobby and game rendering,
-        // but keep it hidden until the host registers their name (Bug 4 fix).
         table = GameTable.create();
         table.awaitUiReady(5000);
         table.setOnExitConfirmed(() -> exitRequested = true);
 
         registerHost();
-
-        // NOW show the table — name registration is complete
         table.show();
         table.setStatusConnected(true);
         table.setStatusPhase("Lobby");
 
-        runLobby();
         try {
-            session.markGameStarted();
-            runLanGame();
-        } catch (IOException ex) {
-            throw new IllegalStateException("Error de red en partida LAN: " + ex.getMessage(), ex);
+            runLobby();
+            try {
+                session.markGameStarted();
+                runLanGame();
+            } catch (IOException ex) {
+                throw new IllegalStateException("Error de red en partida LAN: " + ex.getMessage(), ex);
+            }
         } finally {
             table.requestGracefulShutdown();
             server.close();
