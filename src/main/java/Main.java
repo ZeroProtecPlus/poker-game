@@ -51,6 +51,7 @@ public class Main {
         }
 
         JavaFxBootstrap.ensureStarted();
+        audio.BackgroundMusicPlayer.getInstance().start();
         runMenuLoop();
         Platform.exit();
     }
