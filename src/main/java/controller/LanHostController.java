@@ -74,7 +74,9 @@ public class LanHostController {
         this.gameRepository = new SqliteGameRepository(bootstrapper.getConnectionFactory());
 
         session.setPendingActionRegistry(pendingActions);
-        session.setChipResolver(this::resolveChipsForName);
+        // No chipResolver — multiplayer always uses fresh starting chips.
+        // HostSession's default resolver (name -> 10000) already matches
+        // LanConstants.MULTIPLAYER_STARTING_CHIPS.
         session.addDisconnectListener(this::onRemoteDisconnect);
         session.addLobbyListener(this::refreshHostLobbyHint);
         server.start();
@@ -121,9 +123,9 @@ public class LanHostController {
             }
             JoinDecision decision = session.registerHostPlayer(name);
             if (decision.isAccepted()) {
-                hostUser = loadOrCreateProfile(
-                    new User(decision.getPlayerId(), decision.getDisplayName())
-                );
+                // Multiplayer: fresh starting chips, NOT loaded from DB
+                hostUser = new User(decision.getPlayerId(), decision.getDisplayName());
+                hostUser.setChips(LanConstants.MULTIPLAYER_STARTING_CHIPS);
                 table.showUserChipsSync(hostUser.getName(), hostUser.getNumbChips(), false);
                 return;
             }
@@ -136,14 +138,13 @@ public class LanHostController {
 
     private void runLobby() {
         // Show the player name in the GameTable already created in run()
-        table.showLanLobby(hostUser.getName(), hostUser.getNumbChips());
+        table.showLanLobby(hostUser.getName(), LanConstants.MULTIPLAYER_STARTING_CHIPS);
 
         // Wait until we have MAX_HUMAN_PLAYERS total (host + remotes)
         while (session.lobbyPlayers().size() < LanConstants.MAX_HUMAN_PLAYERS && !exitRequested) {
             List<GameTable.LanSeatInfo> seats = new ArrayList<>();
             for (ConnectedClient client : session.getClients()) {
-                int clientChips = resolveChipsForName(client.getDisplayName());
-                seats.add(new GameTable.LanSeatInfo(client.getDisplayName(), clientChips));
+                seats.add(new GameTable.LanSeatInfo(client.getDisplayName(), LanConstants.MULTIPLAYER_STARTING_CHIPS));
             }
             table.updateLanLobbySeats(seats);
 
@@ -178,8 +179,7 @@ public class LanHostController {
         // Update seats one final time to show all players
         List<GameTable.LanSeatInfo> finalSeats = new ArrayList<>();
         for (ConnectedClient client : session.getClients()) {
-            int clientChips = resolveChipsForName(client.getDisplayName());
-            finalSeats.add(new GameTable.LanSeatInfo(client.getDisplayName(), clientChips));
+            finalSeats.add(new GameTable.LanSeatInfo(client.getDisplayName(), LanConstants.MULTIPLAYER_STARTING_CHIPS));
         }
         table.updateLanLobbySeats(finalSeats);
 
@@ -208,7 +208,9 @@ public class LanHostController {
     private void runLanGame() throws IOException {
         List<User> remotes = new ArrayList<>();
         for (HostSession.UserSeat seat : session.buildRemoteSeats()) {
-            User remote = loadOrCreateProfile(new User(seat.playerId(), seat.displayName()));
+            // Multiplayer: fresh chips, NOT loaded from DB
+            User remote = new User(seat.playerId(), seat.displayName());
+            remote.setChips(LanConstants.MULTIPLAYER_STARTING_CHIPS);
             remotes.add(remote);
         }
         pokerGame = new PokerGame(hostUser, remotes, true);
@@ -221,14 +223,13 @@ public class LanHostController {
             }
             boolean continuar = table.askPlayAgain(hostUser.getNumbChips());
             if (!continuar) {
-                savePlayerProfile(hostUser);
                 broadcastGameOver(hostUser.getNumbChips());
                 table.requestGracefulShutdown();
                 return;
             }
         }
         if (exitRequested) {
-            savePlayerProfile(hostUser);
+            // exit requested — no DB save for multiplayer chips
         } else {
             // Host bust — broadcast game over to all clients
             broadcastGameOver(hostUser.getNumbChips());
@@ -295,7 +296,6 @@ public class LanHostController {
 
         endRound();
         saveGameState(BettingRound.Phase.RIVER);
-        savePlayerProfile(hostUser);
     }
 
     private void runLanBettingPhase(BettingRound.Phase phase) throws IOException {
@@ -702,31 +702,6 @@ public class LanHostController {
         }
     }
 
-    private User loadOrCreateProfile(User sessionUser) {
-        try {
-            Optional<User> existing = playerRepository.findByName(sessionUser.getName());
-            if (existing.isPresent()) {
-                User profile = existing.get();
-                User linked = new User(profile.getPlayerId(), profile.getName());
-                linked.setChips(profile.getChips());
-                return linked;
-            }
-            playerRepository.save(sessionUser);
-            return sessionUser;
-        } catch (RepositoryException e) {
-            System.err.println("Warning: failed to load profile: " + rootCauseMessage(e));
-            return sessionUser;
-        }
-    }
-
-    private void savePlayerProfile(User user) {
-        try {
-            playerRepository.save(user);
-        } catch (RepositoryException e) {
-            System.err.println("Warning: failed to save profile: " + rootCauseMessage(e));
-        }
-    }
-
     private static String rootCauseMessage(RepositoryException e) {
         Throwable cause = e.getCause();
         return cause != null && cause.getMessage() != null ? cause.getMessage() : e.getMessage();
@@ -742,12 +717,6 @@ public class LanHostController {
             table.updateRemoteBadge(aiCount + i, remote.getName(), remote.getChips(),
                 roleAbbreviation(remote.getPlayerRole()), remote.isFolded());
         }
-    }
-
-    /** Resolves the saved chip count for a player by name. Defaults to 10000 on error. */
-    private int resolveChipsForName(String displayName) {
-        User profile = loadOrCreateProfile(new User(displayName));
-        return profile.getNumbChips();
     }
 
     private static String roleAbbreviation(PlayerRole role) {
