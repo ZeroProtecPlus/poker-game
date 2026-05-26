@@ -69,7 +69,7 @@ public class Main {
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
                     }
-                    return;
+                    // Continue loop — show StartMenu again instead of exiting.
                 }
                 case MULTIPLAYER -> runMultiplayerSubmenu();
                 case SETTINGS -> SettingsDialog.showAndWaitBlocking();
