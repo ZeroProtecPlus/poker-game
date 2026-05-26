@@ -51,7 +51,12 @@ public class Main {
         }
 
         JavaFxBootstrap.ensureStarted();
-        audio.BackgroundMusicPlayer.getInstance().start();
+        // Defer music startup so the menu renders before large MP3 files
+        // are loaded on the FX thread (avoids 5-min timeout).
+        new Thread(() -> {
+            try { Thread.sleep(1500); } catch (InterruptedException e) { return; }
+            audio.BackgroundMusicPlayer.getInstance().start();
+        }, "music-delayed-start").start();
         runMenuLoop();
         audio.BackgroundMusicPlayer.getInstance().stop();
         // Let the FX thread process the stop() before toolkit shutdown
