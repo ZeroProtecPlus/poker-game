@@ -358,8 +358,8 @@ public class LanHostController {
                 int playerBet = human.getCurrentBet();
                 action = table.awaitPlayerAction(round, playerBet, table.getUiSyncTimeoutMs());
                 if (action == null) {
-                    action = resolveTimeoutAction(round, playerBet);
-                    table.resolvePendingPlayerAction(action);
+                    // Timeout: skip this player — don't fold, stay in hand
+                    continue;
                 }
                 if (action == BettingRound.Action.FOLD) {
                     table.showPlayerFolded();
@@ -369,7 +369,8 @@ public class LanHostController {
                 table.highlightActivePlayer(human.getPlayerId(), buildHostPlayerNameMap());
                 table.setStatusTurn("Turno de: " + human.getName());
                 if (session.findClient(human.getPlayerId()).isEmpty()) {
-                    action = resolveTimeoutAction(round, human.getCurrentBet());
+                    // Client disconnected — skip this player
+                    continue;
                 } else {
                     try {
                         PendingActionRegistry.RemoteAction remote = pendingActions.awaitAction(
@@ -380,10 +381,12 @@ public class LanHostController {
                         amount = remote.amount();
                     } catch (InterruptedException ex) {
                         Thread.currentThread().interrupt();
-                        action = BettingRound.Action.FOLD;
+                        // Skip this player — don't auto-fold
+                        continue;
                     } catch (TimeoutException ex) {
-                        action = resolveTimeoutAction(round, human.getCurrentBet());
-                        notifyActionRejected(human.getPlayerId(), "Tiempo agotado; fold automático.");
+                        // Skip this player — don't auto-fold, stay in hand
+                        notifyActionRejected(human.getPlayerId(), "Tiempo agotado; turno saltado.");
+                        continue;
                     }
                 }
             }

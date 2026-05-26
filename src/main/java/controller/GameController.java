@@ -357,9 +357,8 @@ public class GameController {
                 action = table.awaitPlayerAction(round, pokerGame.getPlayerCurrentBet(), table.getUiSyncTimeoutMs());
                 table.setStatusTurn("");
                 if (action == null) {
-                    // Timeout UI: resolvemos una acción segura para evitar bloquear la ronda.
-                    action = resolveTimeoutAction(round, pokerGame.getPlayerCurrentBet());
-                    table.resolvePendingPlayerAction(action);
+                    // Timeout: skip this player's turn — don't fold, stay in hand
+                    action = null;
                 }
                 if (action == BettingRound.Action.BET) {
                     humanAmount = table.getPlayerBetAmount(round.getBigBlind(), newPlayer.getNumbChips());
