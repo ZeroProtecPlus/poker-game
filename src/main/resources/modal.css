@@ -387,3 +387,58 @@
     -fx-line-spacing: 2px;
     -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.5), 4, 0.4, 0, 1);
 }
+
+/* =============================================================================
+ * Shared LAN dialog classes — solid casino panels and buttons
+ * ============================================================================= */
+
+/* Solid LAN dialog panel */
+.lan-dialog-panel {
+    -fx-background-color: rgba(6, 14, 10, 0.92);
+    -fx-background-radius: 16;
+    -fx-border-color: #c9a84c;
+    -fx-border-width: 2;
+    -fx-border-radius: 16;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 16, 0.4, 0, 4);
+}
+
+/* LAN dialog button — primary action */
+.lan-btn-primary {
+    -fx-font-family: -fx-font-heading;
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #f5edd8;
+    -fx-background-color: #1A6B42;
+    -fx-background-radius: 8;
+    -fx-border-color: #c9a84c;
+    -fx-border-width: 1.5;
+    -fx-border-radius: 8;
+    -fx-padding: 12 32;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 6, 0.3, 1, 2);
+}
+
+.lan-btn-primary:hover {
+    -fx-background-color: #228B50;
+    -fx-border-color: #f0d88a;
+    -fx-effect: dropshadow(gaussian, rgba(201,168,76,0.3), 10, 0.4, 1, 3);
+}
+
+/* LAN dialog button — cancel/back */
+.lan-btn-cancel {
+    -fx-font-family: -fx-font-heading;
+    -fx-font-size: 16px;
+    -fx-text-fill: #d4c5a0;
+    -fx-background-color: #3A1515;
+    -fx-background-radius: 8;
+    -fx-border-color: #8b4513;
+    -fx-border-width: 1.5;
+    -fx-border-radius: 8;
+    -fx-padding: 10 28;
+    -fx-cursor: hand;
+}
+
+.lan-btn-cancel:hover {
+    -fx-background-color: #502020;
+    -fx-border-color: #cd853f;
+}
