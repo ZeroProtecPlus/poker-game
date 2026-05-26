@@ -87,6 +87,11 @@ public class GameTableTest {
         showGameOverShouldDisplayLossBankrupt();
         hideGameOverShouldHideOverlay();
 
+        // ── fix-endgame-states: winner-name overload tests ────────────────
+        showGameOverShouldDisplayWinnerNameOnWin();
+        showGameOverShouldDisplayOpponentNameOnBust();
+        showGameOverShouldFallBackToDefaultWhenNoWinnerName();
+
         System.out.println("GameTableTest: all tests passed");
         visualDemo();
     }
@@ -1331,6 +1336,76 @@ public class GameTableTest {
             table.hideGameOver();
             require(!overlay.isVisible(),
                 "Game over overlay should be hidden after hideGameOver");
+        });
+    }
+
+    // ── fix-endgame-states: winner-name overload tests ──────────────────
+
+    private static void showGameOverShouldDisplayWinnerNameOnWin() {
+        runOnFxThreadAndWait(() -> {
+            GameTable table = GameTable.create();
+
+            table.showGameOver("Alice", 18400);
+
+            StackPane overlay = getField(table, "gameOverOverlay");
+            require(overlay.isVisible(), "Game over overlay should be visible");
+
+            Label title = getField(table, "gameOverTitle");
+            require(title.getText().contains("¡Ganaste"),
+                "Title should show win message with name, got: " + title.getText());
+            require(title.getText().contains("Alice"),
+                "Title should contain winner name 'Alice', got: " + title.getText());
+            require(title.getStyleClass().contains("gameover-win"),
+                "Title should have gameover-win CSS class");
+
+            Label chips = getField(table, "gameOverChips");
+            require(chips.getText().contains("18,400"),
+                "Chips label should show 18,400, got: " + chips.getText());
+        });
+    }
+
+    private static void showGameOverShouldDisplayOpponentNameOnBust() {
+        runOnFxThreadAndWait(() -> {
+            GameTable table = GameTable.create();
+
+            table.showGameOver("Ana", 0);
+
+            StackPane overlay = getField(table, "gameOverOverlay");
+            require(overlay.isVisible(), "Game over overlay should be visible");
+
+            Label title = getField(table, "gameOverTitle");
+            require(title.getText().contains("Ana"),
+                "Title should contain opponent name 'Ana', got: " + title.getText());
+            require(title.getText().contains("eliminó"),
+                "Title should say 'eliminó', got: " + title.getText());
+            require(title.getStyleClass().contains("gameover-loss"),
+                "Title should have gameover-loss CSS class");
+
+            Label chips = getField(table, "gameOverChips");
+            require(chips.getText().contains("sin fichas"),
+                "Chips label should say 'sin fichas', got: " + chips.getText());
+        });
+    }
+
+    private static void showGameOverShouldFallBackToDefaultWhenNoWinnerName() {
+        runOnFxThreadAndWait(() -> {
+            GameTable table = GameTable.create();
+
+            // Backward compat: calling with null winnerName should behave
+            // identically to calling showGameOver(int)
+            table.showGameOver(null, 5000);
+
+            Label title = getField(table, "gameOverTitle");
+            require(title.getText().equals("¡Fin del juego!"),
+                "Title should be '¡Fin del juego!' when no winner name, got: "
+                + title.getText());
+
+            table.showGameOver(null, 0);
+
+            title = getField(table, "gameOverTitle");
+            require(title.getText().equals("Game Over"),
+                "Title should be 'Game Over' when no winner name and bust, got: "
+                + title.getText());
         });
     }
 
