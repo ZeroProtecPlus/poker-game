@@ -73,7 +73,7 @@ public class HostServer implements AutoCloseable {
     private void handleClient(Socket socket) {
         String playerId = null;
         try {
-            socket.setSoTimeout(30000); // handshake timeout — 30 s to send JOIN_REQUEST
+            // No handshake timeout — host waits indefinitely for JOIN_REQUEST
             var reader = MessageCodec.openReader(socket);
             LanEnvelope first = MessageCodec.receive(socket, reader);
             if (first.getType() != LanMessageType.JOIN_REQUEST) {

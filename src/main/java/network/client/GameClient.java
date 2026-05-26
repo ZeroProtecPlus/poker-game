@@ -42,7 +42,7 @@ public class GameClient implements AutoCloseable {
 
     public JoinDecision connectAndJoin(String proposedName) throws IOException {
         socket = new Socket(host, port);
-        socket.setSoTimeout(30000);
+        // No handshake timeout — client waits indefinitely for JOIN_RESPONSE
         reader = MessageCodec.openReader(socket);
         writer = MessageCodec.openWriter(socket);
 
@@ -59,6 +59,8 @@ public class GameClient implements AutoCloseable {
         JoinDecision decision = JoinPayloads.joinDecisionFromJson(response.getPayload());
         if (decision.isAccepted()) {
             playerId = decision.getPlayerId();
+            // Disable read timeout after handshake — readLoop waits indefinitely
+            socket.setSoTimeout(0);
             running.set(true);
             readerExecutor.submit(this::readLoop);
         } else {
