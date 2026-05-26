@@ -53,7 +53,8 @@ public class LanClientController implements GameClient.Listener {
     }
 
     public void run() throws IOException {
-        // Create GameTable early so the player sees it during connection
+        // Create GameTable early so the player sees a window during connection retries.
+        // This window serves as the anchor for connection-error alerts.
         table = GameTable.create();
         table.awaitUiReady(5000);
         table.setOnExitConfirmed(() -> exitRequested = true);
@@ -66,8 +67,13 @@ public class LanClientController implements GameClient.Listener {
                 table.requestGracefulShutdown();
                 throw new IllegalStateException("Conexión cancelada");
             }
-            client = new GameClient(params.host(), params.port(), this);
-            decision = client.connectAndJoin(params.playerName());
+            try {
+                client = new GameClient(params.host(), params.port(), this);
+                decision = client.connectAndJoin(params.playerName());
+            } catch (IOException e) {
+                showConnectionError(e.getMessage());
+                continue; // retry — show ConnectDialog again
+            }
             if (!decision.isAccepted()) {
                 LanDialogs.showJoinRejection(decision);
                 if (!LanDialogs.askRetryJoin()) {
@@ -428,5 +434,29 @@ public class LanClientController implements GameClient.Listener {
             alert.setContentText("Desconectado del host: " + reason);
             alert.showAndWait();
         });
+    }
+
+    /**
+     * Shows a connection error alert on the FX thread, anchored to the
+     * GameTable window.  The method blocks until the user dismisses the alert,
+     * then the caller loops back to {@link LanDialogs#showConnectDialog()} for retry.
+     */
+    private void showConnectionError(String detail) {
+        try {
+            Platform.runLater(() -> {
+                Alert alert = new Alert(Alert.AlertType.ERROR);
+                alert.setTitle("Error de conexión");
+                alert.setHeaderText("No se pudo conectar al host");
+                String message = detail != null && !detail.isEmpty()
+                    ? detail
+                    : "Connection refused";
+                alert.setContentText(message + "\n\nVerificá la IP y el puerto e intentá de nuevo.");
+                alert.showAndWait();
+            });
+            // Brief yield so alert can render before next ConnectDialog
+            Thread.sleep(150);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 }
