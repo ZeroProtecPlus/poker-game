@@ -310,12 +310,15 @@ public class LanHostController {
         recentActions = new ArrayList<>();
 
         while (true) {
-            Map<String, PokerGame.HumanActionEntry> actions = collectHumanActions(round, phase);
+            List<String> humanLog = collectHumanActions(round, phase);
+            recentActions.addAll(humanLog);
 
+            // Human actions are already applied inline during collection above.
+            // Pass an empty map so runLanUnifiedBettingRound only processes AIs.
             PokerGame.AIBettingResult result = pokerGame.runLanUnifiedBettingRound(
                 round.getCurrentBet(),
                 phase,
-                actions
+                Map.of()
             );
             recentActions.addAll(result.log);
             table.setActionLog(recentActions);
@@ -355,7 +358,14 @@ public class LanHostController {
         broadcastState(phase);
     }
 
-    private Map<String, PokerGame.HumanActionEntry> collectHumanActions(
+    /**
+     * Collects human actions one-by-one and applies each immediately to
+     * {@code pokerGame}.  This ensures the next player's {@link #broadcastState}
+     * already reflects prior bets, pot updates, and fold/all-in status.
+     *
+     * @return log entries for each human action applied in this pass
+     */
+    private List<String> collectHumanActions(
         BettingRound round,
         BettingRound.Phase phase
     ) throws IOException {
@@ -363,7 +373,7 @@ public class LanHostController {
         // a late-arriving action from the last round is never consumed here.
         pendingActions.cancelAll();
 
-        Map<String, PokerGame.HumanActionEntry> actions = new HashMap<>();
+        List<String> log = new ArrayList<>();
 
         for (User human : pokerGame.getAllHumanUsers()) {
             if (human.isFolded() || human.isAllIn()) {
@@ -418,29 +428,47 @@ public class LanHostController {
                 }
             }
 
-            actions.put(human.getPlayerId(), new PokerGame.HumanActionEntry(action, amount));
+            // ── Apply action to pokerGame IMMEDIATELY ─────────────────────────
+            // The next player's broadcastState must show updated pot and bets,
+            // otherwise they see CHECK instead of CALL.
+            pokerGame.applyUserAction(human, action, amount, round.getCurrentBet());
 
-            // Immediately reflect this player's bet on the round so the
-            // next player's broadcast state shows the corrected high-bet.
-            // Without this, subsequent players see CHECK instead of CALL
-            // because the round still carries the initial (pre-action) high-bet.
-            if (action == BettingRound.Action.BET || action == BettingRound.Action.RAISE) {
-                int newTotal = human.getCurrentBet() + amount;
-                if (newTotal > round.getCurrentBet()) {
-                    round.forceCurrentBet(newTotal);
+            // Keep round.currentBet in sync so AI actions can build on it.
+            if (action == BettingRound.Action.BET
+                || action == BettingRound.Action.RAISE
+                || action == BettingRound.Action.ALL_IN) {
+                int newBet = human.getCurrentBet(); // already updated by placeBet
+                if (newBet > round.getCurrentBet()) {
+                    round.forceCurrentBet(newBet);
                 }
-            } else if (action == BettingRound.Action.ALL_IN) {
-                // All-in puts all remaining chips in — use total chips as the new bet
-                int allInTotal = human.getCurrentBet() + human.getNumbChips();
-                if (allInTotal > round.getCurrentBet()) {
-                    round.forceCurrentBet(allInTotal);
-                }
+            }
+
+            // ── Build log entry ───────────────────────────────────────────────
+            String logEntry = buildHumanLogEntry(human.getName(), action, amount,
+                human.getCurrentBet());
+            if (logEntry != null) {
+                log.add(logEntry);
             }
         }
         activePlayerId = null;
         table.setStatusTurn("");
         table.highlightActivePlayer(null, null);
-        return actions;
+        return log;
+    }
+
+    /** Builds an action-log line for a human player matching the AI log style. */
+    private static String buildHumanLogEntry(
+        String name, BettingRound.Action action, int amount, int newTotal
+    ) {
+        if (action == null) return null;
+        return switch (action) {
+            case FOLD   -> name + " se retira";
+            case CHECK  -> name + " pasa";
+            case CALL   -> name + " iguala " + amount;
+            case BET    -> name + " apuesta " + amount;
+            case RAISE  -> name + " sube a " + newTotal;
+            case ALL_IN -> name + " ALL IN";
+        };
     }
 
     private int resolveAmount(

@@ -390,6 +390,10 @@ public class PokerGame {
 
             if (current == player) {
                 currentHighBet = applyHumanActionInUnifiedRound(humanAction, humanAmount, currentHighBet);
+                // Log human action so the action log shows entries for ALL players.
+                if (humanAction != null) {
+                    log.add(humanLogLine(player.getName(), humanAction, humanAmount, player.getCurrentBet()));
+                }
                 continue;
             }
 
@@ -421,6 +425,17 @@ public class PokerGame {
         }
 
         return new AIBettingResult(log, currentHighBet, player.isFolded());
+    }
+
+    private static String humanLogLine(String name, BettingRound.Action action, int amount, int newTotal) {
+        return switch (action) {
+            case FOLD   -> name + " se retira";
+            case CHECK  -> name + " pasa";
+            case CALL   -> name + " iguala " + amount;
+            case BET    -> name + " apuesta " + amount;
+            case RAISE  -> name + " sube a " + newTotal;
+            case ALL_IN -> name + " ALL IN";
+        };
     }
 
     private int applyHumanActionInUnifiedRound(BettingRound.Action action, int humanAmount, int currentHighBet) {
