@@ -40,6 +40,7 @@ LEVANTAMIENTO_REQUERIMIENTOS.md
 target/
 
 ### Misc ###
+.idea/
 openspec/
 javafx.zip
 javafx-sdk*/

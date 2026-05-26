@@ -1,16 +1,15 @@
-╔══════════════════════════════════════════════════════════════╗
-║                    SLIDE 1 — TÍTULO                         ║
-╚══════════════════════════════════════════════════════════════╝
+────────────────────────────────────────────────────────────
+ SLIDE 1 — Título
+────────────────────────────────────────────────────────────
 
 PokerMao
 Texas Hold'em Poker — Multijugador LAN
 
 Rework completo de UI + Nuevas funcionalidades multijugador
 
-
-╔══════════════════════════════════════════════════════════════╗
-║                  SLIDE 2 — Arquitectura LAN                ║
-╚══════════════════════════════════════════════════════════════╝
+────────────────────────────────────────────────────────────
+ SLIDE 2 — Arquitectura LAN
+────────────────────────────────────────────────────────────
 
 Multijugador en red local
 
@@ -20,10 +19,9 @@ Multijugador en red local
 - Sincronización de estado en tiempo real via mensajes GAME_STATE
 - Hasta 6 jugadores humanos simultáneos
 
-
-╔══════════════════════════════════════════════════════════════╗
-║                SLIDE 3 — Sincronización                    ║
-╚══════════════════════════════════════════════════════════════╝
+────────────────────────────────────────────────────────────
+ SLIDE 3 — Sincronización
+────────────────────────────────────────────────────────────
 
 Sincronización en tiempo real
 
@@ -33,10 +31,9 @@ Sincronización en tiempo real
 - El pot, badges y fichas se actualizan sin demora
 - Detección diferencial de cambios (sin parpadeo ni re-renders innecesarios)
 
-
-╔══════════════════════════════════════════════════════════════╗
-║             SLIDE 4 — Experiencia de juego LAN             ║
-╚══════════════════════════════════════════════════════════════╝
+────────────────────────────────────────────────────────────
+ SLIDE 4 — Experiencia de juego LAN
+────────────────────────────────────────────────────────────
 
 Experiencia de juego pulida
 
@@ -47,12 +44,11 @@ Experiencia de juego pulida
 - Pantalla de Game Over con nombre del ganador y overlay visual
 - Detección de eliminación de todos los oponentes
 
+────────────────────────────────────────────────────────────
+ SLIDE 5 — Rework de UI
+────────────────────────────────────────────────────────────
 
-╔══════════════════════════════════════════════════════════════╗
-║                  SLIDE 5 — Rework de UI                    ║
-╚══════════════════════════════════════════════════════════════╝
-
-Migración completa: Swing → JavaFX
+Migración completa: Swing -> JavaFX
 
 - Eliminación del antiguo GameView (1798 líneas de Swing)
 - Nueva GameTable con JavaFX puro
@@ -60,10 +56,9 @@ Migración completa: Swing → JavaFX
 - Render asincrónico thread-safe
 - Diálogos FX reemplazan todos los popups Swing
 
-
-╔══════════════════════════════════════════════════════════════╗
-║             SLIDE 6 — Sistema de Diseño CSS                ║
-╚══════════════════════════════════════════════════════════════╝
+────────────────────────────────────────────────────────────
+ SLIDE 6 — Sistema de Diseño CSS
+────────────────────────────────────────────────────────────
 
 Sistema de diseño visual con CSS modular
 
@@ -73,10 +68,9 @@ Sistema de diseño visual con CSS modular
 - Efectos glow en hover y en turno activo
 - Fuentes web display y monospace (fonts.css)
 
-
-╔══════════════════════════════════════════════════════════════╗
-║              SLIDE 7 — Componentes visuales                ║
-╚══════════════════════════════════════════════════════════════╝
+────────────────────────────────────────────────────────────
+ SLIDE 7 — Componentes visuales
+────────────────────────────────────────────────────────────
 
 Componentes rediseñados
 
@@ -87,10 +81,9 @@ Componentes rediseñados
 - Barra de estado: conexión, fase y turno activo
 - Overlay de Game Over con estilo diferenciado (win/loss)
 
-
-╔══════════════════════════════════════════════════════════════╗
-║             SLIDE 8 — Menú y diálogos                      ║
-╚══════════════════════════════════════════════════════════════╝
+────────────────────────────────────────────────────────────
+ SLIDE 8 — Menú y diálogos
+────────────────────────────────────────────────────────────
 
 Menú principal y diálogos rediseñados
 
@@ -100,10 +93,9 @@ Menú principal y diálogos rediseñados
 - Diálogo multijugador con paneles sólidos y botones redondeados
 - Consistencia visual en toda la aplicación
 
-
-╔══════════════════════════════════════════════════════════════╗
-║           SLIDE 9 — Persistencia y modelo                  ║
-╚══════════════════════════════════════════════════════════════╝
+────────────────────────────────────────────────────────────
+ SLIDE 9 — Persistencia y modelo
+────────────────────────────────────────────────────────────
 
 Persistencia y modelo de datos
 
@@ -112,10 +104,9 @@ Persistencia y modelo de datos
 - Nuevos métodos de detección de eliminación y ganador global
 - Contrato de tests para isEliminated() en User y AIPlayer
 
-
-╔══════════════════════════════════════════════════════════════╗
-║              SLIDE 10 — Stack tecnológico                  ║
-╚══════════════════════════════════════════════════════════════╝
+────────────────────────────────────────────────────────────
+ SLIDE 10 — Stack tecnológico
+────────────────────────────────────────────────────────────
 
 Stack tecnológico
 
@@ -127,14 +118,13 @@ Stack tecnológico
 - JUnit 5 + Mockito (testing)
 - CSS3 (sistema de diseño visual)
 
-
-╔══════════════════════════════════════════════════════════════╗
-║               SLIDE 11 — Commits recientes                 ║
-╚══════════════════════════════════════════════════════════════╝
+────────────────────────────────────────────────────────────
+ SLIDE 11 — Commits recientes
+────────────────────────────────────────────────────────────
 
 Trabajo reciente (55 commits en dev)
 
-- Migración completa Swing → JavaFX
+- Migración completa Swing -> JavaFX
 - Implementación del protocolo LAN host/cliente
 - Lobby en tiempo real con GameTable
 - Sincronización de estado con máscaras de mano
