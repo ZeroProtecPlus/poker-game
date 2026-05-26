@@ -104,6 +104,7 @@ public class LanHostController {
         } catch (IOException ex) {
             throw new IllegalStateException("Error de red en partida LAN: " + ex.getMessage(), ex);
         } finally {
+            table.requestGracefulShutdown();
             server.close();
         }
     }
@@ -331,6 +332,10 @@ public class LanHostController {
         BettingRound round,
         BettingRound.Phase phase
     ) throws IOException {
+        // Clear any stale pending actions from previous iterations so that
+        // a late-arriving action from the last round is never consumed here.
+        pendingActions.cancelAll();
+
         Map<String, PokerGame.HumanActionEntry> actions = new HashMap<>();
 
         for (User human : pokerGame.getAllHumanUsers()) {
@@ -423,7 +428,11 @@ public class LanHostController {
             notifyActionRejected(connectionPlayerId, "playerId no coincide con la conexión.");
             return;
         }
-        if (activePlayerId == null || !activePlayerId.equals(claimedId)) {
+        // Tolerate brief activePlayerId mismatch caused by thread scheduling:
+        // if the registry already has a pending entry for this player, accept the
+        // action even when the volatile activePlayerId has already advanced.
+        if ((activePlayerId == null || !activePlayerId.equals(claimedId))
+                && !pendingActions.hasPending(claimedId)) {
             notifyActionRejected(claimedId, "No es tu turno.");
             return;
         }

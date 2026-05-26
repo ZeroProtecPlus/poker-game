@@ -843,7 +843,10 @@ public final class GameTable {
         if (callAmt > 0) addBettingBtn("CALL " + callAmt, "btn-call", () ->
             callback.accept(BettingRound.Action.CALL)
         );
-        if (callAmt > 0) addBettingBtn("RAISE", "btn-raise", () ->
+        // RAISE is valid whenever a bet has already been made (currentBet > 0)
+        // or the player needs to call (callAmt > 0).  It was incorrectly hidden
+        // when the player had already matched the current bet (callAmt == 0).
+        if (callAmt > 0 || round.getCurrentBet() > 0) addBettingBtn("RAISE", "btn-raise", () ->
             callback.accept(BettingRound.Action.RAISE)
         );
         addBettingBtn("FOLD", "btn-fold", () ->
@@ -1847,7 +1850,7 @@ public final class GameTable {
      * @return true if the player wants to continue, false otherwise
      */
     public boolean askPlayAgain(int chips) {
-        CompletableFuture<Boolean> future = ContinueDialog.showAndWait(chips);
+        CompletableFuture<Boolean> future = ContinueDialog.showAndWait(chips, stage);
         try {
             Boolean result = future.get(60, TimeUnit.SECONDS);
             return result != null && result;
@@ -1861,7 +1864,8 @@ public final class GameTable {
 
     /**
      * Closes the GameTable stage and signals any threads blocked on {@link #awaitClose()}.
-     * Thread-safe.
+     * Thread-safe.  Does NOT show an exit confirmation dialog — this is a programmatic
+     * shutdown (e.g. after "play again" → no, or from cleanup code).
      */
     public void requestGracefulShutdown() {
         if (Platform.isFxApplicationThread()) {
@@ -1872,7 +1876,23 @@ public final class GameTable {
     }
 
     private void shutdownInternal() {
-        if (stage != null && stage.isShowing()) {
+        // Release any threads blocked on the close latch
+        if (closeLatch != null) {
+            closeLatch.countDown();
+        }
+        // Release the UI-ready latch so any awaiting threads unblock
+        if (uiReadyLatch != null) {
+            uiReadyLatch.countDown();
+        }
+        // Cancel any pending player action so threads blocked on awaitPlayerAction unblock
+        CompletableFuture<BettingRound.Action> fut = pendingActionFuture;
+        if (fut != null && !fut.isDone()) {
+            fut.cancel(true);
+            pendingActionFuture = null;
+        }
+        if (stage != null) {
+            // Bypass the close-request interceptor (no exit dialog)
+            stage.setOnCloseRequest(e -> {});
             stage.close();
         }
     }

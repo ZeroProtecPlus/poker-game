@@ -78,10 +78,16 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   Active Turn Highlight — golden glow on the badge whose turn it is
+   Active Turn Highlight — golden glow on the badge whose turn it is.
+   Uses combined selectors so the border and effect always win over
+   the per-badge defaults (.player-badge / .ai-badge).
    ═══════════════════════════════════════════════════════════════ */
-.badge-active-turn {
+.player-badge.badge-active-turn,
+.ai-badge.badge-active-turn {
     -fx-effect: dropshadow(gaussian, #f0d88a, 18, 0.6, 0, 0);
+    -fx-border-color: #f0d88a;
+    -fx-border-width: 2;
+    -fx-border-radius: 28;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -314,11 +320,10 @@
     -fx-background-position: center;
     -fx-background-radius: 10;
 
-    /* Borde dorado + línea exterior oscura (efecto grabado) */
-    -fx-border-color: rgba(201, 168, 76, 0.90), rgba(0, 0, 0, 0.85);
-    -fx-border-width: 1.5, 1;
-    -fx-border-radius: 10, 11;
-    -fx-border-insets: 0, -1;
+    /* Sin borde visible — solo color de fondo */
+    -fx-border-color: transparent;
+    -fx-border-width: 0;
+    -fx-border-radius: 10;
 
     -fx-padding: 0;
     -fx-cursor: hand;
@@ -332,7 +337,6 @@
     -fx-background-color: rgba(26, 68, 40, 0.98);
     -fx-scale-x: 1.06;
     -fx-scale-y: 1.06;
-    -fx-border-color: rgba(240, 210, 90, 1.0), rgba(0, 0, 0, 0.8);
     /* Glow dorado al hacer hover */
     -fx-effect: dropshadow(gaussian, rgba(201, 168, 76, 0.55), 14, 0.4, 0, 0);
 }
