@@ -1,10 +1,7 @@
 package view.fx;
 
-import audio.BackgroundMusicPlayer;
-import config.GameSettings;
 import java.util.concurrent.CompletableFuture;
 
-import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -24,15 +21,10 @@ import javafx.stage.StageStyle;
 /**
  * ExitConfirmDialog — casino-styled modal to confirm leaving a game.
  *
- * <p>Buttons:
- * <ul>
- *   <li>"SALIR" — confirms exit and kills the JVM</li>
- *   <li>"CANCELAR" — cancels and returns to the game</li>
- * </ul>
- *
- * <p>Any exit path (SALIR button, Enter key, X window button) triggers
- * {@code Platform.exit()} to guarantee the JVM terminates.
- * ESC and CANCELAR cancel gracefully without killing the JVM.
+ * <p>SALIR / ENTER = confirmed (returns {@code true} to caller).
+ * <p>CANCELAR / ESC / X = cancelled (returns {@code false}).
+ * <p>The caller is responsible for deciding what to do with the result
+ * (e.g. kill the game thread, return to menu, etc.).
  *
  * <p>CSS: fonts.css + modal.css + menu-chrome.css
  */
@@ -106,28 +98,11 @@ public final class ExitConfirmDialog {
         message.setAlignment(Pos.CENTER);
         message.setMaxWidth(380);
 
-        // ── Shared helper to kill the JVM cleanly ───────────────────────────
-        Runnable killJvm = () -> {
-            try {
-                GameSettings.get().save();
-            } catch (Exception ignored) {}
-            try {
-                BackgroundMusicPlayer.getInstance().stop();
-            } catch (Exception ignored) {}
-            try {
-                Thread.sleep(150);
-            } catch (InterruptedException ex) {
-                Thread.currentThread().interrupt();
-            }
-            Platform.exit();
-        };
-
         Button salirBtn = new Button("SALIR");
         salirBtn.getStyleClass().add("btn-no");
         salirBtn.setOnAction(e -> {
             future.complete(true);
-            stage.hide();
-            killJvm.run();
+            stage.close();
         });
 
         Button cancelarBtn = new Button("CANCELAR");
@@ -146,15 +121,13 @@ public final class ExitConfirmDialog {
 
         Scene scene = new Scene(canvas, WIDTH, HEIGHT, Color.BLACK);
 
-        // ESC = cancel (no JVM kill)
         scene.setOnKeyPressed(event -> {
             if (event.getCode() == KeyCode.ESCAPE) {
                 future.complete(false);
                 stage.close();
             } else if (event.getCode() == KeyCode.ENTER) {
                 future.complete(true);
-                stage.hide();
-                killJvm.run();
+                stage.close();
             }
         });
 
@@ -166,14 +139,10 @@ public final class ExitConfirmDialog {
         if (chromeCss != null) scene.getStylesheets().add(chromeCss.toExternalForm());
 
         stage.setScene(scene);
-
-        // X button / window close = confirm exit (kill JVM)
         stage.setOnCloseRequest(e -> {
             if (!future.isDone()) {
-                future.complete(true);
+                future.complete(false);
             }
-            stage.hide();
-            killJvm.run();
         });
 
         return stage;

@@ -23,10 +23,13 @@ import view.fx.GameTable;
 import view.fx.JavaFxBootstrap;
 import view.fx.PlayerNameDialog;
 import view.fx.ResumeGameDialog;
+import view.GameView;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class GameController {
 
@@ -43,6 +46,35 @@ public class GameController {
     public GameController() {
         this(createDefaultHostJoinHandler(), createDefaultRepositories());
     }
+
+    /**
+     * Test constructor: accepts a GameView stub for controlled test scenarios.
+     * Used by integration tests that mock the view layer.
+     */
+    protected GameController(GameView view) {
+        this(view, createDefaultHostJoinHandler());
+    }
+
+    /**
+     * Test constructor: accepts a GameView stub and a HostJoinHandler.
+     */
+    protected GameController(GameView view, HostJoinHandler joinHandler) {
+        this(view, joinHandler, createDefaultRepositories(), FileMachineIdProvider.INSTANCE);
+    }
+
+    /**
+     * Test constructor: full injection of view, join handler, repos, and machine ID.
+     */
+    protected GameController(GameView view, HostJoinHandler joinHandler,
+                              Repositories repositories, MachineIdProvider machineIdProvider) {
+        this.hostJoinHandler = joinHandler;
+        this.playerRepository = repositories.playerRepository();
+        this.gameRepository = repositories.gameRepository();
+        this.machineIdProvider = machineIdProvider;
+        this.testView = view;
+    }
+
+    private GameView testView; // non-null only in test-constructor paths
 
     protected GameController(HostJoinHandler hostJoinHandler, Repositories repositories) {
         this(hostJoinHandler, repositories, FileMachineIdProvider.INSTANCE);
@@ -80,6 +112,27 @@ public class GameController {
      *         {@code false} if the user cancelled (should return to menu)
      */
     public boolean createNewPlayer() {
+        // Test mode: use injected GameView stub instead of real GameTable.
+        if (testView != null) {
+            while (true) {
+                String name = testView.getUserName();
+                if (name == null || name.trim().isEmpty()) {
+                    throw new IllegalStateException("Test view returned null/empty name");
+                }
+                JoinDecision decision = requestJoinAdmission(name.trim());
+                if (decision.isAccepted()) {
+                    applyAcceptedJoinDecision(decision);
+                    loadOrCreatePlayerProfile();
+                    testView.showUserChips(userNamePlayer, newPlayer.getNumbChips());
+                    return true;
+                }
+                testView.showJoinRejectionMessage(LanDialogs.toJoinRejectionMessage(decision));
+                if (!testView.askRetryJoin()) {
+                    throw new IllegalStateException("Test view declined retry");
+                }
+            }
+        }
+
         // Create GameTable but do NOT show it yet — the empty table should not
         // render behind the PlayerNameDialog.  The stage is built (awaitUiReady
         // ensures the FX scene graph exists) but remains hidden until the name
@@ -176,8 +229,16 @@ public class GameController {
         table.setGameActive(true);
         offerResume();
 
-        while (newPlayer.getNumbChips() > 0) {
+        // ── Wire exit confirmation so ESC/X returns to menu ──
+        AtomicBoolean exitRequested = new AtomicBoolean(false);
+        table.setOnExitConfirmed(() -> exitRequested.set(true));
+
+        while (newPlayer.getNumbChips() > 0 && !exitRequested.get()) {
             playOneHand();
+
+            if (exitRequested.get()) {
+                break;
+            }
 
             // ── fix-endgame-states: elimination / game-over checks ──────────
             // Check if the human was eliminated during this hand
@@ -193,21 +254,27 @@ public class GameController {
             boolean continuar = table.askPlayAgain(newPlayer.getNumbChips());
             if (!continuar) {
                 saveHandEnd();
-                table.requestGracefulShutdown();
-                return;
+                break;
             }
         }
-        tryDeleteGameState();
 
-        // ── fix-endgame-states: determine winner name for game-over display ──
-        String winnerName;
-        if (newPlayer.getNumbChips() > 0) {
-            winnerName = newPlayer.getName();
+        // ── Always close the game table before returning to menu ────────
+        saveHandEnd();
+        table.requestGracefulShutdown();
+
+        // ── Show game-over screen only on natural end, not on exit ────
+        if (!exitRequested.get()) {
+            String winnerName;
+            if (newPlayer.getNumbChips() > 0) {
+                winnerName = newPlayer.getName();
+            } else {
+                Player winner = pokerGame.determineOverallWinner();
+                winnerName = winner != null ? winner.getName() : null;
+            }
+            table.showGameOver(winnerName, newPlayer.getNumbChips());
         } else {
-            Player winner = pokerGame.determineOverallWinner();
-            winnerName = winner != null ? winner.getName() : null;
+            tryDeleteGameState();
         }
-        table.showGameOver(winnerName, newPlayer.getNumbChips());
     }
 
     private void offerResume() {
@@ -388,12 +455,16 @@ public class GameController {
                     action = null;
                 }
                 if (action == BettingRound.Action.BET) {
-                    humanAmount = table.getPlayerBetAmount(round.getBigBlind(), newPlayer.getNumbChips());
+                    humanAmount = resolveBetAmount(
+                        table.getPlayerBetAmount(round.getBigBlind(), newPlayer.getNumbChips()),
+                        round.getBigBlind());
                 } else if (action == BettingRound.Action.CALL) {
                     humanAmount = round.callAmount(pokerGame.getPlayerCurrentBet());
                 } else if (action == BettingRound.Action.RAISE) {
                     int minRaise = round.minRaiseAmount();
-                    humanAmount = table.getPlayerBetAmount(minRaise, newPlayer.getNumbChips());
+                    humanAmount = resolveBetAmount(
+                        table.getPlayerBetAmount(minRaise, newPlayer.getNumbChips()),
+                        minRaise);
                 }
             }
 
@@ -471,7 +542,9 @@ public class GameController {
         switch (action) {
             case CHECK  -> pokerGame.humanCheck();
             case BET    -> {
-                int amount = table.getPlayerBetAmount(round.getBigBlind(), newPlayer.getNumbChips());
+                int amount = resolveBetAmount(
+                    table.getPlayerBetAmount(round.getBigBlind(), newPlayer.getNumbChips()),
+                    round.getBigBlind());
                 pokerGame.humanBet(amount);
                 round.playerBets(pokerGame.getPlayerCurrentBet());
             }
@@ -481,7 +554,9 @@ public class GameController {
             }
             case RAISE  -> {
                 int minRaise = round.minRaiseAmount();
-                int amount   = table.getPlayerBetAmount(minRaise, newPlayer.getNumbChips());
+                int amount   = resolveBetAmount(
+                    table.getPlayerBetAmount(minRaise, newPlayer.getNumbChips()),
+                    minRaise);
                 pokerGame.humanRaise(amount);
                 round.playerBets(pokerGame.getPlayerCurrentBet());
             }
@@ -494,6 +569,23 @@ public class GameController {
     /** True when only one non-folded player remains. */
     private boolean hasSingleActivePlayer() {
         return pokerGame.getRemainingActivePlayersCount() <= 1;
+    }
+
+    /**
+     * Resolves a bet amount from a future, falling back to the default on error.
+     */
+    private static int resolveBetAmount(
+        java.util.concurrent.CompletableFuture<Integer> future,
+        int fallback
+    ) {
+        try {
+            return future.get(60, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return fallback;
+        } catch (Exception e) {
+            return fallback;
+        }
     }
 
     /** True when all non-folded players are settled for current high bet. */
