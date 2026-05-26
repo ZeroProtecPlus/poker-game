@@ -115,16 +115,22 @@ public class Main {
             try {
                 action.run();
             } catch (IllegalStateException e) {
-                try {
-                    Platform.runLater(() -> {
-                        Alert alert = new Alert(Alert.AlertType.WARNING);
-                        alert.setTitle("Cancelado");
-                        alert.setHeaderText(null);
-                        alert.setContentText(e.getMessage());
-                        alert.showAndWait();
-                    });
-                } catch (IllegalStateException fxError) {
-                    System.err.println("Cancelado: " + e.getMessage());
+                String msg = e.getMessage();
+                if (msg != null && msg.toLowerCase().contains("cancelado")) {
+                    // User-initiated cancellation — just log, no Alert needed
+                    System.out.println("Cancelado: " + msg);
+                } else {
+                    try {
+                        Platform.runLater(() -> {
+                            Alert alert = new Alert(Alert.AlertType.WARNING);
+                            alert.setTitle("Cancelado");
+                            alert.setHeaderText(null);
+                            alert.setContentText(msg);
+                            alert.showAndWait();
+                        });
+                    } catch (IllegalStateException fxError) {
+                        System.err.println("Cancelado: " + msg);
+                    }
                 }
             } catch (Exception e) {
                 System.out.println("Ocurrió un error inesperado: " + e.getMessage());
@@ -140,7 +146,9 @@ public class Main {
 
     private static void runSinglePlayer() {
         GameController game = new GameController();
-        game.createNewPlayer();
+        if (!game.createNewPlayer()) {
+            return; // user cancelled name entry — gracefully return to menu
+        }
         game.createNewGame();
     }
 

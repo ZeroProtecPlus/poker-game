@@ -73,7 +73,13 @@ public class GameController {
 
     // ── BUG 4 FIX: GameTable only shown AFTER name is accepted ────────────────
 
-    public void createNewPlayer() {
+    /**
+     * Prompts the player for their name and validates it.
+     *
+     * @return {@code true} if the player was successfully created,
+     *         {@code false} if the user cancelled (should return to menu)
+     */
+    public boolean createNewPlayer() {
         // Create GameTable but do NOT show it yet — the empty table should not
         // render behind the PlayerNameDialog.  The stage is built (awaitUiReady
         // ensures the FX scene graph exists) but remains hidden until the name
@@ -87,7 +93,8 @@ public class GameController {
         while (true) {
             String name = PlayerNameDialog.showAndWaitBlocking();
             if (name == null || name.trim().isEmpty()) {
-                throw new IllegalStateException("Ingreso cancelado");
+                table.requestGracefulShutdown();
+                return false; // user cancelled — return to menu
             }
             JoinDecision decision = requestJoinAdmission(name.trim());
             if (decision.isAccepted()) {
@@ -96,12 +103,13 @@ public class GameController {
                 // NOW show the table — name and profile are confirmed
                 table.show();
                 table.showUserChips(userNamePlayer, newPlayer.getNumbChips());
-                return;
+                return true;
             }
 
             LanDialogs.showJoinRejection(decision);
             if (!LanDialogs.askRetryJoin()) {
-                throw new IllegalStateException("Ingreso a la sesion cancelado");
+                table.requestGracefulShutdown();
+                return false; // user cancelled retry — return to menu
             }
         }
     }
