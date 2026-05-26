@@ -75,7 +75,7 @@ public final class MultiplayerMenuDialog {
         panel.setAlignment(Pos.CENTER);
         panel.setPadding(new Insets(40));
         panel.setMaxWidth(520);
-        panel.setStyle("-fx-background-color: rgba(6, 14, 10, 0.55); -fx-background-radius: 16;");
+        panel.getStyleClass().add("multiplayer-panel");
 
         AnchorPane canvas = new AnchorPane();
         canvas.setPrefSize(DESIGN_WIDTH, DESIGN_HEIGHT);

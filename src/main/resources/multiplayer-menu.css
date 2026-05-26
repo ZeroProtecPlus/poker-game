@@ -9,6 +9,27 @@
     -fx-background-color: transparent;
 }
 
+/* ---- Solid dialog panel (replaces rgba inline style) ---- */
+.multiplayer-panel {
+    -fx-background-color: linear-gradient(
+        to bottom,
+        #1a5c3a 0%,
+        #0f3d26 30%,
+        #071a12 100%
+    );
+    -fx-background-radius: 16;
+    -fx-border-color: linear-gradient(
+        to bottom,
+        #f0d88a,
+        #d4a845,
+        #a8782a,
+        #6b5010
+    );
+    -fx-border-width: 2;
+    -fx-border-radius: 16;
+    -fx-effect: dropshadow(gaussian, rgba(2, 6, 4, 0.85), 50, 0.75, 0, 10);
+}
+
 /* ---- Title ---- */
 .multiplayer-title {
     -fx-font-family: -fx-font-heading;
@@ -19,13 +40,13 @@
     -fx-padding: 0 0 18 0;
 }
 
-/* ---- Buttons (base) ---- */
+/* ---- Buttons (base) — solid casino colors ---- */
 .multiplayer-btn {
     -fx-font-family: -fx-font-heading;
     -fx-font-size: 24px;
     -fx-font-weight: bold;
     -fx-text-fill: #f5edd8;
-    -fx-background-color: rgba(11, 50, 32, 0.92);
+    -fx-background-color: #0B3220;
     -fx-background-radius: 8;
     -fx-border-color: #c9a84c;
     -fx-border-width: 2;
@@ -38,27 +59,27 @@
 
 /* ---- Buttons (hover) ---- */
 .multiplayer-btn:hover {
-    -fx-background-color: rgba(26, 107, 66, 0.95);
+    -fx-background-color: #1A6B42;
     -fx-border-color: #f0d88a;
     -fx-effect: dropshadow(gaussian, rgba(201,168,76,0.35), 12, 0.4, 2, 4);
 }
 
 /* ---- Buttons (pressed) ---- */
 .multiplayer-btn:pressed {
-    -fx-background-color: rgba(6, 30, 18, 0.95);
+    -fx-background-color: #061E12;
     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 4, 0.3, 1, 1);
 }
 
-/* ---- Back button (variant) ---- */
+/* ---- Back button (variant) — solid dark red ---- */
 .multiplayer-btn-back {
     -fx-font-size: 16px;
-    -fx-background-color: rgba(30, 10, 10, 0.85);
+    -fx-background-color: #1E0A0A;
     -fx-border-color: #8b4513;
     -fx-text-fill: #d4c5a0;
     -fx-min-width: 240;
 }
 
 .multiplayer-btn-back:hover {
-    -fx-background-color: rgba(50, 15, 15, 0.92);
+    -fx-background-color: #321515;
     -fx-border-color: #cd853f;
 }
