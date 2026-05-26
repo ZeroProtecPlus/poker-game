@@ -1036,14 +1036,25 @@ public final class GameTable {
      * @param chips  final chip count (0 = bankrupt, &gt;0 = survived)
      */
     public void showGameOver(int chips) {
+        showGameOver(null, chips);
+    }
+
+    /**
+     * Shows a full-screen game over overlay with winner name and final chip count.
+     *
+     * @param winnerName  name of the overall winner, or {@code null} for default
+     * @param chips       final chip count (0 = bankrupt, &gt;0 = survived)
+     */
+    public void showGameOver(String winnerName, int chips) {
         if (Platform.isFxApplicationThread()) {
-            showGameOverInternal(chips);
+            showGameOverInternal(winnerName, chips);
         } else {
-            Platform.runLater(() -> showGameOverInternal(chips));
+            String name = winnerName;
+            Platform.runLater(() -> showGameOverInternal(name, chips));
         }
     }
 
-    private void showGameOverInternal(int chips) {
+    private void showGameOverInternal(String winnerName, int chips) {
         // Hide all game components before showing overlay
         commCardsSection.setVisible(false);
         playerHandSection.setVisible(false);
@@ -1053,15 +1064,29 @@ public final class GameTable {
         hideResultInternal();
         clearCardsInternal();
 
-        gameOverTitle.setText(chips > 0 ? "¡Fin del juego!" : "Game Over");
+        String title;
+        String cssClass;
+        if (winnerName != null) {
+            if (chips > 0) {
+                title = "¡Ganaste, " + winnerName + "!";
+                cssClass = "gameover-win";
+            } else {
+                title = winnerName + " te eliminó";
+                cssClass = "gameover-loss";
+            }
+        } else {
+            title = chips > 0 ? "¡Fin del juego!" : "Game Over";
+            cssClass = chips > 0 ? "gameover-win" : "gameover-loss";
+        }
+        gameOverTitle.setText(title);
         gameOverTitle.getStyleClass().removeAll("gameover-win", "gameover-loss");
-        gameOverTitle.getStyleClass().add(chips > 0 ? "gameover-win" : "gameover-loss");
+        gameOverTitle.getStyleClass().add(cssClass);
 
         gameOverChips.setText(chips > 0
             ? "Fichas finales: " + String.format(Locale.US, "%,d", chips)
             : "¡Te quedaste sin fichas!");
         gameOverChips.getStyleClass().removeAll("gameover-win", "gameover-loss");
-        gameOverChips.getStyleClass().add(chips > 0 ? "gameover-win" : "gameover-loss");
+        gameOverChips.getStyleClass().add(cssClass);
         gameOverOverlay.setVisible(true);
     }
 

@@ -1,4 +1,4 @@
-![PokerMao Header](src/main/resources/sprites/Star_Game.png)
+![PokerMao Header](docs/banner.png)
 
 # PokerMao
 
@@ -40,9 +40,9 @@ El juego cuenta con una identidad sonora representada en tres portadas de vinilo
 
 | Disco | Título | Concepto |
 |-------|--------|----------|
-| **Disk 1** | *The House Does Not Gamble* | La casa siempre gana. Portada industrial con ruleta, engranajes y arquitectura clásica. <img src="src/main/resources/Disk_1.png" width="300">|
-| **Disk 2** | *A Kopek For The Crown* | La apuesta mínima por la gloria máxima. Estrella roja ornamental sobre fondo oscuro. <img src="src/main/resources/Disk_2.png" width="300">|
-| **Disk 3** | *The Lucky General* | Estrategia y fortuna en el campo de batalla del póker. Águila bicéfala estilizada con tanques y ruleta. <img src="src/main/resources/Disk_3.png" width="300">|
+| **Disk 1** | *The House Does Not Gamble* | La casa siempre gana. Portada industrial con ruleta, engranajes y arquitectura clásica. |
+| **Disk 2** | *A Kopek For The Crown* | La apuesta mínima por la gloria máxima. Estrella roja ornamental sobre fondo oscuro. |
+| **Disk 3** | *The Lucky General* | Estrategia y fortuna en el campo de batalla del póker. Águila bicéfala estilizada con tanques y ruleta. |
 
 > Cada disco encapsula un estado de ánimo del juego: la tensión del casino, la ambición de la victoria y el caos controlado de la batalla final.
 
@@ -131,4 +131,4 @@ mvn test -Dtest=GameTableTest
 
 ---
 
-> *"La casa no juega, pero tu sí. Que la suerte te acompañe, Socio."*
+> *"La casa no juega, pero vos sí. Que la suerte te acompañe, camarada."*

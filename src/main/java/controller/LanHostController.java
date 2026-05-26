@@ -221,6 +221,15 @@ public class LanHostController {
                 pendingActions.cancelAll();
                 break;
             }
+
+            // ── fix-endgame-states: elimination / game-over checks ──────────
+            if (hostUser.isEliminated()) {
+                break;
+            }
+            if (pokerGame.areAllOpponentsEliminated()) {
+                break;
+            }
+
             boolean continuar = table.askPlayAgain(hostUser.getNumbChips());
             if (!continuar) {
                 broadcastGameOver(hostUser.getNumbChips());
@@ -231,16 +240,22 @@ public class LanHostController {
         if (exitRequested) {
             // exit requested — no DB save for multiplayer chips
         } else {
-            // Host bust — broadcast game over to all clients
+            // Host bust or game-over — broadcast game over to all clients
             broadcastGameOver(hostUser.getNumbChips());
-            table.showGameOver(hostUser.getNumbChips());
+            String winnerName = pokerGame.determineOverallWinner() != null
+                ? pokerGame.determineOverallWinner().getName()
+                : null;
+            table.showGameOver(winnerName, hostUser.getNumbChips());
         }
     }
 
     private void broadcastGameOver(int finalChips) throws IOException {
+        String winnerName = pokerGame.determineOverallWinner() != null
+            ? pokerGame.determineOverallWinner().getName()
+            : hostUser.getName();
         JSONObject payload = new JSONObject()
             .put("finalChips", finalChips)
-            .put("winner", hostUser.getName());
+            .put("winner", winnerName);
         session.broadcast(new LanEnvelope(LanMessageType.GAME_OVER, payload));
     }
 

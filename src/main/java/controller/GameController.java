@@ -179,6 +179,16 @@ public class GameController {
         while (newPlayer.getNumbChips() > 0) {
             playOneHand();
 
+            // ── fix-endgame-states: elimination / game-over checks ──────────
+            // Check if the human was eliminated during this hand
+            if (newPlayer.isEliminated()) {
+                break;
+            }
+            // Check if all opponents have 0 chips (human wins)
+            if (pokerGame.areAllOpponentsEliminated()) {
+                break;
+            }
+
             // Preguntar si quiere seguir jugando
             boolean continuar = table.askPlayAgain(newPlayer.getNumbChips());
             if (!continuar) {
@@ -188,7 +198,16 @@ public class GameController {
             }
         }
         tryDeleteGameState();
-        table.showGameOver(newPlayer.getNumbChips());
+
+        // ── fix-endgame-states: determine winner name for game-over display ──
+        String winnerName;
+        if (newPlayer.getNumbChips() > 0) {
+            winnerName = newPlayer.getName();
+        } else {
+            Player winner = pokerGame.determineOverallWinner();
+            winnerName = winner != null ? winner.getName() : null;
+        }
+        table.showGameOver(winnerName, newPlayer.getNumbChips());
     }
 
     private void offerResume() {

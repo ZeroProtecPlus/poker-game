@@ -237,8 +237,9 @@ public class LanClientController implements GameClient.Listener {
                 case GAME_OVER -> {
                     JSONObject goPayload = envelope.getPayload();
                     int finalChips = goPayload.optInt("finalChips", 0);
+                    String winner = goPayload.optString("winner", null);
                     gameRunning = false;
-                    Platform.runLater(() -> table.showGameOver(finalChips));
+                    Platform.runLater(() -> table.showGameOver(winner, finalChips));
                 }
                 default -> { }
             }
