@@ -247,6 +247,8 @@ public class LanHostController {
         table.showPlayerHand(hostHand);
         table.awaitLastAnimation(table.getUiSyncTimeoutMs());
         table.showRoles(pokerGame.getHumanRole(), pokerGame.getAIPlayers());
+        // Populate remote human player badges (not covered by showRoles)
+        updateRemoteBadges();
         table.updatePot(pokerGame.getPot());
         currentPhase = BettingRound.Phase.PREFLOP;
         table.setStatusPhase("PREFLOP");
@@ -314,6 +316,10 @@ public class LanHostController {
             recentActions.addAll(result.log);
             table.setActionLog(recentActions);
             table.awaitLastAnimation(table.getUiSyncTimeoutMs());
+
+            // Refresh AI and remote player badges after processing bets
+            table.updateAIPlayers(pokerGame.getAIPlayers());
+            updateRemoteBadges();
 
             if (result.highBet > round.getCurrentBet()) {
                 round.forceCurrentBet(result.highBet);
@@ -719,5 +725,27 @@ public class LanHostController {
     private static String rootCauseMessage(RepositoryException e) {
         Throwable cause = e.getCause();
         return cause != null && cause.getMessage() != null ? cause.getMessage() : e.getMessage();
+    }
+
+    /** Populates remote human player badges in the non-host badge slots. */
+    private void updateRemoteBadges() {
+        if (pokerGame == null) return;
+        List<User> remotes = pokerGame.getLanHumanPlayers();
+        int aiCount = pokerGame.getAIPlayers().size();
+        for (int i = 0; i < remotes.size() && (aiCount + i) < 3; i++) {
+            User remote = remotes.get(i);
+            table.updateRemoteBadge(aiCount + i, remote.getName(), remote.getChips(),
+                roleAbbreviation(remote.getPlayerRole()), remote.isFolded());
+        }
+    }
+
+    private static String roleAbbreviation(PlayerRole role) {
+        if (role == null) return "";
+        return switch (role) {
+            case DEALER -> "D";
+            case SMALL_BLIND -> "SB";
+            case BIG_BLIND -> "BB";
+            case NONE -> "";
+        };
     }
 }
