@@ -103,12 +103,8 @@
 }
 
 .modal-card {
-    -fx-background-color: linear-gradient(
-        to bottom,
-        #1a5c3a 0%,
-        #0f3d26 30%,
-        #071a12 100%
-    );
+    /* Semi-transparent dark backdrop — the menu-bg.png image shows through. */
+    -fx-background-color: rgba(6, 14, 10, 0.80);
     -fx-background-radius: 24;
     -fx-border-color: linear-gradient(
         to bottom,
