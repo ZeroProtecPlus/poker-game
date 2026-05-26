@@ -374,6 +374,22 @@ public class GameController {
             PokerGame.AIBettingResult result = pokerGame.runUnifiedBettingRound(round.getCurrentBet(), action, humanAmount, phase);
             accumulatedLog.addAll(result.log);
             table.setActionLog(accumulatedLog);
+
+            // Refresh AI badges so fold state changes are immediately visible
+            List<AIPlayer> aiPlayers = pokerGame.getAIPlayers();
+            table.updateAIPlayers(aiPlayers);
+
+            // Simulate human-like thinking delay when AIs are still active
+            long activeAICount = aiPlayers.stream().filter(ai -> !ai.isFolded()).count();
+            if (activeAICount > 0) {
+                try {
+                    Thread.sleep(800 + (long)(Math.random() * 700)); // 0.8–1.5s
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+
             table.awaitLastAnimation(table.getUiSyncTimeoutMs());
 
             boolean wasHumanFolded = humanFolded;
