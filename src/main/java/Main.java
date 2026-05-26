@@ -53,6 +53,13 @@ public class Main {
         JavaFxBootstrap.ensureStarted();
         audio.BackgroundMusicPlayer.getInstance().start();
         runMenuLoop();
+        audio.BackgroundMusicPlayer.getInstance().stop();
+        // Let the FX thread process the stop() before toolkit shutdown
+        try {
+            Thread.sleep(300);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
         Platform.exit();
     }
 

@@ -7,6 +7,7 @@ import network.protocol.MessageCodec;
 
 import java.io.IOException;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.ExecutorService;
@@ -41,7 +42,12 @@ public class HostServer implements AutoCloseable {
         if (!running.compareAndSet(false, true)) {
             return;
         }
-        serverSocket = new ServerSocket(port, 50, InetAddress.getByName("0.0.0.0"));
+        // Create socket unbound so we can set SO_REUSEADDR before binding.
+        // This allows rapid LAN host restarts on the same port without
+        // hitting "Address already in use" from TIME_WAIT state.
+        serverSocket = new ServerSocket();
+        serverSocket.setReuseAddress(true);
+        serverSocket.bind(new InetSocketAddress(InetAddress.getByName("0.0.0.0"), port), 50);
         workers.submit(this::acceptLoop);
     }
 

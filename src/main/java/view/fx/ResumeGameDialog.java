@@ -4,15 +4,18 @@ import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
 
 import javafx.geometry.Pos;
+import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
+import javafx.scene.shape.Rectangle;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
@@ -78,7 +81,7 @@ public final class ResumeGameDialog {
 
         // Layer 2: Card with message and buttons
         VBox card = new VBox(16);
-        card.getStyleClass().add("modal-card");
+        card.getStyleClass().add("resume-card");
         card.setMaxWidth(380);
         card.setAlignment(Pos.CENTER);
 
@@ -108,6 +111,8 @@ public final class ResumeGameDialog {
             future.complete(true);
             stage.close();
         });
+        StackPane siPane = new StackPane(siBtn);
+        StackPane.setMargin(siBtn, new Insets(0, -5, 20, 0));  // right 5px, down 20px
 
         Button noBtn = new Button("NO");
         noBtn.getStyleClass().add("btn-resume-no");
@@ -115,10 +120,15 @@ public final class ResumeGameDialog {
             future.complete(false);
             stage.close();
         });
+        StackPane noPane = new StackPane(noBtn);
+        StackPane.setMargin(noBtn, new Insets(0, 0, 20, -5)); // left 5px, down 20px
 
-        buttonBox.getChildren().addAll(siBtn, noBtn);
+        buttonBox.getChildren().addAll(siPane, noPane);
         card.getChildren().addAll(chipsLabel, titleLabel, messageLabel, buttonBox);
         root.getChildren().add(card);
+
+        // ── Apply rounded clip to card so corners match the sprite ──
+        applyRoundedClip(card, 24);
 
         Scene scene = new Scene(root, DISPLAY_W, DISPLAY_H, Color.TRANSPARENT);
         scene.setOnKeyPressed(event -> {
@@ -151,5 +161,15 @@ public final class ResumeGameDialog {
     /** Same formatting as the Swing JOptionPane fallback. */
     private static String formatChips(int chips) {
         return String.format(Locale.US, "%,d", Math.max(0, chips));
+    }
+
+    /** Applies a rounded-rectangle clip to a Region node. */
+    private static void applyRoundedClip(Region node, double arcSize) {
+        Rectangle clip = new Rectangle();
+        clip.setArcWidth(arcSize);
+        clip.setArcHeight(arcSize);
+        clip.widthProperty().bind(node.widthProperty());
+        clip.heightProperty().bind(node.heightProperty());
+        node.setClip(clip);
     }
 }

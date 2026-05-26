@@ -177,8 +177,8 @@ public class BettingLoopNoHardcodeTest {
         }
 
         @Override
-        public int getPlayerBetAmount(int minBet, int maxBet) {
-            return minBet;
+        public java.util.concurrent.CompletableFuture<Integer> getPlayerBetAmount(int minBet, int maxBet) {
+            return java.util.concurrent.CompletableFuture.completedFuture(minBet);
         }
 
         @Override

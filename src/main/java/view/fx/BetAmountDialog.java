@@ -1,5 +1,8 @@
 package view.fx;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -96,12 +99,17 @@ public class BetAmountDialog {
         slider.setBlockIncrement(100);
         slider.setMajorTickUnit(Math.max((maxBet - minBet) / 4, 100));
         slider.setShowTickMarks(true);
-        slider.setShowTickLabels(true);
+        // Replaced built-in tick labels with manual Label nodes for proper
+        // visibility across the full value range (fix-raise-slider-and-connection).
+        slider.setShowTickLabels(false);
         slider
             .valueProperty()
             .addListener((obs, old, val) ->
                 valueLabel.setText(String.valueOf(val.intValue()))
             );
+
+        // Manual tick labels — positioned along the slider track via width bindings.
+        javafx.scene.layout.Pane tickLabelsBox = buildTickLabelsBox(minBet, maxBet, slider);
 
         // Buttons with custom backgrounds
         Button acceptBtn = new Button("ACEPTAR");
@@ -128,7 +136,7 @@ public class BetAmountDialog {
 
         content
             .getChildren()
-            .addAll(title, rangeLabel, valueLabel, slider, buttons);
+            .addAll(title, rangeLabel, valueLabel, slider, tickLabelsBox, buttons);
 
         // Scene setup
         StackPane root = new StackPane(bgView, content);
@@ -167,6 +175,56 @@ public class BetAmountDialog {
         return stage;
     }
 
+    /**
+     * Builds a pane of manual tick labels positioned along the slider track.
+     * Each label's {@code layoutX} is bound to the slider width at its
+     * computed fraction so they reflow on DPI/scale changes.
+     */
+    private static javafx.scene.layout.Pane buildTickLabelsBox(
+        int minBet, int maxBet, Slider slider
+    ) {
+        List<TickInfo> ticks = computeTicks(minBet, maxBet);
+        javafx.scene.layout.Pane pane = new javafx.scene.layout.Pane();
+        pane.getStyleClass().add("tick-labels-box");
+        pane.setMinHeight(20);
+        pane.setPrefHeight(22);
+
+        // Bind the pane width to the slider width so labels stay aligned
+        pane.prefWidthProperty().bind(slider.widthProperty());
+        pane.minWidthProperty().bind(slider.widthProperty());
+
+        for (TickInfo tick : ticks) {
+            Label lbl = new Label(formatTickValue(tick.value));
+            lbl.getStyleClass().add("tick-label");
+            lbl.setMinWidth(javafx.scene.layout.Region.USE_PREF_SIZE);
+
+            // Position at the fraction along the slider width, centered
+            // Offset by half the label width so "center" of label aligns
+            // with the tick mark position on the slider.
+            lbl.layoutXProperty().bind(
+                slider.widthProperty()
+                    .multiply(tick.fraction)
+                    .subtract(lbl.widthProperty().divide(2.0))
+            );
+
+            pane.getChildren().add(lbl);
+        }
+        return pane;
+    }
+
+    /**
+     * Formats a tick value for compact display (e.g. "1.5K" instead of "1500").
+     */
+    private static String formatTickValue(int value) {
+        if (value >= 1000) {
+            if (value % 1000 == 0) {
+                return (value / 1000) + "K";
+            }
+            return String.format("%.1fK", value / 1000.0);
+        }
+        return String.valueOf(value);
+    }
+
     private static void startTimeout(
         Stage stage,
         CompletableFuture<Integer> future,
@@ -185,6 +243,44 @@ public class BetAmountDialog {
             } catch (Exception ignored) {
             }
         }).start();
+    }
+
+    /**
+     * Tick label info: value to display and its fraction position along the slider
+     * track (0.0 = far left, 1.0 = far right).
+     */
+    public record TickInfo(int value, double fraction) {}
+
+    /**
+     * Computes evenly spaced tick values between min and max, returning
+     * their display values and fractional positions along the slider track.
+     *
+     * For extreme ranges where labels would overlap, reduces the count
+     * but always includes the minimum and maximum values.
+     */
+    public static List<TickInfo> computeTicks(int min, int max) {
+        if (max <= min) {
+            return Collections.singletonList(new TickInfo(min, 0.5));
+        }
+
+        int range = max - min;
+        // Determine tick count: start with 5, reduce if range is extreme enough
+        // that labels would overlap in ~320px of visual space.
+        int tickCount = 5;
+        if (range > 20000) {
+            tickCount = 4;
+        }
+        if (range > 50000) {
+            tickCount = 3;
+        }
+
+        List<TickInfo> ticks = new ArrayList<>(tickCount);
+        for (int i = 0; i < tickCount; i++) {
+            double fraction = (double) i / (tickCount - 1);
+            int value = min + (int) Math.round(fraction * range);
+            ticks.add(new TickInfo(value, fraction));
+        }
+        return ticks;
     }
 
     /**

@@ -141,6 +141,7 @@ public final class GameTable {
     // ── Game-flow synchronisation (blocking from non-FX threads) ──────────────
     private volatile CompletableFuture<Void> lastAnimationFuture;
     private volatile CompletableFuture<BettingRound.Action> pendingActionFuture;
+    private volatile CompletableFuture<Integer> pendingBetFuture;
 
     // ── Latest player name / chips for bridge methods ────────────────────────
     private String latestPlayerName = "";
@@ -558,6 +559,9 @@ public final class GameTable {
                             if (onExitConfirmed != null) {
                                 onExitConfirmed.run();
                             }
+                            // Cancel any pending bet dialog so the game thread
+                            // unblocks and returns to the menu immediately.
+                            cancelPendingBet();
                             closeLatch.countDown();
                             if (stage != null) {
                                 // Bypass the close-request interceptor for final close
@@ -573,6 +577,17 @@ public final class GameTable {
                 Platform.runLater(() -> exitDialogShowing = false);
             }
         }, "exit-dialog-thread").start();
+    }
+
+    /**
+     * Cancels any pending bet amount dialog so the game thread
+     * unblocks immediately instead of waiting for the 60 s timeout.
+     */
+    private void cancelPendingBet() {
+        CompletableFuture<Integer> f = pendingBetFuture;
+        if (f != null && !f.isDone()) {
+            f.complete(0);
+        }
     }
 
     /**
@@ -1913,22 +1928,21 @@ public final class GameTable {
     }
 
     /**
-     * Opens the bet amount dialog and blocks until the player chooses an amount.
+     * Opens the bet amount dialog and returns a CompletableFuture that
+     * completes with the chosen amount (or minBet on cancel/timeout).
+     *
+     * Callers MUST chain on the future via {@code .thenAccept()} / {@code .get()}
+     * instead of blocking — this prevents FX thread deadlocks.
      *
      * @param minBet minimum bet (e.g. big blind or min raise)
      * @param maxBet maximum bet (player's total chips)
-     * @return the chosen bet amount, or minBet on cancel/timeout
+     * @return CompletableFuture&lt;Integer&gt; that completes with the chosen amount
      */
-    public int getPlayerBetAmount(int minBet, int maxBet) {
+    public CompletableFuture<Integer> getPlayerBetAmount(int minBet, int maxBet) {
         CompletableFuture<Integer> future = BetAmountDialog.showAndWait(minBet, maxBet);
-        try {
-            return future.get(60, TimeUnit.SECONDS);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return minBet;
-        } catch (Exception e) {
-            return minBet;
-        }
+        pendingBetFuture = future;
+        future.whenComplete((result, error) -> pendingBetFuture = null);
+        return future;
     }
 
     /**
@@ -1978,6 +1992,8 @@ public final class GameTable {
             fut.cancel(true);
             pendingActionFuture = null;
         }
+        // Cancel any pending bet dialog so game thread unblocks immediately
+        cancelPendingBet();
         if (stage != null) {
             // Bypass the close-request interceptor (no exit dialog)
             stage.setOnCloseRequest(e -> {});

@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CancellationException;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 public class LanHostController {
@@ -506,13 +507,23 @@ public class LanHostController {
         int playerCurrentBet
     ) {
         if (action == BettingRound.Action.BET) {
-            return table.getPlayerBetAmount(round.getBigBlind(), human.getNumbChips());
+            try {
+                return table.getPlayerBetAmount(round.getBigBlind(), human.getNumbChips())
+                    .get(60, java.util.concurrent.TimeUnit.SECONDS);
+            } catch (Exception e) {
+                return round.getBigBlind();
+            }
         }
         if (action == BettingRound.Action.CALL) {
             return round.callAmount(playerCurrentBet);
         }
         if (action == BettingRound.Action.RAISE) {
-            return table.getPlayerBetAmount(round.minRaiseAmount(), human.getNumbChips());
+            try {
+                return table.getPlayerBetAmount(round.minRaiseAmount(), human.getNumbChips())
+                    .get(60, java.util.concurrent.TimeUnit.SECONDS);
+            } catch (Exception e) {
+                return round.minRaiseAmount();
+            }
         }
         return 0;
     }

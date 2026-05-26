@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.TimeUnit;
 
 public class LanClientController implements GameClient.Listener {
 
@@ -163,11 +164,21 @@ public class LanClientController implements GameClient.Listener {
 
         int amount = 0;
         if (action == BettingRound.Action.BET) {
-            amount = table.getPlayerBetAmount(round.getBigBlind(), me.getChips());
+            try {
+                amount = table.getPlayerBetAmount(round.getBigBlind(), me.getChips())
+                    .get(60, java.util.concurrent.TimeUnit.SECONDS);
+            } catch (Exception e) {
+                amount = round.getBigBlind();
+            }
         } else if (action == BettingRound.Action.CALL) {
             amount = round.callAmount(me.getCurrentBet());
         } else if (action == BettingRound.Action.RAISE) {
-            amount = table.getPlayerBetAmount(round.minRaiseAmount(), me.getChips());
+            try {
+                amount = table.getPlayerBetAmount(round.minRaiseAmount(), me.getChips())
+                    .get(60, java.util.concurrent.TimeUnit.SECONDS);
+            } catch (Exception e) {
+                amount = round.minRaiseAmount();
+            }
         }
 
         client.sendAction(action, amount);

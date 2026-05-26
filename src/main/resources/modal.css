@@ -174,9 +174,9 @@
     -fx-border-radius: 28;
     -fx-border-color: linear-gradient(to bottom, #f0d88a, #c9a84c, #8a6020);
     -fx-border-width: 2.5;
-    -fx-padding: 14 48 14 48;
+    -fx-padding: 14 20 14 20;
     -fx-cursor: hand;
-    -fx-min-width: 120;
+    -fx-min-width: 140;
     -fx-effect: dropshadow(gaussian, rgba(5, 10, 6, 0.7), 10, 0.6, 0, 4);
 }
 
@@ -276,6 +276,27 @@
     -fx-font-family: -fx-font-heading;
     -fx-font-size: 24px;
     -fx-font-weight: bold;
+}
+
+/* Card — transparent so continuar_partida.png sprite shows through */
+.resume-card {
+    -fx-background-color: transparent;
+    -fx-padding: 36 48 36 48;
+}
+
+/* Card — semi-transparent dark so menu-bg.png shows through but content is legible */
+.exit-card {
+    -fx-background-color: rgba(6, 14, 10, 0.65);
+    -fx-background-radius: 24;
+    -fx-border-color: linear-gradient(
+        to bottom,
+        #f0d88a,
+        #d4a845,
+        #a8782a,
+        #6b5010
+    );
+    -fx-border-width: 3;
+    -fx-border-radius: 24;
 }
 
 /* Question label — italic cream, no dropshadow */

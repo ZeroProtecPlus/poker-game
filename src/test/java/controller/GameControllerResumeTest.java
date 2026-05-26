@@ -427,7 +427,9 @@ class GameControllerResumeTest {
             return BettingRound.Action.FOLD;
         }
 
-        @Override public int getPlayerBetAmount(int min, int max) { return min; }
+        @Override public java.util.concurrent.CompletableFuture<Integer> getPlayerBetAmount(int min, int max) {
+            return java.util.concurrent.CompletableFuture.completedFuture(min);
+        }
 
         @Override public void showResult(ArrayList<Card> c, ArrayList<Card> h,
                                          ShowdownResult r, int p) {
