@@ -1,0 +1,494 @@
+/* ═══════════════════════════════════════════════════════════════
+   ROYAL POKER — UI Mejorado
+   ═══════════════════════════════════════════════════════════════ */
+
+   .game-table-canvas {
+    -fx-background-color: transparent;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Player Badge (bottom-left)
+   Badge premium con borde dorado brillante y sombra profunda
+   ═══════════════════════════════════════════════════════════════ */
+.player-badge {
+    /* transparent: la imagen ya provee el fondo y el borde decorativo */
+    -fx-background-color: transparent;
+    -fx-background-image: url("/sprites/button-bg-badge.png");
+    -fx-background-repeat: no-repeat;
+    -fx-background-size: 100% 100%;
+    -fx-background-position: center;
+    -fx-background-radius: 0;
+    /* Sin border CSS — el marco dorado ya viene en la imagen */
+    -fx-border-width: 0;
+    -fx-padding: 9 18;
+    -fx-spacing: 10;
+    -fx-alignment: center-left;
+    /* Sombra exterior para que flote sobre la mesa */
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.65), 12, 0, 0, 3);
+}
+.player-badge .badge-name {
+    -fx-font-family: -fx-font-heading;
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #f5edd8;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.8), 3, 0, 0, 1);
+}
+.player-badge .badge-chips {
+    -fx-font-family: -fx-font-heading;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #f0d060;
+    -fx-effect: dropshadow(gaussian, rgba(201, 168, 76, 0.6), 6, 0.4, 0, 0);
+}
+
+/* Badge cuando el jugador hace fold */
+.player-badge-folded {
+    /* Tinte rojizo semitransparente sobre la imagen para indicar fold */
+    -fx-background-color: rgba(60, 0, 0, 0.45);
+    -fx-background-image: url("/sprites/button-bg-badge.png");
+    -fx-background-repeat: no-repeat;
+    -fx-background-size: 100% 100%;
+    -fx-background-position: center;
+    -fx-background-radius: 0;
+    -fx-border-width: 0;
+    -fx-padding: 9 18;
+    -fx-spacing: 10;
+    -fx-alignment: center-left;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.5), 10, 0, 0, 2);
+}
+.player-badge-folded .badge-name {
+    -fx-font-family: -fx-font-heading;
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #c88080;
+}
+.player-badge-folded .badge-chips {
+    -fx-font-family: -fx-font-heading;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #a06060;
+}
+
+.fold-indicator {
+    -fx-font-family: -fx-font-heading;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #cc4444;
+    -fx-padding: 0 4 0 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Active Turn Highlight — golden glow on the badge whose turn it is.
+   Uses combined selectors so the border and effect always win over
+   the per-badge defaults (.player-badge / .ai-badge).
+   ═══════════════════════════════════════════════════════════════ */
+.player-badge.badge-active-turn,
+.ai-badge.badge-active-turn {
+    -fx-effect: dropshadow(gaussian, #f0d88a, 18, 0.6, 0, 0);
+    -fx-border-color: #f0d88a;
+    -fx-border-width: 2;
+    -fx-border-radius: 28;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   AI Badge (fila superior, 3 posiciones)
+   Compactos, elegantes, fáciles de leer de un vistazo
+   ═══════════════════════════════════════════════════════════════ */
+.ai-badge {
+    -fx-background-color: transparent;
+    -fx-background-image: url("/sprites/button-bg-badge.png");
+    -fx-background-repeat: no-repeat;
+    -fx-background-size: 100% 100%;
+    -fx-background-position: center;
+    -fx-background-radius: 0;
+    -fx-border-width: 0;
+    -fx-padding: 7 16;
+    -fx-spacing: 8;
+    -fx-alignment: center-left;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.55), 8, 0, 0, 3);
+}
+.ai-badge .badge-name {
+    -fx-font-family: -fx-font-heading;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #f0e8d4;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.7), 2, 0, 0, 1);
+}
+.ai-badge .badge-chips {
+    -fx-font-family: -fx-font-heading;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #e8c052;
+}
+
+/* AI Badge cuando la IA hace fold */
+.ai-badge-folded {
+    -fx-background-color: rgba(50, 0, 0, 0.45);
+    -fx-background-image: url("/sprites/button-bg-badge.png");
+    -fx-background-repeat: no-repeat;
+    -fx-background-size: 100% 100%;
+    -fx-background-position: center;
+    -fx-background-radius: 0;
+    -fx-border-width: 0;
+    -fx-padding: 7 16;
+    -fx-spacing: 8;
+    -fx-alignment: center-left;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.45), 6, 0, 0, 2);
+}
+.ai-badge-folded .badge-name {
+    -fx-font-family: -fx-font-heading;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #c07070;
+}
+.ai-badge-folded .badge-chips {
+    -fx-font-family: -fx-font-heading;
+    -fx-font-size: 12px;
+    -fx-text-fill: #9a5858;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Role Chips (colores sólidos + borde, sin gradientes)
+   ═══════════════════════════════════════════════════════════════ */
+.chip-purple {
+    -fx-background-color: #7d3c98;
+    -fx-background-radius: 50%;
+    -fx-min-width: 28;
+    -fx-min-height: 28;
+    -fx-max-width: 28;
+    -fx-max-height: 28;
+    -fx-border-color: #b07fd0;
+    -fx-border-width: 2;
+    -fx-border-radius: 50%;
+    -fx-text-fill: #f5edd8;
+    -fx-alignment: center;
+    -fx-font-family: -fx-font-mono;
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+    -fx-effect: dropshadow(gaussian, rgba(125, 60, 152, 0.6), 6, 0.3, 0, 0);
+}
+.chip-white {
+    -fx-background-color: #e8e0d0;
+    -fx-background-radius: 50%;
+    -fx-min-width: 28;
+    -fx-min-height: 28;
+    -fx-max-width: 28;
+    -fx-max-height: 28;
+    -fx-border-color: #f5f0e8;
+    -fx-border-width: 2;
+    -fx-border-radius: 50%;
+    -fx-text-fill: #2a1a0a;
+    -fx-alignment: center;
+    -fx-font-family: -fx-font-mono;
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+    -fx-effect: dropshadow(gaussian, rgba(255, 255, 255, 0.4), 6, 0.3, 0, 0);
+}
+.chip-none {
+    -fx-background-color: #303030;
+    -fx-background-radius: 50%;
+    -fx-min-width: 28;
+    -fx-min-height: 28;
+    -fx-max-width: 28;
+    -fx-max-height: 28;
+    -fx-border-color: #505050;
+    -fx-border-width: 2;
+    -fx-border-radius: 50%;
+    -fx-text-fill: #888888;
+    -fx-alignment: center;
+    -fx-font-family: -fx-font-mono;
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Pot Display (centro)
+   ═══════════════════════════════════════════════════════════════ */
+.pot-display {
+    -fx-background-color: rgba(8, 8, 10, 0.80);
+    -fx-background-image: url("/sprites/button-bg.png");
+    -fx-background-repeat: no-repeat;
+    -fx-background-size: cover;
+    -fx-background-position: center;
+    -fx-border-color: #c9a84c, rgba(0,0,0,0.6);
+    -fx-border-width: 1.5, 1;
+    -fx-border-radius: 12, 13;
+    -fx-border-insets: 0, -1;
+    -fx-background-radius: 12;
+    -fx-padding: 6 24;
+    -fx-spacing: 8;
+    -fx-alignment: center;
+    -fx-effect: dropshadow(gaussian, rgba(201, 168, 76, 0.40), 12, 0.3, 0, 0);
+}
+.pot-icon {
+    -fx-font-family: -fx-font-heading;
+    -fx-font-size: 16px;
+    -fx-text-fill: #c9a84c;
+}
+.pot-display .pot-text {
+    -fx-font-family: -fx-font-heading;
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #f0d060;
+    -fx-effect: dropshadow(gaussian, rgba(201, 168, 76, 0.5), 8, 0.4, 0, 0);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Section Labels
+   ═══════════════════════════════════════════════════════════════ */
+.section-label {
+    -fx-font-family: -fx-font-heading;
+    -fx-font-size: 13px;
+    -fx-font-style: italic;
+    -fx-text-fill: rgba(201, 168, 76, 0.65);
+    -fx-alignment: center;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Card & Deck Styles
+   ═══════════════════════════════════════════════════════════════ */
+.deck-pile {
+    -fx-border-color: rgba(0, 0, 0, 1);
+    -fx-border-width: 10;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Betting Panel
+   — Fondo: solo la parte SUPERIOR de la imagen a su tamaño
+     natural (auto), sin escalar, sin repetir.
+     El panel es más alto que la imagen → el resto queda
+     con el color de fondo sólido.
+   ═══════════════════════════════════════════════════════════════ */
+.betting-panel {
+    -fx-background-color: rgba(8, 24, 14, 0.97);
+
+    /*
+     * ★ La imagen (panorámica ~1440px de ancho) se escala al 100% del
+     *   ancho del panel manteniendo la proporción original (height: auto).
+     *   Como el panel es mucho más bajo que la imagen proporcional,
+     *   solo se ve la franja superior → las florituras doradas quedan
+     *   perfectamente visibles y sin distorsión.
+     */
+    -fx-background-image: url("/sprites/betting-panel-bg.png");
+    -fx-background-repeat: no-repeat;
+    -fx-background-size: 100% auto;      /* ancho = panel, alto proporcional */
+    -fx-background-position: top center; /* ancla al borde superior */
+
+    -fx-background-radius: 16;
+
+    /* Borde triple: dorado fino + ámbar exterior + sombra negra */
+    -fx-border-color: #c9a84c, rgba(255, 220, 100, 0.18), rgba(0, 0, 0, 0.9);
+    -fx-border-width: 1.5, 1, 1;
+    -fx-border-radius: 16, 17, 18;
+    -fx-border-insets: 0, -1, -2;
+
+    -fx-padding: 10 24 14 24;
+    -fx-spacing: 14;
+    -fx-alignment: center;
+    -fx-min-width: 840;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.7), 18, 0, 0, 4);
+}
+
+.betting-phase-label {
+    -fx-font-family: -fx-font-heading;
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #c9a84c;
+    -fx-padding: 0 14 0 0;
+    -fx-effect: dropshadow(gaussian, rgba(201, 168, 76, 0.5), 6, 0.3, 0, 0);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Betting Buttons
+   Aspecto de tecla grabada: oscuro profundo, borde dorado,
+   highlight en la arista superior, glow en hover.
+   ═══════════════════════════════════════════════════════════════ */
+.betting-btn {
+    -fx-font-family: -fx-font-heading;
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #f5edd8;
+
+    -fx-background-color: rgba(14, 36, 22, 0.98);
+    -fx-background-image: url("/sprites/button-bg-small.png");
+    -fx-background-repeat: no-repeat;
+    /*
+     * Con la imagen recortada (400×150, mismo ratio que el botón 128×48),
+     * 100% 100% escala perfectamente sin distorsión.
+     */
+    -fx-background-size: 100% 100%;
+    -fx-background-position: center;
+    -fx-background-radius: 10;
+
+    /* Sin borde visible — solo color de fondo */
+    -fx-border-color: transparent;
+    -fx-border-width: 0;
+    -fx-border-radius: 10;
+
+    -fx-padding: 0;
+    -fx-cursor: hand;
+    -fx-pref-width: 128;
+    -fx-pref-height: 48;
+
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.60), 8, 0, 0, 3);
+}
+
+.betting-btn:hover {
+    -fx-background-color: rgba(26, 68, 40, 0.98);
+    -fx-scale-x: 1.06;
+    -fx-scale-y: 1.06;
+    /* Glow dorado al hacer hover */
+    -fx-effect: dropshadow(gaussian, rgba(201, 168, 76, 0.55), 14, 0.4, 0, 0);
+}
+
+.betting-btn:pressed {
+    -fx-scale-x: 0.97;
+    -fx-scale-y: 0.97;
+    -fx-background-color: rgba(8, 20, 12, 0.98);
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.8), 4, 0, 0, 1);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Action Log (bottom-right)
+   ═══════════════════════════════════════════════════════════════ */
+.action-log {
+    -fx-background-color: rgba(8, 12, 10, 0.90);
+    -fx-background-image: url("/sprites/action-log-bg.png");
+    -fx-background-repeat: no-repeat;
+    -fx-background-size: 100% 100%;
+    -fx-background-position: center;
+    -fx-border-color: rgba(201, 168, 76, 0.55), rgba(0,0,0,0.7);
+    -fx-border-width: 1.2, 1;
+    -fx-border-radius: 10, 11;
+    -fx-border-insets: 0, -1;
+    -fx-background-radius: 10;
+    -fx-padding: 12 16;
+    -fx-spacing: 4;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.5), 8, 0, 0, 2);
+}
+
+.action-log-line {
+    -fx-font-family: -fx-font-mono;
+    -fx-font-size: 13px;
+    -fx-font-style: normal;
+    -fx-text-fill: #f0e8d4;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Result Banner
+   ═══════════════════════════════════════════════════════════════ */
+.result-banner {
+    -fx-font-family: -fx-font-heading;
+    -fx-font-size: 22px;
+    -fx-font-weight: bold;
+    -fx-alignment: center;
+    -fx-background-color: rgba(0, 0, 0, 0.70);
+    -fx-background-image: url("/sprites/button-bg.png");
+    -fx-background-repeat: no-repeat;
+    -fx-background-size: cover;
+    -fx-background-position: center;
+    -fx-background-radius: 14;
+    -fx-border-radius: 14;
+    -fx-border-width: 1.5;
+    -fx-padding: 10 28;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.6), 10, 0, 0, 2);
+}
+
+.result-win {
+    -fx-text-fill: #f0d060;
+    -fx-border-color: #e8c96a;
+    -fx-effect: dropshadow(gaussian, rgba(201, 168, 76, 0.6), 12, 0.4, 0, 0);
+}
+
+.result-loss {
+    -fx-text-fill: #dd4444;
+    -fx-border-color: #cc3333;
+    -fx-effect: dropshadow(gaussian, rgba(200, 50, 50, 0.5), 10, 0.3, 0, 0);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Game Over Overlay
+   ═══════════════════════════════════════════════════════════════ */
+.gameover-panel {
+    -fx-background-color: rgba(8, 12, 10, 0.96);
+    -fx-background-image: url("/sprites/action-log-bg.png");
+    -fx-background-repeat: no-repeat;
+    -fx-background-size: 100% 100%;
+    -fx-background-position: center;
+    -fx-border-color: #c9a84c, rgba(0,0,0,0.8);
+    -fx-border-width: 2, 1;
+    -fx-border-radius: 14, 15;
+    -fx-border-insets: 0, -1;
+    -fx-background-radius: 14;
+    -fx-padding: 24 36;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.7), 16, 0, 0, 4);
+}
+
+.gameover-title {
+    -fx-font-family: -fx-font-heading;
+    -fx-font-size: 28px;
+    -fx-font-weight: bold;
+    -fx-alignment: center;
+}
+
+.gameover-chips {
+    -fx-font-family: -fx-font-heading;
+    -fx-font-size: 18px;
+    -fx-alignment: center;
+}
+
+.gameover-win {
+    -fx-text-fill: #f0d060;
+    -fx-effect: dropshadow(gaussian, rgba(201, 168, 76, 0.6), 10, 0.4, 0, 0);
+}
+
+.gameover-loss {
+    -fx-text-fill: #dd4444;
+    -fx-effect: dropshadow(gaussian, rgba(200, 50, 50, 0.5), 8, 0.3, 0, 0);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Status Bar (top-center, below AI badges)
+   Shows connection dot, game phase, and turn indicator.
+   ═══════════════════════════════════════════════════════════════ */
+.status-bar {
+    -fx-background-color: rgba(6, 14, 10, 0.82);
+    -fx-background-radius: 10;
+    -fx-border-color: rgba(201, 168, 76, 0.45);
+    -fx-border-width: 1;
+    -fx-border-radius: 10;
+    -fx-padding: 5 18;
+    -fx-spacing: 10;
+    -fx-alignment: center;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.5), 8, 0, 0, 3);
+}
+
+.status-dot {
+    -fx-font-family: -fx-font-heading;
+    -fx-font-size: 12px;
+}
+
+.status-dot-connected {
+    -fx-text-fill: #2ecc71;
+    -fx-effect: dropshadow(gaussian, rgba(46, 204, 113, 0.6), 6, 0.4, 0, 0);
+}
+
+.status-dot-disconnected {
+    -fx-text-fill: #e74c3c;
+    -fx-effect: dropshadow(gaussian, rgba(231, 76, 60, 0.6), 6, 0.4, 0, 0);
+}
+
+.status-phase {
+    -fx-font-family: -fx-font-heading;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #c9a84c;
+    -fx-effect: dropshadow(gaussian, rgba(201, 168, 76, 0.4), 4, 0.3, 0, 0);
+}
+
+.status-turn {
+    -fx-font-family: -fx-font-heading;
+    -fx-font-size: 13px;
+    -fx-text-fill: #f5edd8;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.5), 3, 0.3, 0, 1);
+}

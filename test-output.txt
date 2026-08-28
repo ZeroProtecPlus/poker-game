@@ -1,0 +1,12 @@
+GameTableTest: all tests passed
+
+=== VISUAL DEMO: GameTable (Phase 8: Result Banner) ===
+Window shows badges, pot, cards, action log, and result banner.
+Close the window to exit.
+Visual demo: showing betting buttons (Preflop)
+Visual demo: dealt player hand (A?, K?)
+Visual demo: dealt flop (Q?, J?, 10?)
+Visual demo: set action log with 3 entries
+Visual demo: showing win result banner
+Visual demo: showing loss result banner
+Player action: ALL_IN

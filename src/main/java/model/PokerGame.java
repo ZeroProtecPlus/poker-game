@@ -1,0 +1,770 @@
+package model;
+
+import java.util.*;
+
+public class PokerGame {
+
+    public static final int SMALL_BLIND = 5;
+    public static final int BIG_BLIND = 10;
+
+    public enum HandRank {
+        HIGH_CARD("Carta Alta"),
+        ONE_PAIR("Par"),
+        TWO_PAIR("Doble Par"),
+        THREE_OF_A_KIND("Trío"),
+        STRAIGHT("Escalera"),
+        FLUSH("Color"),
+        FULL_HOUSE("Full House"),
+        FOUR_OF_A_KIND("Póker"),
+        STRAIGHT_FLUSH("Escalera de Color"),
+        ROYAL_FLUSH("Escalera Real");
+
+        public final String spanishName;
+
+        HandRank(String name) {
+            this.spanishName = name;
+        }
+    }
+
+    private static final Map<String, Integer> RANK_VALUE = new LinkedHashMap<>();
+
+    static {
+        RANK_VALUE.put("2", 2);
+        RANK_VALUE.put("3", 3);
+        RANK_VALUE.put("4", 4);
+        RANK_VALUE.put("5", 5);
+        RANK_VALUE.put("6", 6);
+        RANK_VALUE.put("7", 7);
+        RANK_VALUE.put("8", 8);
+        RANK_VALUE.put("9", 9);
+        RANK_VALUE.put("10", 10);
+        RANK_VALUE.put("J", 11);
+        RANK_VALUE.put("Q", 12);
+        RANK_VALUE.put("K", 13);
+        RANK_VALUE.put("A", 14);
+    }
+
+    private Deck deck;
+    private final HandEvaluator handEvaluator;
+    private final User player;
+    private final ArrayList<User> lanHumanPlayers = new ArrayList<>();
+    private final ArrayList<AIPlayer> aiPlayers = new ArrayList<>();
+    private final ArrayList<Player> players = new ArrayList<>();
+    private final ArrayList<Card> communityCards = new ArrayList<>();
+
+    private int dealerIndex = 0;
+    private int pot = 0;
+
+    public PokerGame(User player) {
+        this.player = player;
+        this.handEvaluator = new HandEvaluator();
+        if (player != null) {
+            aiPlayers.add(new AIPlayer("Carlos", 10000));
+            aiPlayers.add(new AIPlayer("María", 10000));
+            aiPlayers.add(new AIPlayer("Sofía", 10000));
+        }
+        rebuildPlayers();
+    }
+
+    /** LAN table: local host human + remote humans; fills empty seats with AI up to 4 players. */
+    public PokerGame(User localHuman, List<User> remoteHumans, boolean fillWithAi) {
+        this.player = localHuman;
+        this.handEvaluator = new HandEvaluator();
+        lanHumanPlayers.clear();
+        if (remoteHumans != null) {
+            lanHumanPlayers.addAll(remoteHumans);
+        }
+        aiPlayers.clear();
+        rebuildLanPlayers(fillWithAi);
+    }
+
+    private int seatCount() {
+        return (player != null ? 1 : 0) + lanHumanPlayers.size();
+    }
+
+    private void rebuildLanPlayers(boolean fillWithAi) {
+        players.clear();
+        aiPlayers.clear();
+        if (player != null) {
+            players.add(player);
+        }
+        players.addAll(lanHumanPlayers);
+        if (fillWithAi) {
+            String[] names = {"Carlos", "María", "Sofía"};
+            int index = 0;
+            while (players.size() < 4) {
+                aiPlayers.add(new AIPlayer(names[index % names.length], 10000));
+                index++;
+            }
+        }
+        players.addAll(aiPlayers);
+    }
+
+    private void rebuildPlayers() {
+        players.clear();
+        if (player != null) {
+            players.add(player);
+        }
+        players.addAll(lanHumanPlayers);
+        players.addAll(aiPlayers);
+    }
+
+    public boolean isLocalHuman(Player current) {
+        return current == player;
+    }
+
+    public List<User> getLanHumanPlayers() {
+        return List.copyOf(lanHumanPlayers);
+    }
+
+    public List<User> getAllHumanUsers() {
+        ArrayList<User> humans = new ArrayList<>();
+        if (player != null) {
+            humans.add(player);
+        }
+        humans.addAll(lanHumanPlayers);
+        return humans;
+    }
+
+    public User findUserByPlayerId(String playerId) {
+        if (playerId == null) {
+            return null;
+        }
+        if (player != null && playerId.equals(player.getPlayerId())) {
+            return player;
+        }
+        for (User remote : lanHumanPlayers) {
+            if (playerId.equals(remote.getPlayerId())) {
+                return remote;
+            }
+        }
+        return null;
+    }
+
+    public record HumanActionEntry(BettingRound.Action action, int amount) {}
+
+    public AIBettingResult runLanUnifiedBettingRound(
+        int currentHighBet,
+        BettingRound.Phase phase,
+        Map<String, HumanActionEntry> humanActions
+    ) {
+        List<String> log = new ArrayList<>();
+        Map<String, HumanActionEntry> actions = humanActions != null ? humanActions : Map.of();
+
+        for (Player current : players) {
+            if (current.isFolded() || current.isAllIn()) {
+                continue;
+            }
+
+            if (current instanceof User user) {
+                HumanActionEntry entry = actions.get(user.getPlayerId());
+                if (entry != null && entry.action() != null) {
+                    currentHighBet = applyUserAction(user, entry.action(), entry.amount(), currentHighBet);
+                }
+                continue;
+            }
+
+            AIPlayer ai = (AIPlayer) current;
+            int callAmount = Math.max(0, currentHighBet - ai.getCurrentBet());
+            BettingRound.Action action = ai.decide(callAmount, pot, communityCards, ai.getRole(), phase);
+
+            switch (action) {
+                case FOLD -> {
+                    ai.setFolded(true);
+                    log.add(ai.getName() + " se retira");
+                }
+                case CHECK -> log.add(ai.getName() + " pasa");
+                case CALL -> {
+                    int amount = ai.placeBet(callAmount);
+                    pot += amount;
+                    log.add(ai.getName() + " iguala " + amount);
+                }
+                case BET, RAISE -> {
+                    int amount = ai.decideAmount(BIG_BLIND, pot, communityCards, ai.getRole(), phase);
+                    amount = ai.placeBet(amount);
+                    pot += amount;
+                    currentHighBet = Math.max(currentHighBet, ai.getCurrentBet());
+                    String word = action == BettingRound.Action.BET ? "apuesta" : "sube a";
+                    log.add(ai.getName() + " " + word + " " + amount);
+                }
+                default -> log.add(ai.getName() + " pasa");
+            }
+        }
+
+        return new AIBettingResult(log, currentHighBet, player != null && player.isFolded());
+    }
+
+    public int applyUserAction(User target, BettingRound.Action action, int amount, int currentHighBet) {
+        if (action == null) {
+            return currentHighBet;
+        }
+        switch (action) {
+            case FOLD -> target.setFolded(true);
+            case CHECK -> { }
+            case CALL -> {
+                int actual = target.placeBet(amount);
+                pot += actual;
+            }
+            case BET -> {
+                int actual = target.placeBet(amount);
+                pot += actual;
+                currentHighBet = Math.max(currentHighBet, target.getCurrentBet());
+            }
+            case RAISE -> {
+                int extra = Math.max(0, amount - target.getCurrentBet());
+                int actual = target.placeBet(extra);
+                pot += actual;
+                currentHighBet = Math.max(currentHighBet, target.getCurrentBet());
+            }
+            case ALL_IN -> {
+                if (!target.isAllIn()) {
+                    int actual = target.placeBet(target.getChips());
+                    pot += actual;
+                    currentHighBet = Math.max(currentHighBet, target.getCurrentBet());
+                }
+            }
+        }
+        return currentHighBet;
+    }
+
+    public void startNewRound() {
+        // Reinicia estado interno antes de repartir para evitar fugas entre manos.
+        deck = new Deck();
+        communityCards.clear();
+        pot = 0;
+
+        for (Player current : players) {
+            current.clearHand();
+        }
+
+        assignRoles();
+        dealAllHands();
+        postBlinds();
+    }
+
+    private void assignRoles() {
+        if (players.isEmpty()) {
+            return;
+        }
+
+        // Rotación por dealerIndex para mantener fairness entre manos.
+        for (int i = 0; i < players.size(); i++) {
+            PlayerRole role = switch (i) {
+                case 0 -> PlayerRole.DEALER;
+                case 1 -> PlayerRole.SMALL_BLIND;
+                case 2 -> PlayerRole.BIG_BLIND;
+                default -> PlayerRole.NONE;
+            };
+
+            int seat = (dealerIndex + i) % players.size();
+            players.get(seat).setRole(role);
+        }
+
+        dealerIndex = (dealerIndex + 1) % players.size();
+    }
+
+    public AIPlayer.Role getHumanRole() {
+        return AIPlayer.toAIRole(player.getPlayerRole());
+    }
+
+    private void dealAllHands() {
+        for (int i = 0; i < 2; i++) {
+            for (Player current : players) {
+                current.addCard(deck.dealCard());
+            }
+        }
+    }
+
+    private void postBlinds() {
+        // Blinds se postean al inicio para construir el bote mínimo.
+        for (Player current : players) {
+            if (current.getPlayerRole() == PlayerRole.SMALL_BLIND) {
+                pot += current.placeBet(SMALL_BLIND);
+            } else if (current.getPlayerRole() == PlayerRole.BIG_BLIND) {
+                pot += current.placeBet(BIG_BLIND);
+            }
+        }
+    }
+
+    public void dealFlop() {
+        burnCard();
+        for (int i = 0; i < 3; i++) {
+            communityCards.add(deck.dealCard());
+        }
+    }
+
+    public void dealTurnOrRiver() {
+        burnCard();
+        communityCards.add(deck.dealCard());
+    }
+
+    private void burnCard() {
+        deck.dealCard();
+    }
+
+    public BettingRound createBettingRound(BettingRound.Phase phase) {
+        // Deriva la apuesta más alta para inicializar la ronda con estado coherente.
+        int highBet = 0;
+        for (Player current : players) {
+            if (!current.isFolded()) {
+                highBet = Math.max(highBet, current.getCurrentBet());
+            }
+        }
+        return new BettingRound(phase, pot, highBet, BIG_BLIND);
+    }
+
+    public boolean isPlayerAllIn() {
+        return player.isAllIn();
+    }
+
+    public void humanCheck() {
+    }
+
+    public void humanBet(int amount) {
+        int actual = player.placeBet(amount);
+        pot += actual;
+    }
+
+    public int humanCall(int callAmount) {
+        int actual = player.placeBet(callAmount);
+        pot += actual;
+        return actual;
+    }
+
+    public void humanRaise(int totalAmount) {
+        int extra = Math.max(0, totalAmount - player.getCurrentBet());
+        int actual = player.placeBet(extra);
+        pot += actual;
+    }
+
+    public void humanAllIn() {
+        if (!player.isAllIn()) {
+            humanBet(player.getChips());
+        }
+    }
+
+    public AIBettingResult runAIBettingRound(int currentHighBet, BettingRound.Phase phase) {
+        List<String> log = new ArrayList<>();
+
+        for (AIPlayer ai : aiPlayers) {
+            if (ai.isFolded() || ai.isAllIn()) {
+                continue;
+            }
+
+            int callAmount = Math.max(0, currentHighBet - ai.getCurrentBet());
+            BettingRound.Action action = ai.decide(callAmount, pot, communityCards, ai.getRole(), phase);
+
+            switch (action) {
+                case FOLD -> {
+                    ai.setFolded(true);
+                    log.add(ai.getName() + " se retira");
+                }
+                case CHECK -> log.add(ai.getName() + " pasa");
+                case CALL -> {
+                    int amount = ai.placeBet(callAmount);
+                    pot += amount;
+                    log.add(ai.getName() + " iguala " + amount);
+                }
+                case BET, RAISE -> {
+                    int amount = ai.decideAmount(BIG_BLIND, pot, communityCards, ai.getRole(), phase);
+                    amount = ai.placeBet(amount);
+                    pot += amount;
+                    currentHighBet = Math.max(currentHighBet, ai.getCurrentBet());
+                    String word = action == BettingRound.Action.BET ? "apuesta" : "sube a";
+                    log.add(ai.getName() + " " + word + " " + amount);
+                }
+                default -> log.add(ai.getName() + " pasa");
+            }
+        }
+        return new AIBettingResult(log, currentHighBet);
+    }
+
+    public AIBettingResult runUnifiedBettingRound(int currentHighBet, BettingRound.Action humanAction, int humanAmount, BettingRound.Phase phase) {
+        // Ejecuta humano e IA en un único recorrido para evitar desfasajes de apuestas.
+        List<String> log = new ArrayList<>();
+
+        for (Player current : players) {
+            if (current.isFolded() || current.isAllIn()) {
+                continue;
+            }
+
+            if (current == player) {
+                currentHighBet = applyHumanActionInUnifiedRound(humanAction, humanAmount, currentHighBet);
+                // Log human action so the action log shows entries for ALL players.
+                if (humanAction != null) {
+                    log.add(humanLogLine(player.getName(), humanAction, humanAmount, player.getCurrentBet()));
+                }
+                continue;
+            }
+
+            AIPlayer ai = (AIPlayer) current;
+            int callAmount = Math.max(0, currentHighBet - ai.getCurrentBet());
+            BettingRound.Action action = ai.decide(callAmount, pot, communityCards, ai.getRole(), phase);
+
+            switch (action) {
+                case FOLD -> {
+                    ai.setFolded(true);
+                    log.add(ai.getName() + " se retira");
+                }
+                case CHECK -> log.add(ai.getName() + " pasa");
+                case CALL -> {
+                    int amount = ai.placeBet(callAmount);
+                    pot += amount;
+                    log.add(ai.getName() + " iguala " + amount);
+                }
+                case BET, RAISE -> {
+                    int amount = ai.decideAmount(BIG_BLIND, pot, communityCards, ai.getRole(), phase);
+                    amount = ai.placeBet(amount);
+                    pot += amount;
+                    currentHighBet = Math.max(currentHighBet, ai.getCurrentBet());
+                    String word = action == BettingRound.Action.BET ? "apuesta" : "sube a";
+                    log.add(ai.getName() + " " + word + " " + amount);
+                }
+                default -> log.add(ai.getName() + " pasa");
+            }
+        }
+
+        return new AIBettingResult(log, currentHighBet, player.isFolded());
+    }
+
+    private static String humanLogLine(String name, BettingRound.Action action, int amount, int newTotal) {
+        return switch (action) {
+            case FOLD   -> name + " se retira";
+            case CHECK  -> name + " pasa";
+            case CALL   -> name + " iguala " + amount;
+            case BET    -> name + " apuesta " + amount;
+            case RAISE  -> name + " sube a " + newTotal;
+            case ALL_IN -> name + " ALL IN";
+        };
+    }
+
+    private int applyHumanActionInUnifiedRound(BettingRound.Action action, int humanAmount, int currentHighBet) {
+        if (action == null) {
+            return currentHighBet;
+        }
+
+        switch (action) {
+            case FOLD -> player.setFolded(true);
+            case CHECK -> {
+            }
+            case CALL -> {
+                int actual = player.placeBet(humanAmount);
+                pot += actual;
+            }
+            case BET -> {
+                int actual = player.placeBet(humanAmount);
+                pot += actual;
+                currentHighBet = Math.max(currentHighBet, player.getCurrentBet());
+            }
+            case RAISE -> {
+                int extra = Math.max(0, humanAmount - player.getCurrentBet());
+                int actual = player.placeBet(extra);
+                pot += actual;
+                currentHighBet = Math.max(currentHighBet, player.getCurrentBet());
+            }
+            case ALL_IN -> {
+                if (!player.isAllIn()) {
+                    int actual = player.placeBet(player.getChips());
+                    pot += actual;
+                    currentHighBet = Math.max(currentHighBet, player.getCurrentBet());
+                }
+            }
+        }
+
+        return currentHighBet;
+    }
+
+    public static class AIBettingResult {
+        public final List<String> log;
+        public final int highBet;
+        public final boolean humanFolded;
+
+        public AIBettingResult(List<String> log, int highBet) {
+            this(log, highBet, false);
+        }
+
+        public AIBettingResult(List<String> log, int highBet, boolean humanFolded) {
+            this.log = log;
+            this.highBet = highBet;
+            this.humanFolded = humanFolded;
+        }
+    }
+
+    public void resetRoundBets() {
+        for (Player current : players) {
+            current.resetRoundBet();
+        }
+    }
+
+    public HandRank evaluateBestHand() {
+        HandEvaluator.HandRank evaluatorRank = handEvaluator.evaluateBestRank(player.getHand(), communityCards);
+        return toPokerGameRank(evaluatorRank);
+    }
+
+    public HandRank evaluateCards(List<Card> cards) {
+        if (cards.size() < 5) {
+            return HandRank.HIGH_CARD;
+        }
+
+        ArrayList<Card> holeCards = new ArrayList<>(cards.subList(0, 2));
+        ArrayList<Card> community = new ArrayList<>(cards.subList(2, cards.size()));
+        HandEvaluator.HandRank evaluatorRank = handEvaluator.evaluateBestRank(holeCards, community);
+        return toPokerGameRank(evaluatorRank);
+    }
+
+    private HandRank toPokerGameRank(HandEvaluator.HandRank evaluatorRank) {
+        return switch (evaluatorRank) {
+            case HIGH_CARD -> HandRank.HIGH_CARD;
+            case ONE_PAIR -> HandRank.ONE_PAIR;
+            case TWO_PAIR -> HandRank.TWO_PAIR;
+            case THREE_OF_A_KIND -> HandRank.THREE_OF_A_KIND;
+            case STRAIGHT -> HandRank.STRAIGHT;
+            case FLUSH -> HandRank.FLUSH;
+            case FULL_HOUSE -> HandRank.FULL_HOUSE;
+            case FOUR_OF_A_KIND -> HandRank.FOUR_OF_A_KIND;
+            case STRAIGHT_FLUSH -> HandRank.STRAIGHT_FLUSH;
+            case ROYAL_FLUSH -> HandRank.ROYAL_FLUSH;
+        };
+    }
+
+    public void awardPotToPlayer() {
+        player.setNumbChips(player.getNumbChips() + pot);
+        pot = 0;
+    }
+
+    public void awardPotToAI(AIPlayer winner) {
+        winner.receivePot(pot);
+        pot = 0;
+    }
+
+    public void awardPotTo(Player winner) {
+        if (winner instanceof User userWinner) {
+            userWinner.setNumbChips(userWinner.getNumbChips() + pot);
+        } else if (winner instanceof AIPlayer aiWinner) {
+            aiWinner.receivePot(pot);
+        }
+        pot = 0;
+    }
+
+    public void awardPot(ShowdownResult showdownResult) {
+        if (showdownResult == null || showdownResult.getWinners().isEmpty()) {
+            return;
+        }
+
+        // Reparto del bote: partes iguales y el resto se asigna por posición.
+        List<Player> winners = showdownResult.getWinners();
+        int baseShare = pot / winners.size();
+        int remainder = pot % winners.size();
+
+        for (Player winner : winners) {
+            payPlayer(winner, baseShare);
+        }
+
+        if (remainder > 0) {
+            List<Player> remainderOrder = remainderAssignmentOrder(winners);
+            for (int i = 0; i < remainder; i++) {
+                payPlayer(remainderOrder.get(i), 1);
+            }
+        }
+
+        pot = 0;
+    }
+
+    private void payPlayer(Player winner, int amount) {
+        if (amount <= 0) {
+            return;
+        }
+
+        if (winner instanceof User userWinner) {
+            userWinner.setNumbChips(userWinner.getNumbChips() + amount);
+        } else if (winner instanceof AIPlayer aiWinner) {
+            aiWinner.receivePot(amount);
+        }
+    }
+
+    private List<Player> remainderAssignmentOrder(List<Player> winners) {
+        // Ordena ganadores según cercanía al dealer para repartir el resto de manera estable.
+        int dealerSeat = -1;
+        for (int i = 0; i < players.size(); i++) {
+            if (players.get(i).getPlayerRole() == PlayerRole.DEALER) {
+                dealerSeat = i;
+                break;
+            }
+        }
+
+        List<Player> ordered = new ArrayList<>(winners);
+        int finalDealerSeat = dealerSeat;
+        ordered.sort((left, right) -> {
+            int leftSeat = players.indexOf(left);
+            int rightSeat = players.indexOf(right);
+
+            if (finalDealerSeat >= 0) {
+                int leftDistance = clockwiseDistance(finalDealerSeat, leftSeat);
+                int rightDistance = clockwiseDistance(finalDealerSeat, rightSeat);
+                if (leftDistance != rightDistance) {
+                    return Integer.compare(leftDistance, rightDistance);
+                }
+            }
+
+            return Integer.compare(leftSeat, rightSeat);
+        });
+        return ordered;
+    }
+
+    private int clockwiseDistance(int originSeat, int targetSeat) {
+        if (originSeat < 0 || targetSeat < 0 || players.isEmpty()) {
+            return Integer.MAX_VALUE;
+        }
+        int totalSeats = players.size();
+        return (targetSeat - originSeat + totalSeats) % totalSeats;
+    }
+
+    public ShowdownResult determineShowdownResult() {
+        // Evalúa fuerza de mano de jugadores activos y resuelve empates.
+        HandEvaluator.HandStrength bestStrength = null;
+        List<Player> winners = new ArrayList<>();
+
+        for (Player current : players) {
+            if (current.isFolded()) {
+                continue;
+            }
+
+            HandEvaluator.HandStrength currentStrength = evaluateStrengthForPlayer(current);
+            if (bestStrength == null) {
+                bestStrength = currentStrength;
+                winners.clear();
+                winners.add(current);
+                continue;
+            }
+
+            int comparison = currentStrength.compareTo(bestStrength);
+            if (comparison > 0) {
+                bestStrength = currentStrength;
+                winners.clear();
+                winners.add(current);
+            } else if (comparison == 0) {
+                winners.add(current);
+            }
+        }
+
+        if (bestStrength == null) {
+            return new ShowdownResult(List.of(), HandRank.HIGH_CARD, false);
+        }
+
+        return new ShowdownResult(winners, toPokerGameRank(bestStrength.getRank()), winners.size() > 1);
+    }
+
+    private HandEvaluator.HandStrength evaluateStrengthForPlayer(Player current) {
+        ArrayList<Card> cards = new ArrayList<>(current.getHand());
+        cards.addAll(communityCards);
+
+        if (cards.size() >= 5) {
+            // Con 5+ cartas, delega en evaluador exhaustivo para mejor combinación.
+            return handEvaluator.evaluateBestHandStrength(cards);
+        }
+
+        List<Integer> tieBreak = new ArrayList<>();
+        for (Card card : cards) {
+            Integer value = RANK_VALUE.get(card.getRank());
+            if (value != null) {
+                tieBreak.add(value);
+            }
+        }
+        // Fallback para rondas incompletas: usa orden de valores altos.
+        tieBreak.sort(Collections.reverseOrder());
+        return new HandEvaluator.HandStrength(HandEvaluator.HandRank.HIGH_CARD, tieBreak);
+    }
+
+    public Player determineWinnerPlayer() {
+        ShowdownResult showdownResult = determineShowdownResult();
+        if (showdownResult.getWinners().isEmpty()) {
+            return null;
+        }
+        return showdownResult.getWinners().get(0);
+    }
+
+    public ArrayList<Card> getPlayerHand() {
+        return new ArrayList<>(player.getHand());
+    }
+
+    public ArrayList<Card> getCommunityCards() {
+        return new ArrayList<>(communityCards);
+    }
+
+    public List<AIPlayer> getAIPlayers() {
+        return Collections.unmodifiableList(aiPlayers);
+    }
+
+    public List<Player> getPlayers() {
+        return Collections.unmodifiableList(players);
+    }
+
+    public int getRemainingActivePlayersCount() {
+        int count = 0;
+        for (Player current : players) {
+            if (!current.isFolded()) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    public int getActionablePlayersCount() {
+        int count = 0;
+        for (Player current : players) {
+            if (!current.isFolded() && !current.isAllIn()) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    public int getPot() {
+        return pot;
+    }
+
+    public int getPlayerCurrentBet() {
+        return player.getCurrentBet();
+    }
+
+    public int getDealerIndex() {
+        return dealerIndex;
+    }
+
+    public ArrayList<Card> getRemainingDeck() {
+        return deck.getRemainingCardsList();
+    }
+
+    /**
+     * Returns true when every opponent of the local human player has 0 chips.
+     * Opponents = all players except the local {@link #player}.
+     */
+    public boolean areAllOpponentsEliminated() {
+        for (Player current : players) {
+            if (current == player) {
+                continue; // skip local human
+            }
+            if (current.getChips() > 0) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Returns the player with the most chips among all players,
+     * provided at least one player has chips &gt; 0.
+     * Returns {@code null} if every player has 0 chips.
+     */
+    public Player determineOverallWinner() {
+        Player best = null;
+        int bestChips = 0;
+        for (Player current : players) {
+            if (current.getChips() > bestChips) {
+                bestChips = current.getChips();
+                best = current;
+            }
+        }
+        return best; // null if all have 0 (bestChips stays 0)
+    }
+}

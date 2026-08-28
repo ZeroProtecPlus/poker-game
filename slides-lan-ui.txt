@@ -1,0 +1,135 @@
+────────────────────────────────────────────────────────────
+ SLIDE 1 — Título
+────────────────────────────────────────────────────────────
+
+PokerMao
+Texas Hold'em Poker — Multijugador LAN
+
+Rework completo de UI + Nuevas funcionalidades multijugador
+
+────────────────────────────────────────────────────────────
+ SLIDE 2 — Arquitectura LAN
+────────────────────────────────────────────────────────────
+
+Multijugador en red local
+
+- Arquitectura Host / Cliente sobre TCP/IP
+- Host crea la partida, clientes se conectan por IP + puerto
+- Lobby integrado en el tablero visible para todos
+- Sincronización de estado en tiempo real via mensajes GAME_STATE
+- Hasta 6 jugadores humanos simultáneos
+
+────────────────────────────────────────────────────────────
+ SLIDE 3 — Sincronización
+────────────────────────────────────────────────────────────
+
+Sincronización en tiempo real
+
+- Host transmite: cartas comunitarias, bote, fichas, fases, acciones
+- Cada cliente ve solo sus propias cartas (manos enmascaradas)
+- Log de acciones instantáneo tanto en host como en clientes
+- El pot, badges y fichas se actualizan sin demora
+- Detección diferencial de cambios (sin parpadeo ni re-renders innecesarios)
+
+────────────────────────────────────────────────────────────
+ SLIDE 4 — Experiencia de juego LAN
+────────────────────────────────────────────────────────────
+
+Experiencia de juego pulida
+
+- Turno activo con glow dorado sobre el badge del jugador
+- Timeout de 15 segundos para acciones remotas (sin fold automático)
+- Confirmación de salida antes de cerrar la ventana
+- Manejo robusto de desconexiones: la partida continúa
+- Pantalla de Game Over con nombre del ganador y overlay visual
+- Detección de eliminación de todos los oponentes
+
+────────────────────────────────────────────────────────────
+ SLIDE 5 — Rework de UI
+────────────────────────────────────────────────────────────
+
+Migración completa: Swing -> JavaFX
+
+- Eliminación del antiguo GameView (1798 líneas de Swing)
+- Nueva GameTable con JavaFX puro
+- Animaciones con FadeTransition y RotateTransition
+- Render asincrónico thread-safe
+- Diálogos FX reemplazan todos los popups Swing
+
+────────────────────────────────────────────────────────────
+ SLIDE 6 — Sistema de Diseño CSS
+────────────────────────────────────────────────────────────
+
+Sistema de diseño visual con CSS modular
+
+- Tokens de diseño: tipografía, paleta de colores premium, sombras
+- Paleta: fondo oscuro, dorado #c9a84c, texto marfil, acentos rojos/verdes
+- Badges con sprites PNG personalizados y bordes dorados 3D
+- Efectos glow en hover y en turno activo
+- Fuentes web display y monospace (fonts.css)
+
+────────────────────────────────────────────────────────────
+ SLIDE 7 — Componentes visuales
+────────────────────────────────────────────────────────────
+
+Componentes rediseñados
+
+- Badges de jugador con textura y borde dorado
+- Indicadores de rol como fichas de póker circulares con animación
+- Estado de fold visible: badge oscurecido con tinte rojizo
+- Panel de apuestas con botones estilo tecla grabada
+- Barra de estado: conexión, fase y turno activo
+- Overlay de Game Over con estilo diferenciado (win/loss)
+
+────────────────────────────────────────────────────────────
+ SLIDE 8 — Menú y diálogos
+────────────────────────────────────────────────────────────
+
+Menú principal y diálogos rediseñados
+
+- Menú de inicio con fondo Star_Game.png y capas overlay con alpha
+- Barra de título personalizada (FxMenuChrome) con min./cerrar
+- Diálogo de conexión LAN con validación inline de IP y puerto
+- Diálogo multijugador con paneles sólidos y botones redondeados
+- Consistencia visual en toda la aplicación
+
+────────────────────────────────────────────────────────────
+ SLIDE 9 — Persistencia y modelo
+────────────────────────────────────────────────────────────
+
+Persistencia y modelo de datos
+
+- Perfiles de jugador guardados en SQLite
+- Las fichas se cargan desde el perfil, no más 10k hardcodeados
+- Nuevos métodos de detección de eliminación y ganador global
+- Contrato de tests para isEliminated() en User y AIPlayer
+
+────────────────────────────────────────────────────────────
+ SLIDE 10 — Stack tecnológico
+────────────────────────────────────────────────────────────
+
+Stack tecnológico
+
+- Java 17 LTS
+- Maven 3 (build, test, empaquetado)
+- JavaFX 21 (UI, multimedia, animaciones)
+- Swing (solo para compatibilidad legacy)
+- SQLite + JDBC (persistencia)
+- JUnit 5 + Mockito (testing)
+- CSS3 (sistema de diseño visual)
+
+────────────────────────────────────────────────────────────
+ SLIDE 11 — Commits recientes
+────────────────────────────────────────────────────────────
+
+Trabajo reciente (55 commits en dev)
+
+- Migración completa Swing -> JavaFX
+- Implementación del protocolo LAN host/cliente
+- Lobby en tiempo real con GameTable
+- Sincronización de estado con máscaras de mano
+- Sistema de badges con indicadores de rol y fold
+- Barra de estado y log de acciones
+- Overlay de Game Over con nombre del ganador
+- Rediseño de todos los diálogos (menú, conexión, multijugador)
+- 3 portadas de banda sonora original

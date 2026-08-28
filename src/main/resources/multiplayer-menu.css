@@ -1,0 +1,58 @@
+/* ============================================================
+   Multiplayer Menu — Royal Poker
+   Buttons over Star_Game.png background (no solid panel)
+   Hierarchy: .multiplayer-* namespace
+   ============================================================ */
+
+/* ── Title ────────────────────────────────────────────────────── */
+.multiplayer-title {
+    -fx-font-family: -fx-font-heading;
+    -fx-font-size: 36px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #e8c96a;
+    -fx-padding: 0 0 24 0;
+}
+
+/* ---- Buttons (base) — solid casino colors, resized for longest text ---- */
+.multiplayer-btn {
+    -fx-font-family: -fx-font-heading;
+    -fx-font-size: 22px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #f5edd8;
+    -fx-background-color: #0B3220;
+    -fx-background-radius: 8;
+    -fx-border-color: #c9a84c;
+    -fx-border-width: 2;
+    -fx-border-radius: 8;
+    -fx-padding: 14 40 14 40;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.5), 8, 0.3, 2, 3);
+    -fx-min-width: 400;
+}
+
+/* ---- Buttons (hover) ---- */
+.multiplayer-btn:hover {
+    -fx-background-color: #1A6B42;
+    -fx-border-color: #f0d88a;
+    -fx-effect: dropshadow(gaussian, rgba(201, 168, 76, 0.35), 12, 0.4, 2, 4);
+}
+
+/* ---- Buttons (pressed) ---- */
+.multiplayer-btn:pressed {
+    -fx-background-color: #061E12;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.3), 4, 0.3, 1, 1);
+}
+
+/* ---- Back button (variant) — solid dark red ---- */
+.multiplayer-btn-back {
+    -fx-font-size: 18px;
+    -fx-background-color: #1E0A0A;
+    -fx-border-color: #8b4513;
+    -fx-text-fill: #d4c5a0;
+    -fx-min-width: 280;
+}
+
+.multiplayer-btn-back:hover {
+    -fx-background-color: #321515;
+    -fx-border-color: #cd853f;
+}

@@ -25,5 +25,31 @@ bin/
 ### VS Code ###
 .vscode/
 
+### Agent tooling ###
+.atl/
+
 ### Mac OS ###
 .DS_Store
+
+### Local docs (not versioned) ###
+DOCUMENTACION_PROYECTO.txt
+LEVANTAMIENTO_REQUERIMIENTOS.md
+.github/COMMIT_GUIDELINES.md
+
+### Maven ###
+target/
+
+### Misc ###
+.idea/
+openspec/
+javafx.zip
+javafx-sdk*/
+mvnw
+setup-and-run.bat
+run.bat
+lib/
+sdd/
+.sdd/
+docs/
+PRESENTACION.txt
+dependency-reduced-pom.xml

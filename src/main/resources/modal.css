@@ -1,0 +1,574 @@
+/*
+ * ContinueDialog Stylesheet — Royal Poker visual identity
+ * Premium casino aesthetic: deep felt, gold metallics, glass gloss.
+ */
+
+/* =============================================================================
+ * ContinueDialog — lienzo y overlays (píxeles de diseño, PNG sin escalar)
+ * Archivo base: sprites/continuar_partida.png
+ * Overlay SÍ:  sprites/continuar_partida_yes.png
+ * Overlay NO:  sprites/continuar_partida_no.png
+ * Valores aplicados en ContinueDialog.java (deben coincidir con este bloque).
+ * =============================================================================
+ * Lienzo completo (.continue-dialog-canvas)
+ *   ancho:  1502 px
+ *   alto:   1428 px
+ *
+ * Sprite SÍ — recuadro negro izquierdo (.modal-yes-overlay)
+ *   x:      0 px
+ *   y:      0 px
+ *   ancho:  1502 px
+ *   alto:   1428 px
+ *
+ * Sprite NO — recuadro negro derecho (.modal-no-overlay)
+ *   x:      0 px
+ *   y:      0 px
+ *   ancho:  1502 px
+ *   alto:   1428 px
+ *
+ * Texto fichas (.modal-pokefichas-label) — debajo de "ROYAL POKER"
+ *   top: 355 px | padding lateral: 120 px | font-size: 68 px (~19 px en pantalla)
+ *
+ * Texto pregunta (.modal-continue-question) — centro del panel verde
+ *   top: 640 px | padding lateral: 100 px | font-size: 100 px (~28 px en pantalla)
+ *
+ * Hover botones: resplandor desplazado +12 px hacia abajo (offsetY en dropshadow)
+ *
+ * Fuentes: el lienzo escala a TARGET_WIDTH 420; tamaño CSS = tamaño visible × (1502/420).
+ * =============================================================================
+ */
+
+.continue-dialog-canvas {
+    -fx-background-color: transparent;
+    -fx-min-width: 1502;
+    -fx-pref-width: 1502;
+    -fx-max-width: 1502;
+    -fx-min-height: 1428;
+    -fx-pref-height: 1428;
+    -fx-max-height: 1428;
+}
+
+.modal-base-image {
+    -fx-background-color: transparent;
+}
+
+.modal-yes-overlay {
+    -fx-background-color: transparent;
+}
+
+.modal-no-overlay {
+    -fx-background-color: transparent;
+}
+
+.modal-yes-overlay-hover {
+    -fx-effect: dropshadow(gaussian, rgba(120, 255, 160, 0.8), 36, 0.6, 0, 12);
+}
+
+.modal-no-overlay-hover {
+    -fx-effect: dropshadow(gaussian, rgba(255, 120, 120, 0.8), 36, 0.6, 0, 12);
+}
+
+/* Alineado con .modal-chips del tema (tamaño compensado por escala del lienzo) */
+.modal-pokefichas-label {
+    -fx-text-fill: #d4af37;
+    -fx-font-family: -fx-font-heading;
+    -fx-font-size: 68px;
+    -fx-font-weight: bold;
+    -fx-text-alignment: center;
+    -fx-alignment: center;
+    -fx-wrap-text: true;
+    -fx-padding: 0 120 0 120;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.75), 14, 0.55, 0, 3);
+}
+
+/* Alineado con .modal-question del tema (tamaño compensado por escala del lienzo) */
+.modal-continue-question {
+    -fx-text-fill: #f5edd8;
+    -fx-font-family: -fx-font-heading;
+    -fx-font-size: 100px;
+    -fx-font-style: italic;
+    -fx-font-weight: bold;
+    -fx-text-alignment: center;
+    -fx-alignment: center;
+    -fx-wrap-text: true;
+    -fx-padding: 0 100 0 100;
+    -fx-line-spacing: 4px;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.7), 18, 0.55, 0, 4);
+}
+
+.modal-btn-hit-yes,
+.modal-btn-hit-no {
+    -fx-background-color: transparent;
+    -fx-cursor: hand;
+}
+
+.modal-card {
+    /* Semi-transparent dark backdrop — the menu-bg.png image shows through. */
+    -fx-background-color: rgba(6, 14, 10, 0.80);
+    -fx-background-radius: 24;
+    -fx-border-color: linear-gradient(
+        to bottom,
+        #f0d88a,
+        #d4a845,
+        #a8782a,
+        #6b5010
+    );
+    -fx-border-width: 4;
+    -fx-border-radius: 24;
+    -fx-padding: 36 48 36 48;
+    -fx-effect: dropshadow(gaussian, rgba(2, 6, 4, 0.85), 50, 0.75, 0, 10);
+}
+
+.modal-title {
+    -fx-text-fill: linear-gradient(to bottom, #f5edd8, #e8c96a, #c9a84c);
+    -fx-font-family: -fx-font-heading;
+    -fx-font-size: 28px;
+    -fx-font-weight: bold;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.8), 10, 0.6, 0, 3);
+}
+
+.modal-chips {
+    -fx-text-fill: #d4af37;
+    -fx-font-family: -fx-font-mono;
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.6), 4, 0.5, 0, 1);
+}
+
+.modal-question {
+    -fx-text-fill: #f5edd8;
+    -fx-font-family: -fx-font-heading;
+    -fx-font-size: 24px;
+    -fx-font-style: italic;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.5), 4, 0.5, 0, 1);
+}
+
+.modal-corner-ornament {
+    -fx-text-fill: #d4a845;
+    -fx-font-family: -fx-font-heading;
+    -fx-font-size: 20px;
+    -fx-opacity: 0.8;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.5), 2, 0.5, 0, 1);
+}
+
+.modal-gloss {
+    -fx-background-color: linear-gradient(
+        to bottom,
+        rgba(255, 255, 255, 0.1) 0%,
+        rgba(255, 255, 255, 0.03) 40%,
+        transparent 100%
+    );
+    -fx-background-radius: 24 24 0 0;
+    -fx-pref-height: 80;
+    -fx-max-height: 80;
+}
+
+/* Button base — pill shape, gold border, deep shadow */
+.btn-yes,
+.btn-no {
+    -fx-font-family: -fx-font-heading;
+    -fx-font-size: 17px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #f5edd8;
+    -fx-background-radius: 28;
+    -fx-border-radius: 28;
+    -fx-border-color: linear-gradient(to bottom, #f0d88a, #c9a84c, #8a6020);
+    -fx-border-width: 2.5;
+    -fx-padding: 14 48 14 48;
+    -fx-cursor: hand;
+    -fx-min-width: 120;
+    -fx-effect: dropshadow(gaussian, rgba(5, 10, 6, 0.7), 10, 0.6, 0, 4);
+}
+
+/* YES — glossy green with glass dome highlight */
+.btn-yes {
+    -fx-background-color: linear-gradient(
+        to bottom,
+        rgba(255, 255, 255, 0.32) 0%,
+        rgba(255, 255, 255, 0.08) 20%,
+        transparent 26%,
+        #248b52 32%,
+        #1a6b42 55%,
+        #0e4228 100%
+    );
+}
+
+.btn-yes:hover {
+    -fx-background-color: linear-gradient(
+        to bottom,
+        rgba(255, 255, 255, 0.42) 0%,
+        rgba(255, 255, 255, 0.12) 20%,
+        transparent 26%,
+        #2ead65 32%,
+        #228b52 55%,
+        #145530 100%
+    );
+    -fx-effect: dropshadow(gaussian, rgba(10, 30, 18, 0.8), 14, 0.7, 0, 5);
+    -fx-translate-y: -1;
+}
+
+.btn-yes:pressed {
+    -fx-background-color: linear-gradient(
+        to bottom,
+        rgba(255, 255, 255, 0.1) 0%,
+        transparent 18%,
+        #1a6b42 30%,
+        #0e4228 100%
+    );
+    -fx-effect: dropshadow(gaussian, rgba(5, 10, 6, 0.5), 6, 0.5, 0, 2);
+    -fx-translate-y: 1;
+}
+
+/* NO — glossy crimson with glass dome highlight */
+.btn-no {
+    -fx-background-color: linear-gradient(
+        to bottom,
+        rgba(255, 255, 255, 0.32) 0%,
+        rgba(255, 255, 255, 0.08) 20%,
+        transparent 26%,
+        #8b1a1a 32%,
+        #6b1414 55%,
+        #3f0c0c 100%
+    );
+}
+
+.btn-no:hover {
+    -fx-background-color: linear-gradient(
+        to bottom,
+        rgba(255, 255, 255, 0.42) 0%,
+        rgba(255, 255, 255, 0.12) 20%,
+        transparent 26%,
+        #a82020 32%,
+        #8b1a1a 55%,
+        #521010 100%
+    );
+    -fx-effect: dropshadow(gaussian, rgba(30, 10, 10, 0.8), 14, 0.7, 0, 5);
+    -fx-translate-y: -1;
+}
+
+.btn-no:pressed {
+    -fx-background-color: linear-gradient(
+        to bottom,
+        rgba(255, 255, 255, 0.1) 0%,
+        transparent 18%,
+        #6b1414 30%,
+        #3f0c0c 100%
+    );
+    -fx-effect: dropshadow(gaussian, rgba(20, 5, 5, 0.5), 6, 0.5, 0, 2);
+    -fx-translate-y: 1;
+}
+
+/* =============================================================================
+ * ResumeGameDialog — solid casino buttons, clean text (no shadows)
+ * ============================================================================= */
+
+/* Chip count label — gold, bold, no dropshadow */
+.resume-chips {
+    -fx-text-fill: #d4af37;
+    -fx-font-family: -fx-font-mono;
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+}
+
+/* Title label — clean cream, no dropshadow */
+.resume-title {
+    -fx-text-fill: #f5edd8;
+    -fx-font-family: -fx-font-heading;
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+}
+
+/* Question label — italic cream, no dropshadow */
+.resume-question {
+    -fx-text-fill: #f5edd8;
+    -fx-font-family: -fx-font-heading;
+    -fx-font-size: 18px;
+    -fx-font-style: italic;
+    -fx-font-weight: bold;
+    -fx-line-spacing: 4px;
+}
+
+/* ── Resume dialog buttons (solid colours, no gradients) ───────────── */
+
+.btn-resume-yes,
+.btn-resume-no {
+    -fx-font-family: -fx-font-heading;
+    -fx-font-size: 17px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #f5edd8;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-width: 2;
+    -fx-padding: 14 48 14 48;
+    -fx-cursor: hand;
+    -fx-min-width: 120;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.4), 6, 0.3, 1, 2);
+}
+
+/* SÍ — solid green */
+.btn-resume-yes {
+    -fx-background-color: #1A6B42;
+    -fx-border-color: #c9a84c;
+}
+
+.btn-resume-yes:hover {
+    -fx-background-color: #228B50;
+    -fx-border-color: #f0d88a;
+    -fx-effect: dropshadow(gaussian, rgba(34, 139, 80, 0.5), 10, 0.4, 1, 3);
+}
+
+.btn-resume-yes:pressed {
+    -fx-background-color: #0e4228;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.3), 4, 0.3, 1, 1);
+}
+
+/* NO — solid dark red */
+.btn-resume-no {
+    -fx-background-color: #3A1515;
+    -fx-border-color: #8b4513;
+}
+
+.btn-resume-no:hover {
+    -fx-background-color: #502020;
+    -fx-border-color: #cd853f;
+    -fx-effect: dropshadow(gaussian, rgba(80, 32, 32, 0.5), 10, 0.4, 1, 3);
+}
+
+.btn-resume-no:pressed {
+    -fx-background-color: #1a0808;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.3), 4, 0.3, 1, 1);
+}
+
+/* =============================================================================
+ * BetAmountDialog — slider for bet/raise amount
+ * ============================================================================= */
+.bet-title {
+    -fx-text-fill: #f5edd8;
+    -fx-font-family: -fx-font-heading;
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.8), 10, 0.6, 0, 3);
+}
+
+.bet-range {
+    -fx-text-fill: #c9a84c;
+    -fx-font-family: -fx-font-heading;
+    -fx-font-size: 14px;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.6), 4, 0.5, 0, 1);
+}
+
+.bet-value {
+    -fx-text-fill: #f5edd8;
+    -fx-font-family: -fx-font-heading;
+    -fx-font-size: 32px;
+    -fx-font-weight: bold;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.7), 8, 0.5, 0, 2);
+}
+
+.bet-slider {
+    -fx-pref-width: 320;
+}
+
+.bet-slider .track {
+    -fx-background-color: #0a1e12;
+    -fx-background-radius: 4;
+    -fx-border-color: #c9a84c;
+    -fx-border-radius: 4;
+    -fx-border-width: 1;
+}
+
+.bet-slider .thumb {
+    -fx-background-color: linear-gradient(to bottom, #f0d88a, #c9a84c, #8a6020);
+    -fx-background-radius: 12;
+    -fx-border-color: #f5edd8;
+    -fx-border-radius: 12;
+    -fx-border-width: 1.5;
+    -fx-pref-width: 24;
+    -fx-pref-height: 24;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.5), 4, 0.4, 0, 2);
+}
+
+.bet-slider .tick-label {
+    -fx-text-fill: #f5edd8;
+    -fx-font-family: -fx-font-heading;
+    -fx-font-size: 11px;
+}
+
+/* Manual tick label pane — sits between slider and buttons.
+ * Labels are absolutely positioned via layoutX bindings. */
+.tick-labels-box {
+    -fx-background-color: transparent;
+}
+
+.tick-label {
+    -fx-text-fill: #c9a84c;
+    -fx-font-family: -fx-font-heading;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+}
+
+.bet-btn {
+    -fx-font-family: -fx-font-heading;
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #f5edd8;
+    -fx-min-width: 180;
+    -fx-padding: 12 16 12 16;
+    -fx-cursor: hand;
+}
+
+.bet-btn-accept {
+    -fx-background-color: transparent;
+    -fx-background-image: url("/sprites/btn-accept-bg.png");
+    -fx-background-repeat: no-repeat;
+    -fx-background-size: 160% 160%;
+    -fx-background-position: center;
+    /*-fx-border-color: rgba(0, 0, 0, 0.5);
+    -fx-border-radius: 12;
+    -fx-border-width: 4;*/
+}
+
+.bet-btn-accept:hover {
+    -fx-scale-x: 1.05;
+    -fx-scale-y: 1.05;
+}
+
+.bet-btn-cancel {
+    -fx-background-color: transparent;
+    -fx-background-image: url("/sprites/btn-cancel-bg.png");
+    -fx-background-repeat: no-repeat;
+    -fx-background-size: 160% 160%;
+    -fx-background-position: center;
+    /*-fx-border-color: rgba(0, 0, 0, 0.5);
+    -fx-border-radius: 12;
+    -fx-border-width: 4;*/
+}
+
+.bet-btn-cancel:hover {
+    -fx-scale-x: 1.05;
+    -fx-scale-y: 1.05;
+}
+
+/* =============================================================================
+ * ConnectDialog — LAN connection input fields
+ * ============================================================================= */
+.lan-input-field {
+    -fx-font-family: -fx-font-heading;
+    -fx-font-size: 16px;
+    -fx-text-fill: #f5edd8;
+    -fx-prompt-text-fill: rgba(245, 237, 216, 0.4);
+    -fx-background-color: #060E0A;
+    -fx-background-radius: 8;
+    -fx-border-color: #c9a84c;
+    -fx-border-width: 1.5;
+    -fx-border-radius: 8;
+    -fx-padding: 10 14;
+}
+.lan-input-field:focused {
+    -fx-border-color: #f0d88a;
+    -fx-effect: dropshadow(gaussian, rgba(201, 168, 76, 0.3), 8, 0.5, 0, 0);
+}
+.lan-error-label {
+    -fx-font-family: -fx-font-heading;
+    -fx-font-size: 14px;
+    -fx-text-fill: #e74c3c;
+    -fx-padding: 6 8 2 8;
+    -fx-wrap-text: true;
+    -fx-line-spacing: 2px;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.5), 4, 0.4, 0, 1);
+}
+
+/* =============================================================================
+ * Shared LAN dialog classes — solid casino panels and buttons
+ * ============================================================================= */
+
+/* LAN dialog button — primary action */
+.lan-btn-primary {
+    -fx-font-family: -fx-font-heading;
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #f5edd8;
+    -fx-background-color: #1A6B42;
+    -fx-background-radius: 8;
+    -fx-border-color: #c9a84c;
+    -fx-border-width: 1.5;
+    -fx-border-radius: 8;
+    -fx-padding: 12 32;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 6, 0.3, 1, 2);
+}
+
+.lan-btn-primary:hover {
+    -fx-background-color: #228B50;
+    -fx-border-color: #f0d88a;
+    -fx-effect: dropshadow(gaussian, rgba(201,168,76,0.3), 10, 0.4, 1, 3);
+}
+
+/* LAN dialog button — cancel/back */
+.lan-btn-cancel {
+    -fx-font-family: -fx-font-heading;
+    -fx-font-size: 16px;
+    -fx-text-fill: #d4c5a0;
+    -fx-background-color: #3A1515;
+    -fx-background-radius: 8;
+    -fx-border-color: #8b4513;
+    -fx-border-width: 1.5;
+    -fx-border-radius: 8;
+    -fx-padding: 10 28;
+    -fx-cursor: hand;
+}
+
+.lan-btn-cancel:hover {
+    -fx-background-color: #502020;
+    -fx-border-color: #cd853f;
+}
+
+/* =============================================================================
+ * SettingsDialog — thicker input fields, slider
+ * ============================================================================= */
+.settings-field {
+    -fx-font-family: -fx-font-heading;
+    -fx-font-size: 16px;
+    -fx-text-fill: #f5edd8;
+    -fx-prompt-text-fill: rgba(245, 237, 216, 0.4);
+    -fx-background-color: #060E0A;
+    -fx-background-radius: 8;
+    -fx-border-color: #c9a84c;
+    -fx-border-width: 2.5;
+    -fx-border-radius: 8;
+    -fx-padding: 12 16;
+    -fx-pref-width: 260;
+}
+
+.settings-field:focused {
+    -fx-border-color: #f0d88a;
+    -fx-effect: dropshadow(gaussian, rgba(201, 168, 76, 0.35), 10, 0.5, 0, 0);
+}
+
+.settings-slider {
+    -fx-pref-width: 320;
+}
+
+.settings-slider .track {
+    -fx-background-color: #0a1e12;
+    -fx-background-radius: 4;
+    -fx-border-color: #c9a84c;
+    -fx-border-radius: 4;
+    -fx-border-width: 1.5;
+    -fx-pref-height: 10;
+}
+
+.settings-slider .thumb {
+    -fx-background-color: linear-gradient(to bottom, #f0d88a, #c9a84c, #8a6020);
+    -fx-background-radius: 14;
+    -fx-border-color: #f5edd8;
+    -fx-border-radius: 14;
+    -fx-border-width: 2;
+    -fx-pref-width: 26;
+    -fx-pref-height: 26;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.5), 4, 0.4, 0, 2);
+}
+
+.settings-slider .thumb:hover {
+    -fx-effect: dropshadow(gaussian, rgba(201, 168, 76, 0.5), 10, 0.5, 0, 0);
+}

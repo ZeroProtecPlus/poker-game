@@ -1,0 +1,39 @@
+/* Start menu — canvas 1672×941 (native sprite resolution, no scaling) */
+
+.start-menu-canvas {
+    -fx-background-color: transparent;
+}
+
+.start-menu-base-image,
+.menu-full-canvas-layer {
+    -fx-opacity: 1;
+    -fx-effect: null;
+}
+
+.menu-button-slot {
+    -fx-background-color: transparent;
+}
+
+.menu-button-art {
+    -fx-opacity: 1;
+}
+
+.menu-button-shadow-plate {
+    -fx-background-color: transparent;
+}
+
+/* Hit zones (adjust if sprite layout changes) */
+.start-menu-hit-single {
+    -fx-background-color: transparent;
+    -fx-cursor: hand;
+}
+
+.start-menu-hit-multi {
+    -fx-background-color: transparent;
+    -fx-cursor: hand;
+}
+
+.start-menu-hit-settings {
+    -fx-background-color: transparent;
+    -fx-cursor: hand;
+}
